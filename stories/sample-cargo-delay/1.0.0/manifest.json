@@ -1,0 +1,13 @@
+{
+  "id": "sample-cargo-delay",
+  "version": "1.0.0",
+  "title": "تاخیر در محموله مشترک",
+  "description": "یک برش روایی کوتاه برای تصمیم هماهنگ تامین‌کننده و حمل‌کننده.",
+  "minimumTeams": 2,
+  "maximumTeams": 2,
+  "entryCheckpointId": "response",
+  "defaultLocale": "fa-IR",
+  "supportedLocales": ["fa-IR"],
+  "estimatedDurationMinutes": 10,
+  "requiredRuntimeVersion": "2.0"
+}

@@ -9,6 +9,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Hambaft.Application\Hambaft.Application.csproj" />
     <ProjectReference Include="..\Hambaft.Domain\Hambaft.Domain.csproj" />
+    <ProjectReference Include="..\Hambaft.Narrative.Ink\Hambaft.Narrative.Ink.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Marten" />

@@ -1,0 +1,29 @@
+{
+  "profiles": [
+    {
+      "id": "cooperative-credit",
+      "displayNameRef": "behavior-credit-name",
+      "eligibleEntityDefinitions": ["credit-provider"],
+      "rules": [
+        { "id": "cooperative-credit-rule", "priority": 100, "weight": 70, "conditions": [{ "type": "MetricAtMost", "scope": "World", "metricKey": "world.pressure", "expected": 60 }], "actionId": "extend-bridge-credit", "difficultyModifiers": [], "repeatPolicy": "OncePerCheckpoint" },
+        { "id": "opportunistic-credit-rule", "priority": 100, "weight": 30, "conditions": [{ "type": "MetricAtLeast", "scope": "World", "metricKey": "world.pressure", "expected": 40 }], "actionId": "offer-costly-credit", "difficultyModifiers": [], "repeatPolicy": "OncePerCheckpoint" }
+      ],
+      "fallbackActionId": "tighten-credit"
+    },
+    {
+      "id": "opportunistic-credit",
+      "displayNameRef": "behavior-credit-name",
+      "eligibleEntityDefinitions": ["credit-provider"],
+      "rules": [
+        { "id": "opportunistic-credit-rule", "priority": 100, "weight": 70, "conditions": [], "actionId": "offer-costly-credit", "difficultyModifiers": [], "repeatPolicy": "Repeatable" },
+        { "id": "cooperative-credit-rule", "priority": 100, "weight": 30, "conditions": [], "actionId": "extend-bridge-credit", "difficultyModifiers": [], "repeatPolicy": "Repeatable" }
+      ],
+      "fallbackActionId": "tighten-credit"
+    }
+  ],
+  "actions": [
+    { "id": "extend-bridge-credit", "effectIds": ["credit-extend-pressure", "credit-extend-trust"], "narrativeRef": "behavior-credit-extended" },
+    { "id": "offer-costly-credit", "effectIds": ["credit-costly-pressure", "credit-costly-trust"], "narrativeRef": "behavior-credit-costly" },
+    { "id": "tighten-credit", "effectIds": ["credit-tighten-pressure", "credit-tighten-trust"], "narrativeRef": "behavior-credit-tightened" }
+  ]
+}

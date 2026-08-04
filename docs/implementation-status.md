@@ -2,19 +2,45 @@
 
 | Area | Status | Evidence / limitation |
 | --- | --- | --- |
-| Independent solution and boundaries | Complete | Build and architecture tests |
-| Generic session Domain and event replay | Complete | Unit and end-to-end tests |
-| Marten session stream and concurrency | Partial | Requires configured local `hambaft_test` for integration verification |
-| Inline public/session projections | Partial | Registered and isolation unit-tested; database verification depends on local PostgreSQL |
-| Team/Entity projections | Partial | Transactional Marten documents implemented; conversion to independently registered replayable projections remains |
-| REST session flow | Partial | Implemented; smoke depends on local PostgreSQL |
-| Pairing code generation/hash | Partial | Interfaces and secure implementation; token exchange route deferred |
-| JWT authorization | Partial | JWT validation and claim conventions; full admin/pairing lifecycle deferred |
-| SignalR | Partial | Typed hub and server-selected groups; authorization lifecycle depends on issued JWTs |
-| Story content and Ink | Deferred | Phase 1 exclusion |
-| Runtime authored behavior | Deferred | Phase 1 exclusion |
+| Phase 1 foundation | Complete | Session, Team, Entity, JWT, pairing, health, SignalR and Marten remain green |
+| Phase 2 narrative | Complete | Exact Package lock, typed conditions/effects, Storylets, choices and replay |
+| Package 1.1.0 | Complete | Four optional Phase 3 files; 1.0.0 unchanged and independently loadable |
+| Proposals | Complete | Typed terms, immutable revisions, eligibility, checkpoint expiry and optimistic races |
+| Agreements | Complete | Activation, three execution modes, execution/failure events and visibility |
+| Behavior Resolver | Complete | Stable Entity/rule ordering, weighted hash selection, fallback, repeat and Difficulty |
+| Scheduled consequences | Complete | Four deterministic triggers, schedule/cancel/trigger state and privacy |
+| Checkpoint pipeline | Complete | Atomic Phase 3 ordering with meaningful events |
+| Projections | Complete | Admin, public and Team experience/inbox rebuild from events |
+| API and SignalR | Complete | Claim-bound endpoints and lightweight Team/public notifications |
+| PostgreSQL | Complete | 15 real `hambaft_test` tests; persistence, concurrency and projection rebuild |
+| Sample 1.1.0 | Complete | Two Teams, Credit Provider, Agreement, expiration, behavior and delayed review |
+| Ink/endings/UI/runtime AI | Deferred | Explicitly out of Phase 3 |
 
-## Known risks
+Operational invariants: filesystem Packages are never database content; no Session may substitute a different version/hash; no private terms enter public projections or SignalR; no wall-clock timer participates in replay.
+# Phase 4 — implemented
 
-- PostgreSQL 16 service was detected locally, but SCRAM credentials, `hambaft_dev`, `hambaft_test`, and both connection settings must be supplied by the developer.
-- Authentication provisioning is intentionally incomplete; private Team projection has no public unauthenticated endpoint.
+- Compiled Ink loading/rendering, strict inputs/tags, validation and guarded state serialization.
+- Deterministic Entity and World Ending resolution, structured evidence, atomic completion and replayable projections.
+- Team/Public/Admin frontend-ready views and Ending REST/SignalR contracts with privacy boundaries.
+- `hezar-cheragh/0.1.0`: Persian Ink, four businesses/checkpoints, five interactions, five behavior profiles, four delayed consequences, 12 Entity Endings and five World Endings.
+- Deterministic 2/3/4-Team and Hard scenarios, PostgreSQL persistence/rebuild/concurrency coverage, and local replay performance guard.
+
+Deferred: React, PixiJS, full multi-hour Hezar Cheragh, Visual Story Editor, final content editing tools, production deployment and runtime AI.
+
+# Phase 5 — implemented
+
+| Area | Status | Evidence / limitation |
+| --- | --- | --- |
+| React foundation | Complete | Vite, strict TypeScript, Router, Query, Zustand-local-only, Motion, SignalR and Zod |
+| RTL design | Complete | Persian-first paper/olive/gold system, responsive Team/Admin/Display and reduced motion |
+| Pairing/auth | Complete | Code-only pairing, claim-derived Team identity, sessionStorage and explicit unpair |
+| Team play | Complete | private Storylets, Choices, metrics, Memories, Consequences and market |
+| Negotiation | Complete | typed terms, immutable revision history, Counter/Accept/Reject/Cancel and 409 handling |
+| Admin | Complete | two-to-four Team wizard, package helper, one-time codes and runtime actions/diagnostics |
+| Public Display | Complete | public narrative, businesses, Agreements/Consequences and World Ending only |
+| Realtime | Complete | centralized connection, focused invalidations, offline/online reconnect and refetch |
+| Ending UI | Complete | private Entity evidence and public World result without win/loss reduction |
+| Frontend tests | Complete | 14 unit/component/contract tests and one full real-browser Playwright flow |
+| Local demo | Complete | Vite production output hosted by ASP.NET static files/fallback |
+
+Deferred after Phase 5: PixiJS market world, full animated navigation, final generated artwork, full multi-hour content, Visual Story Editor, production deployment and runtime AI.

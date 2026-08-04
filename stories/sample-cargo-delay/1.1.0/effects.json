@@ -1,0 +1,32 @@
+[
+  { "id": "supplier-disclose-reliability", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.reliability", "value": 5 },
+  { "id": "supplier-disclose-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": 2 },
+  { "id": "supplier-disclose-memory", "type": "AddMemory", "scope": "CurrentEntity", "memoryKey": "supplier_disclosed_delay", "visibility": "EntityPrivate" },
+  { "id": "supplier-disclose-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "carrier", "relationshipKey": "relationship.trust", "value": 4 },
+  { "id": "supplier-promise-reliability", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.reliability", "value": -3 },
+  { "id": "supplier-promise-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": -1 },
+  { "id": "supplier-promise-memory", "type": "AddMemory", "scope": "CurrentEntity", "memoryKey": "supplier_promised_original_deadline", "visibility": "EntityPrivate" },
+  { "id": "supplier-promise-schedule", "type": "ScheduleConsequence", "consequenceDefinitionId": "deadline-promise-review" },
+  { "id": "carrier-reserve-capacity", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.capacity", "value": -5 },
+  { "id": "carrier-reserve-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": -4 },
+  { "id": "carrier-reserve-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "supplier", "relationshipKey": "relationship.trust", "value": 3 },
+  { "id": "carrier-reserve-memory", "type": "AddMemory", "scope": "CurrentEntity", "memoryKey": "carrier_reserved_capacity", "visibility": "EntityPrivate" },
+  { "id": "carrier-protect-capacity", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.capacity", "value": 2 },
+  { "id": "carrier-protect-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": 4 },
+  { "id": "carrier-protect-memory", "type": "AddMemory", "scope": "CurrentEntity", "memoryKey": "carrier_protected_operations", "visibility": "EntityPrivate" },
+
+  { "id": "agreement-carrier-capacity", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.capacity", "value": 10 },
+  { "id": "agreement-pressure-relief", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": -5 },
+  { "id": "agreement-carrier-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "supplier", "relationshipKey": "relationship.trust", "value": 2 },
+  { "id": "agreement-supplier-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "carrier", "relationshipKey": "relationship.trust", "value": 3 },
+
+  { "id": "credit-extend-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": -2 },
+  { "id": "credit-extend-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "supplier", "relationshipKey": "relationship.trust", "value": 3 },
+  { "id": "credit-costly-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": 2 },
+  { "id": "credit-costly-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "supplier", "relationshipKey": "relationship.trust", "value": -2 },
+  { "id": "credit-tighten-pressure", "type": "ChangeMetric", "scope": "World", "metricKey": "world.pressure", "value": 5 },
+  { "id": "credit-tighten-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "supplier", "relationshipKey": "relationship.trust", "value": -4 },
+
+  { "id": "deadline-review-reliability", "type": "ChangeMetric", "scope": "CurrentEntity", "metricKey": "entity.reliability", "value": -4 },
+  { "id": "deadline-review-trust", "type": "ChangeRelationship", "scope": "RelationshipBetweenCurrentAndTarget", "targetEntityDefinitionId": "carrier", "relationshipKey": "relationship.trust", "value": -2 }
+]

@@ -8,7 +8,7 @@ public sealed class DependencyTests
     [Fact] public void Domain_has_no_production_dependency() => ProductionReferences(typeof(StorySession).Assembly).Should().BeEmpty();
     [Fact] public void Contracts_has_no_domain_or_infrastructure_dependency() => ProductionReferences(typeof(Hambaft.Contracts.ContractAssemblyMarker).Assembly).Should().BeEmpty();
     [Fact] public void Application_does_not_reference_api() => Names(typeof(Hambaft.Application.ApplicationAssemblyMarker).Assembly).Should().NotContain("Hambaft.Api");
-    [Fact] public void Infrastructure_references_only_lower_layers() => ProductionReferences(typeof(Hambaft.Infrastructure.InfrastructureAssemblyMarker).Assembly).Should().BeSubsetOf(["Hambaft.Application","Hambaft.Domain"]);
+    [Fact] public void Infrastructure_references_only_lower_layers() => ProductionReferences(typeof(Hambaft.Infrastructure.InfrastructureAssemblyMarker).Assembly).Should().BeSubsetOf(["Hambaft.Application","Hambaft.Domain","Hambaft.Narrative.Ink"]);
     [Fact]
     public void Api_is_the_composition_root()
     {

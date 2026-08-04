@@ -1,0 +1,5 @@
+[
+  { "id": "supplier", "displayName": "تامین‌کننده", "controllerRequirement": "HumanTeam", "publicTags": ["cargo", "supplier"], "initialMetrics": { "entity.capacity": 50, "entity.reliability": 55 } },
+  { "id": "carrier", "displayName": "حمل‌کننده", "controllerRequirement": "HumanTeam", "publicTags": ["cargo", "carrier"], "initialMetrics": { "entity.capacity": 60, "entity.reliability": 50 } },
+  { "id": "credit-provider", "displayName": "تامین‌کننده اعتبار", "controllerRequirement": "AuthoredBehavior", "publicTags": ["credit", "uncontrolled"], "initialMetrics": { "entity.capacity": 70, "entity.reliability": 50 } }
+]

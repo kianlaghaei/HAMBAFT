@@ -4,9 +4,32 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Hambaft.Api.Realtime;
 
-public interface ISessionHubClient { Task StateChanged(StateChangedNotification notification); }
+public interface ISessionHubClient
+{
+    Task StateChanged(StateChangedNotification notification);
+    Task NarrativeInitialized(NarrativeNotification notification);
+    Task PrivateStoryAssigned(NarrativeNotification notification);
+    Task DecisionRequested(NarrativeNotification notification);
+    Task ChoiceRecorded(NarrativeNotification notification);
+    Task NarrativeResolved(NarrativeNotification notification);
+    Task WorldNarrativePublished(NarrativeNotification notification);
+    Task ProposalReceived(InteractionNotification notification);
+    Task ProposalCountered(InteractionNotification notification);
+    Task ProposalAccepted(InteractionNotification notification);
+    Task ProposalRejected(InteractionNotification notification);
+    Task ProposalExpired(InteractionNotification notification);
+    Task ProposalCancelled(InteractionNotification notification);
+    Task AgreementActivated(InteractionNotification notification);
+    Task AgreementExecuted(InteractionNotification notification);
+    Task AgreementFailed(InteractionNotification notification);
+    Task ConsequenceChanged(NarrativeNotification notification);
+    Task AuthoredBehaviorResolved(NarrativeNotification notification);
+    Task EntityEndingPublished(EndingNotification notification);
+    Task WorldEndingPublished(EndingNotification notification);
+    Task SessionCompleted(EndingNotification notification);
+}
 
-[Authorize]
+[Authorize(Policy="SessionClient")]
 public sealed class SessionHub : Hub<ISessionHubClient>
 {
     public override async Task OnConnectedAsync()

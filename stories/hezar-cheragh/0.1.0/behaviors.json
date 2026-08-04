@@ -1,0 +1,31 @@
+{
+  "profiles": [
+    { "id": "community-first", "displayNameRef": "behavior-profile-name", "eligibleEntityDefinitions": ["bakery-sepideh", "logistics-rah-no", "printing-roshan", "exchange-mizan"], "rules": [
+      { "id": "community-rule", "priority": 100, "weight": 75, "conditions": [], "actionId": "community-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 0.7 }], "repeatPolicy": "OncePerCheckpoint" },
+      { "id": "defensive-rule", "priority": 100, "weight": 25, "conditions": [], "actionId": "defensive-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 1.3 }], "repeatPolicy": "OncePerCheckpoint" }
+    ], "fallbackActionId": "community-action" },
+    { "id": "opportunistic", "displayNameRef": "behavior-profile-name", "eligibleEntityDefinitions": ["bakery-sepideh", "logistics-rah-no", "printing-roshan", "exchange-mizan"], "rules": [
+      { "id": "opportunistic-rule", "priority": 100, "weight": 75, "conditions": [], "actionId": "opportunistic-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 1.6 }], "repeatPolicy": "OncePerCheckpoint" },
+      { "id": "community-rule", "priority": 100, "weight": 25, "conditions": [], "actionId": "community-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 0.5 }], "repeatPolicy": "OncePerCheckpoint" }
+    ], "fallbackActionId": "opportunistic-action" },
+    { "id": "defensive", "displayNameRef": "behavior-profile-name", "eligibleEntityDefinitions": ["bakery-sepideh", "logistics-rah-no", "printing-roshan", "exchange-mizan"], "rules": [
+      { "id": "defensive-rule", "priority": 100, "weight": 80, "conditions": [], "actionId": "defensive-action", "difficultyModifiers": [], "repeatPolicy": "OncePerCheckpoint" },
+      { "id": "community-rule", "priority": 100, "weight": 20, "conditions": [], "actionId": "community-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 0.6 }], "repeatPolicy": "OncePerCheckpoint" }
+    ], "fallbackActionId": "defensive-action" },
+    { "id": "avan-aligned", "displayNameRef": "behavior-profile-name", "eligibleEntityDefinitions": ["bakery-sepideh", "logistics-rah-no", "printing-roshan", "exchange-mizan"], "rules": [
+      { "id": "avan-rule", "priority": 100, "weight": 80, "conditions": [], "actionId": "avan-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 1.3 }], "repeatPolicy": "OncePerCheckpoint" },
+      { "id": "defensive-rule", "priority": 100, "weight": 20, "conditions": [], "actionId": "defensive-action", "difficultyModifiers": [], "repeatPolicy": "OncePerCheckpoint" }
+    ], "fallbackActionId": "avan-action" },
+    { "id": "debt-pressured", "displayNameRef": "behavior-profile-name", "eligibleEntityDefinitions": ["bakery-sepideh", "logistics-rah-no", "printing-roshan", "exchange-mizan"], "rules": [
+      { "id": "debt-rule", "priority": 100, "weight": 75, "conditions": [], "actionId": "debt-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 1.5 }], "repeatPolicy": "OncePerCheckpoint" },
+      { "id": "community-rule", "priority": 100, "weight": 25, "conditions": [], "actionId": "community-action", "difficultyModifiers": [{ "difficultyId": "hard", "multiplier": 0.5 }], "repeatPolicy": "OncePerCheckpoint" }
+    ], "fallbackActionId": "debt-action" }
+  ],
+  "actions": [
+    { "id": "community-action", "effectIds": ["behavior-community-trust", "behavior-community-capacity"], "narrativeRef": "behavior-community" },
+    { "id": "opportunistic-action", "effectIds": ["behavior-opportunistic-liquidity", "behavior-opportunistic-trust"], "narrativeRef": "behavior-opportunistic" },
+    { "id": "defensive-action", "effectIds": ["behavior-defensive-capacity", "behavior-defensive-pressure"], "narrativeRef": "behavior-defensive" },
+    { "id": "avan-action", "effectIds": ["behavior-avan-liquidity", "behavior-avan-autonomy"], "narrativeRef": "behavior-avan" },
+    { "id": "debt-action", "effectIds": ["behavior-debt-liquidity", "behavior-debt-exposure"], "narrativeRef": "behavior-debt" }
+  ]
+}

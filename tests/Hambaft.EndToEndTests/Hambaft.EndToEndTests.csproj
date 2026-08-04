@@ -17,6 +17,8 @@
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <ProjectReference Include="..\..\src\Hambaft.Domain\Hambaft.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Hambaft.Application\Hambaft.Application.csproj" />
+    <ProjectReference Include="..\..\src\Hambaft.Infrastructure\Hambaft.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
