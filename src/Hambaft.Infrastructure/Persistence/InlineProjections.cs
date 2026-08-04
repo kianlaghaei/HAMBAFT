@@ -4,7 +4,7 @@ using Marten.Events.Aggregation;
 
 namespace Hambaft.Infrastructure.Persistence;
 
-public sealed class SessionStateProjection : SingleStreamProjection<SessionStateView,Guid>
+public sealed partial class SessionStateProjection : SingleStreamProjection<SessionStateView,Guid>
 {
     public SessionStateView Create(SessionCreated e)=>new(e.Id,e.StoryPackageId,e.StoryVersion,e.ContentHash,e.Seed,SessionStatus.Created,e.Metadata.OccurredAtUtc,null,null,[],[],1);
     public SessionStateView Apply(TeamAdded e,SessionStateView v)=>v with { Status=v.Status==SessionStatus.Created?SessionStatus.Lobby:v.Status,Teams=v.Teams.Append(new Team(e.TeamId,v.Id,e.DisplayName,e.PairingCodeHash,null,e.Metadata.OccurredAtUtc)).ToList(),StateVersion=v.StateVersion+1 };
@@ -20,7 +20,7 @@ public sealed class SessionStateProjection : SingleStreamProjection<SessionState
     private static SessionStateView Bump(SessionStateView v)=>v with { StateVersion=v.StateVersion+1 };
 }
 
-public sealed class PublicWorldProjection : SingleStreamProjection<PublicWorldView,Guid>
+public sealed partial class PublicWorldProjection : SingleStreamProjection<PublicWorldView,Guid>
 {
     public PublicWorldView Create(SessionCreated e)=>new(e.Id,SessionStatus.Created,[],[],[],[],1);
     public PublicWorldView Apply(TeamAdded _,PublicWorldView v)=>v with { Status=v.Status==SessionStatus.Created?SessionStatus.Lobby:v.Status,StateVersion=v.StateVersion+1 };

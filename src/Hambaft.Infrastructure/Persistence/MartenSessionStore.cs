@@ -24,14 +24,17 @@ public sealed class MartenSessionStore(IDocumentSession session) : ISessionStore
         session.CorrelationId=events[0].Metadata.CorrelationId.ToString("D");
         session.CausationId=events[0].Metadata.CausationId.ToString("D");
         if(expectedVersion==0) session.Events.StartStream<StorySession>(sessionId,events.Cast<object>());
-        else session.Events.Append(sessionId,expectedVersion,events.Cast<object>());
+        else session.Events.Append(sessionId,expectedVersion+events.Count,events.Cast<object>());
 
-        foreach(var team in state.Teams) session.Store(ViewProjector.Team(state,team));
-        foreach(var entity in state.Entities) session.Store(ViewProjector.Entity(state,entity));
         await session.SaveChangesAsync(ct);
     }
 
     public Task<SessionStateView?> LoadSessionViewAsync(Guid id,CancellationToken ct)=>session.LoadAsync<SessionStateView>(id,ct);
     public Task<PublicWorldView?> LoadPublicViewAsync(Guid id,CancellationToken ct)=>session.LoadAsync<PublicWorldView>(id,ct);
-    public Task<TeamExperienceView?> LoadTeamViewAsync(Guid id,CancellationToken ct)=>session.LoadAsync<TeamExperienceView>(id,ct);
+    public async Task<TeamExperienceView?> LoadTeamViewAsync(Guid id,CancellationToken ct)
+    {
+        var experience=await session.Query<SessionExperienceView>().FirstOrDefaultAsync(x=>x.Teams.Any(team=>team.Id==id),ct);
+        var team=experience?.Teams.SingleOrDefault(x=>x.Id==id);
+        return experience is null||team is null?null:ViewProjector.Team(experience,team);
+    }
 }

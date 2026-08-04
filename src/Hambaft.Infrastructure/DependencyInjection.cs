@@ -31,15 +31,16 @@ public static class DependencyInjection
         options.DatabaseSchemaName="hambaft";
         options.Events.DatabaseSchemaName="hambaft";
         options.Events.StreamIdentity=StreamIdentity.AsGuid;
+        options.Events.AppendMode=EventAppendMode.Rich;
         options.Events.MetadataConfig.CorrelationIdEnabled=true;
         options.Events.MetadataConfig.CausationIdEnabled=true;
         options.AutoCreateSchemaObjects=AutoCreate.CreateOrUpdate;
         options.Schema.For<SessionStateView>().DatabaseSchemaName("hambaft");
         options.Schema.For<PublicWorldView>().DatabaseSchemaName("hambaft");
-        options.Schema.For<TeamExperienceView>().DatabaseSchemaName("hambaft");
-        options.Schema.For<EntityStateView>().DatabaseSchemaName("hambaft");
+        options.Schema.For<SessionExperienceView>().DatabaseSchemaName("hambaft");
         options.Projections.Add<SessionStateProjection>(ProjectionLifecycle.Inline);
         options.Projections.Add<PublicWorldProjection>(ProjectionLifecycle.Inline);
+        options.Projections.Add<SessionExperienceProjection>(ProjectionLifecycle.Inline);
         options.Events.AddEventTypes([typeof(SessionCreated),typeof(TeamAdded),typeof(WorldEntityCreated),typeof(EntityAssignedToTeam),typeof(InitialMetricSet),typeof(InitialMemoryAdded),typeof(InitialRelationshipSet),typeof(SessionStarted),typeof(SessionPaused),typeof(SessionResumed),typeof(SessionCancelled)]);
     }
 }

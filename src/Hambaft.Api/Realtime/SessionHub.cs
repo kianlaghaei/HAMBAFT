@@ -6,7 +6,7 @@ namespace Hambaft.Api.Realtime;
 
 public interface ISessionHubClient { Task StateChanged(StateChangedNotification notification); }
 
-[Authorize]
+[Authorize(Policy="SessionClient")]
 public sealed class SessionHub : Hub<ISessionHubClient>
 {
     public override async Task OnConnectedAsync()

@@ -1,6 +1,8 @@
-@host = http://localhost:5000
+@host = http://localhost:5297
 @sessionId = replace-after-create
 @teamId = replace-after-add-team
+@pairingCode = replace-once-after-add-team
+@teamToken = replace-after-pair
 @humanEntityId = replace-after-create-human
 
 ### Create Session (version 1)
@@ -14,6 +16,16 @@ POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
 {"displayName":"گروه آبی","expectedVersion":1}
+
+### Exchange the copied value for a scoped Team JWT
+POST {{host}}/api/sessions/{{sessionId}}/pair
+Content-Type: application/json
+
+{"teamId":"{{teamId}}","pairingCode":"{{pairingCode}}"}
+
+### Authorized SignalR negotiation (anonymous negotiation returns 401)
+POST {{host}}/hubs/session/negotiate?negotiateVersion=1
+Authorization: Bearer {{teamToken}}
 
 ### Create human-controlled Entity draft (version 3)
 POST {{host}}/api/sessions/{{sessionId}}/entities
@@ -47,21 +59,27 @@ Content-Type: application/json
 
 ###
 GET {{host}}/api/sessions/{{sessionId}}
+
 ###
 GET {{host}}/api/sessions/{{sessionId}}/public
+
 ###
 POST {{host}}/api/sessions/{{sessionId}}/pause
 Content-Type: application/json
 
 {"expectedVersion":7}
+
 ###
 POST {{host}}/api/sessions/{{sessionId}}/resume
 Content-Type: application/json
 
 {"expectedVersion":8}
+
 ###
 GET {{host}}/health
+
 ###
 GET {{host}}/alive
+
 ###
 GET {{host}}/ready

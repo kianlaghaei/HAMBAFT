@@ -9,5 +9,24 @@ public sealed record MetricInput(string Scope,Guid ScopeId,string MetricKey,deci
 public sealed record MemoryInput(string Scope,Guid ScopeId,string Key,string? OptionalJsonValue,string Visibility);
 public sealed record RelationshipInput(Guid SourceEntityId,Guid TargetEntityId,string RelationshipKey,decimal NumericValue);
 public sealed record BootstrapRequest(long ExpectedVersion,IReadOnlyList<MetricInput> Metrics,IReadOnlyList<MemoryInput> Memories,IReadOnlyList<RelationshipInput> Relationships);
+public sealed record PairingRequest(Guid TeamId,string PairingCode);
+public sealed record TokenResponse(string AccessToken,string TokenType,DateTimeOffset ExpiresAtUtc);
 public sealed record CommandResponse(Guid SessionId,long StateVersion,string EventType,Guid? ResourceId=null,string? PairingCode=null);
 public sealed record StateChangedNotification(Guid SessionId,long StateVersion,string EventType,string Scope);
+
+public sealed record SessionResponse(
+    Guid Id,
+    string StoryPackageId,
+    string StoryVersion,
+    string ContentHash,
+    int Seed,
+    string Status,
+    DateTimeOffset CreatedAtUtc,
+    DateTimeOffset? StartedAtUtc,
+    DateTimeOffset? CompletedAtUtc,
+    IReadOnlyList<TeamResponse> Teams,
+    IReadOnlyList<EntityResponse> Entities,
+    long StateVersion);
+
+public sealed record TeamResponse(Guid Id,Guid SessionId,string DisplayName,Guid? ControlledEntityId,DateTimeOffset JoinedAtUtc);
+public sealed record EntityResponse(Guid Id,Guid SessionId,string DefinitionId,string DisplayName,string ControllerType,Guid? ControlledByTeamId,string? BehaviorProfileId,string Status);

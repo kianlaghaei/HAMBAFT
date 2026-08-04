@@ -17,7 +17,9 @@
   <ItemGroup>
     <PackageReference Include="FluentAssertions" />
     <PackageReference Include="Marten" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <PackageReference Include="Npgsql" />
+    <ProjectReference Include="..\..\src\Hambaft.Api\Hambaft.Api.csproj" />
     <ProjectReference Include="..\..\src\Hambaft.Infrastructure\Hambaft.Infrastructure.csproj" />
   </ItemGroup>
 

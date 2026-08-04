@@ -19,4 +19,6 @@ dotnet test
 dotnet run --project src/Hambaft.Api
 ```
 
-Use `src/Hambaft.Api/Hambaft.Api.http` for the development smoke flow. The API fails startup with a setup-oriented message when `ConnectionStrings:Hambaft` is missing. Tests reject any database name other than `hambaft_test` and operate only in schema `hambaft`.
+Alternatively, expose the development connection as `ConnectionStrings__Hambaft`; it must target only `hambaft_dev`. Use `src/Hambaft.Api/Hambaft.Api.http` for the development smoke flow. Copy the raw pairing code only into the pairing request and do not log or persist it. The response JWT can be used for the SignalR negotiate request.
+
+The API fails startup with a setup-oriented message when `ConnectionStrings:Hambaft` is missing. Integration tests reject any database name other than `hambaft_test`, reject SharedWorld explicitly, drop/recreate only schema `hambaft`, and never operate on `hambaft_dev`.

@@ -67,11 +67,44 @@ public sealed class MartenTests(PostgresFixture fixture)
     }
 
     [PostgresFact]
+    public async Task Team_and_entity_views_can_be_rebuilt_from_events()
+    {
+        var id=Guid.NewGuid();await Create(id);var added=await AddTeam(id,1);var entityId=Guid.NewGuid();
+        await using(var session=fixture.Store!.LightweightSession())
+        {
+            var runtime=new SessionRuntime(new MartenSessionStore(session),new PairingCodeGenerator());
+            await runtime.ExecuteAsync(new CreateWorldEntity(id,entityId,"hero","Hero",ControllerType.HumanTeam,null,2,MetaContext()),default);
+        }
+        await using(var session=fixture.Store!.LightweightSession())
+        {
+            var runtime=new SessionRuntime(new MartenSessionStore(session),new PairingCodeGenerator());
+            await runtime.ExecuteAsync(new AssignEntityToTeam(id,entityId,added.TeamId,3,MetaContext()),default);
+        }
+
+        TeamExperienceView expectedTeam;
+        EntityStateView expectedEntity;
+        await using(var query=fixture.Store!.QuerySession())
+        {
+            var experience=(await query.LoadAsync<SessionExperienceView>(id))!;
+            expectedTeam=ViewProjector.Team(experience,experience.Teams.Single(x=>x.Id==added.TeamId));
+            expectedEntity=ViewProjector.Entity(experience,experience.Entities.Single(x=>x.Id==entityId));
+        }
+
+        using(var daemon=await fixture.Store!.BuildProjectionDaemonAsync())
+            await daemon.RebuildProjectionAsync("SessionExperience",default);
+
+        await using var rebuilt=fixture.Store.QuerySession();
+        var rebuiltExperience=(await rebuilt.LoadAsync<SessionExperienceView>(id))!;
+        ViewProjector.Team(rebuiltExperience,rebuiltExperience.Teams.Single(x=>x.Id==added.TeamId)).Should().BeEquivalentTo(expectedTeam);
+        ViewProjector.Entity(rebuiltExperience,rebuiltExperience.Entities.Single(x=>x.Id==entityId)).Should().BeEquivalentTo(expectedEntity);
+    }
+
+    [PostgresFact]
     public async Task Public_projection_excludes_private_memories()
     {
         var id=Guid.NewGuid();await Create(id);var teamResult=await AddTeam(id,1);var teamId=teamResult.TeamId;
         await using(var session=fixture.Store!.LightweightSession()){var runtime=new SessionRuntime(new MartenSessionStore(session),new PairingCodeGenerator());await runtime.ExecuteAsync(new AddInitialMemory(id,MemoryScope.Team,teamId,"secret","{\"value\":1}",MemoryVisibility.TeamPrivate,2,MetaContext()),default);}
-        await using var query=fixture.Store.QuerySession();var publicView=await query.LoadAsync<PublicWorldView>(id);var teamView=await query.LoadAsync<TeamExperienceView>(teamId);
+        await using var query=fixture.Store.QuerySession();var publicView=await query.LoadAsync<PublicWorldView>(id);var experience=await query.LoadAsync<SessionExperienceView>(id);var teamView=ViewProjector.Team(experience!,experience!.Teams.Single(x=>x.Id==teamId));
         publicView!.PublicMemories.Should().BeEmpty();teamView!.VisibleMemories.Should().ContainSingle(x=>x.Key=="secret");
     }
 
