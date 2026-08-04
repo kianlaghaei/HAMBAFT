@@ -31,6 +31,8 @@ public static class DependencyInjection
         services.AddSingleton<IConditionEngine,ConditionEngine>();
         services.AddSingleton<IStoryletSelector,DeterministicStoryletSelector>();
         services.AddSingleton<IEffectEngine,EffectEngine>();
+        services.AddSingleton<IInteractionTermsValidator,InteractionTermsValidator>();
+        services.AddSingleton<IBehaviorResolver,DeterministicBehaviorResolver>();
         services.AddSingleton<IPairingCodeGenerator,PairingCodeGenerator>();
         services.AddScoped<SessionRuntime>();
         services.AddHealthChecks().AddCheck("postgresql",new PostgresHealthCheck(connection),tags:["ready"]);
@@ -53,6 +55,6 @@ public static class DependencyInjection
         options.Projections.Add<SessionStateProjection>(ProjectionLifecycle.Inline);
         options.Projections.Add<PublicWorldProjection>(ProjectionLifecycle.Inline);
         options.Projections.Add<SessionExperienceProjection>(ProjectionLifecycle.Inline);
-        options.Events.AddEventTypes([typeof(SessionCreated),typeof(TeamAdded),typeof(WorldEntityCreated),typeof(EntityAssignedToTeam),typeof(InitialMetricSet),typeof(InitialMemoryAdded),typeof(InitialRelationshipSet),typeof(SessionStarted),typeof(SessionPaused),typeof(SessionResumed),typeof(SessionCancelled),typeof(NarrativeInitialized),typeof(StoryletAssigned),typeof(StoryChoiceSubmitted),typeof(NarrativeCheckpointResolved),typeof(MetricChanged),typeof(MetricSet),typeof(StoryMemoryAdded),typeof(StoryMemoryRemoved),typeof(RelationshipChanged),typeof(WorldNarrativePublished)]);
+        options.Events.AddEventTypes([typeof(SessionCreated),typeof(TeamAdded),typeof(WorldEntityCreated),typeof(EntityAssignedToTeam),typeof(InitialMetricSet),typeof(InitialMemoryAdded),typeof(InitialRelationshipSet),typeof(SessionStarted),typeof(SessionPaused),typeof(SessionResumed),typeof(SessionCancelled),typeof(NarrativeInitialized),typeof(StoryletAssigned),typeof(StoryChoiceSubmitted),typeof(NarrativeCheckpointResolved),typeof(MetricChanged),typeof(MetricSet),typeof(StoryMemoryAdded),typeof(StoryMemoryRemoved),typeof(RelationshipChanged),typeof(WorldNarrativePublished),typeof(ProposalSent),typeof(ProposalCountered),typeof(ProposalAccepted),typeof(ProposalRejected),typeof(ProposalCancelled),typeof(ProposalExpired),typeof(AgreementActivated),typeof(AgreementExecuted),typeof(AgreementFailed),typeof(AuthoredBehaviorActionSelected),typeof(ConsequenceScheduled),typeof(ConsequenceTriggered),typeof(ConsequenceCancelled),typeof(ConsequenceFailed)]);
     }
 }

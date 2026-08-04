@@ -16,7 +16,7 @@ public static class EventFingerprint
     {
         var body = value switch
         {
-            SessionCreated e => Join(e.Id,e.StoryPackageId,e.StoryVersion,e.ContentHash,e.Seed),
+            SessionCreated e => Join(e.Id,e.StoryPackageId,e.StoryVersion,e.ContentHash,e.Seed,e.DifficultyId),
             TeamAdded e => Join(e.TeamId,e.DisplayName,e.PairingCodeHash),
             WorldEntityCreated e => Join(e.EntityId,e.DefinitionId,e.DisplayName,e.ControllerType,e.BehaviorProfileId,e.Status),
             EntityAssignedToTeam e => Join(e.EntityId,e.TeamId),
@@ -34,6 +34,20 @@ public static class EventFingerprint
             StoryMemoryRemoved e => Join(e.Scope,e.ScopeId,e.Key,e.EffectId),
             RelationshipChanged e => Join(e.SourceEntityId,e.TargetEntityId,e.RelationshipKey,e.PreviousValue,e.NewValue,e.RequestedDelta,e.EffectId),
             WorldNarrativePublished e => Join(e.StoryletId,e.NarrativeRef,e.CheckpointId,e.Revision,e.EffectId),
+            ProposalSent e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber,e.TermsPayload.GetRawText(),string.Join(",",e.OfferedEffects),string.Join(",",e.RequestedEffects),e.CreatedAtCheckpointId,e.ValidUntilCheckpointId,e.CreatedAtStreamVersion),
+            ProposalCountered e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber,e.CreatedByTeamId,e.TermsPayload.GetRawText(),string.Join(",",e.OfferedEffects),string.Join(",",e.RequestedEffects),e.CreatedAtStreamVersion),
+            ProposalAccepted e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber,e.AgreementId),
+            ProposalRejected e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber),
+            ProposalCancelled e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber),
+            ProposalExpired e => Join(e.ProposalId,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber),
+            AgreementActivated e => Join(e.AgreementId,e.ProposalId,e.AcceptedRevisionNumber,e.InteractionTypeId,string.Join(",",e.PartyTeamIds),e.TermsPayload.GetRawText(),e.ActivatedAtCheckpointId,e.Visibility),
+            AgreementExecuted e => Join(e.AgreementId,e.ProposalId,e.InteractionTypeId,string.Join(",",e.PartyTeamIds),e.CurrentRevisionNumber,e.ExecutedAtCheckpointId),
+            AgreementFailed e => Join(e.AgreementId,e.ProposalId,e.InteractionTypeId,string.Join(",",e.PartyTeamIds),e.CurrentRevisionNumber,e.FailedAtCheckpointId,e.ReasonCode),
+            AuthoredBehaviorActionSelected e => Join(e.EntityId,e.BehaviorProfileId,e.RuleId,e.ActionId,e.DifficultyId,e.ResolutionNumber),
+            ConsequenceScheduled e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.ScheduledAtCheckpointId,e.DueCheckpointId,e.TriggerType,e.Visibility),
+            ConsequenceTriggered e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.TriggeredAtCheckpointId,e.Visibility),
+            ConsequenceCancelled e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId),
+            ConsequenceFailed e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.ReasonCode),
             _ => throw new DomainException($"Unsupported fingerprint event {value.GetType().Name}.")
         };
         var m=value.Metadata;

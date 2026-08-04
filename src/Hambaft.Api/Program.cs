@@ -48,10 +48,30 @@ static CommandContext Context(HttpContext http,Guid? teamId=null,Guid? commandId
 }
 static Guid ClaimGuid(HttpContext http,string name)=>Guid.TryParse(http.User.FindFirst(name)?.Value,out var id)?id:throw new ArgumentException($"Required claim '{name}' is missing.");
 static async Task Notify(IHubContext<SessionHub,ISessionHubClient> hub,CommandResult result,string scope,CancellationToken ct)=>await hub.Clients.Group(HubGroups.Session(result.SessionId)).StateChanged(new(result.SessionId,result.StateVersion,result.EventType,scope));
+static ProposalValidityDefinition? Validity(string? type,int? count,string? checkpoint)
+{
+    if(string.IsNullOrWhiteSpace(type))return null;if(!Enum.TryParse<ProposalValidityType>(type,true,out var parsed))throw new ArgumentException("Invalid proposal validity type.");return new(parsed,checkpoint,count);
+}
+static async Task NotifyInteraction(IHubContext<SessionHub,ISessionHubClient> hub,string eventType,Guid sessionId,Guid proposalId,Guid? agreementId,long version,IEnumerable<Guid> teams,bool isPublic=false)
+{
+    var notification=new InteractionNotification(sessionId,proposalId,agreementId,version,eventType);
+    foreach(var team in teams.Distinct())
+    {
+        var client=hub.Clients.Group(HubGroups.Team(team));
+        switch(eventType){case nameof(ProposalSent):await client.ProposalReceived(notification with { EventType="ProposalReceived" });break;case nameof(ProposalCountered):await client.ProposalCountered(notification);break;case nameof(ProposalAccepted):await client.ProposalAccepted(notification);break;case nameof(ProposalRejected):await client.ProposalRejected(notification);break;case nameof(ProposalExpired):await client.ProposalExpired(notification);break;case nameof(ProposalCancelled):await client.ProposalCancelled(notification);break;case nameof(AgreementActivated):await client.AgreementActivated(notification);break;case nameof(AgreementExecuted):await client.AgreementExecuted(notification);break;case nameof(AgreementFailed):await client.AgreementFailed(notification);break;}
+    }
+    if(isPublic&&eventType is nameof(AgreementActivated) or nameof(AgreementExecuted) or nameof(AgreementFailed))
+    {
+        foreach(var client in new[]{hub.Clients.Group(HubGroups.Session(sessionId)),hub.Clients.Group(HubGroups.Display(sessionId))})
+        {
+            if(eventType==nameof(AgreementActivated))await client.AgreementActivated(notification);else if(eventType==nameof(AgreementExecuted))await client.AgreementExecuted(notification);else await client.AgreementFailed(notification);
+        }
+    }
+}
 
 app.MapPost("/api/sessions",async(CreateSessionRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
-    var id=Guid.NewGuid();var result=await runtime.ExecuteAsync(new CreateSession(id,request.StoryPackageId,request.StoryVersion,request.ContentHash,request.Seed,request.ExpectedVersion,Context(http)),ct);await Notify(hub,result,"Session",ct);return Results.Created($"/api/sessions/{id:D}",new CommandResponse(id,result.StateVersion,result.EventType,id));
+    var id=Guid.NewGuid();var result=await runtime.ExecuteAsync(new CreateSession(id,request.StoryPackageId,request.StoryVersion,request.ContentHash,request.Seed,request.ExpectedVersion,Context(http),request.DifficultyId),ct);await Notify(hub,result,"Session",ct);return Results.Created($"/api/sessions/{id:D}",new CommandResponse(id,result.StateVersion,result.EventType,id));
 });
 app.MapGet("/api/story-packages",async(IStoryPackageCatalog catalog,CancellationToken ct)=>Results.Ok(await catalog.ListAsync(ct)));
 app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,string version,IStoryPackageCatalog catalog,CancellationToken ct)=>
@@ -59,6 +79,10 @@ app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,st
     var package=(await catalog.ListAsync(ct)).SingleOrDefault(x=>x.Id==packageId&&x.Version==version); return package is null?Results.NotFound():Results.Ok(package);
 });
 app.MapGet("/api/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(ToResponse(view)):Results.NotFound());
+app.MapGet("/api/sessions/{sessionId:guid}/admin",async(Guid sessionId,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();return await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound();
+}).RequireAuthorization("Admin");
 app.MapPost("/api/sessions/{sessionId:guid}/teams",async(Guid sessionId,AddTeamRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
     var id=Guid.NewGuid();var result=await runtime.ExecuteAsync(new AddTeam(sessionId,id,request.DisplayName,request.ExpectedVersion,Context(http,id)),ct);await Notify(hub,result,"Team",ct);return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType,id,result.PairingCode));
@@ -116,11 +140,61 @@ app.MapPost("/api/story/choices",async(SubmitStoryChoiceRequest request,SessionR
     return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
 }).RequireAuthorization("Team");
 
+app.MapGet("/api/proposals/inbox",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(new ProposalInboxView(teamId,sessionId,view.Inbox??[],[],view.StateVersion));
+}).RequireAuthorization("Team");
+app.MapGet("/api/proposals/outbox",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(new ProposalInboxView(teamId,sessionId,[],view.Outbox??[],view.StateVersion));
+}).RequireAuthorization("Team");
+app.MapGet("/api/agreements",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(view.Agreements??[]);
+}).RequireAuthorization("Team");
+app.MapPost("/api/proposals",async(SendProposalRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var proposalId=Guid.NewGuid();var result=await runtime.ExecuteAsync(new SendProposal(sessionId,proposalId,request.InteractionTypeId,request.ReceiverTeamId,request.TermsPayload,Validity(request.ValidityType,request.ValidForCheckpointCount,request.ValidUntilCheckpointId),request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);await NotifyInteraction(hub,nameof(ProposalSent),sessionId,proposalId,null,result.StateVersion,[request.ReceiverTeamId]);return Results.Created($"/api/proposals/{proposalId:D}",new CommandResponse(sessionId,result.StateVersion,result.EventType,proposalId));
+}).RequireAuthorization("Team");
+app.MapPost("/api/proposals/{proposalId:guid}/counter",async(Guid proposalId,CounterProposalRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var result=await runtime.ExecuteAsync(new CounterProposal(sessionId,proposalId,request.ExpectedRevisionNumber,request.TermsPayload,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);var state=(await runtime.GetSessionAsync(sessionId,ct))!;var proposal=state.Proposals!.Single(x=>x.ProposalId==proposalId);var revision=state.ProposalRevisions!.Single(x=>x.ProposalId==proposalId&&x.RevisionNumber==proposal.CurrentRevisionNumber);var responder=revision.CreatedByTeamId==proposal.SenderTeamId?proposal.ReceiverTeamId:proposal.SenderTeamId;await NotifyInteraction(hub,nameof(ProposalCountered),sessionId,proposalId,null,result.StateVersion,[responder]);return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType,proposalId));
+}).RequireAuthorization("Team");
+app.MapPost("/api/proposals/{proposalId:guid}/accept",async(Guid proposalId,ProposalDecisionRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var result=await runtime.ExecuteAsync(new AcceptProposal(sessionId,proposalId,request.ExpectedRevisionNumber,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);await NotifyInteraction(hub,nameof(ProposalAccepted),sessionId,proposalId,result.ResourceId,result.StateVersion,result.AffectedTeamIds??[]);await NotifyInteraction(hub,nameof(AgreementActivated),sessionId,proposalId,result.ResourceId,result.StateVersion,result.AffectedTeamIds??[],result.IsPublic);if(result.EmittedEventTypes?.Contains(nameof(AgreementExecuted))==true)await NotifyInteraction(hub,nameof(AgreementExecuted),sessionId,proposalId,result.ResourceId,result.StateVersion,result.AffectedTeamIds??[],result.IsPublic);return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType,result.ResourceId));
+}).RequireAuthorization("Team");
+app.MapPost("/api/proposals/{proposalId:guid}/reject",async(Guid proposalId,ProposalDecisionRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var result=await runtime.ExecuteAsync(new RejectProposal(sessionId,proposalId,request.ExpectedRevisionNumber,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);await NotifyInteraction(hub,nameof(ProposalRejected),sessionId,proposalId,null,result.StateVersion,result.AffectedTeamIds??[]);return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType,proposalId));
+}).RequireAuthorization("Team");
+app.MapPost("/api/proposals/{proposalId:guid}/cancel",async(Guid proposalId,ProposalDecisionRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var result=await runtime.ExecuteAsync(new CancelProposal(sessionId,proposalId,request.ExpectedRevisionNumber,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);await NotifyInteraction(hub,nameof(ProposalCancelled),sessionId,proposalId,null,result.StateVersion,result.AffectedTeamIds??[]);return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType,proposalId));
+}).RequireAuthorization("Team");
+
 app.MapPost("/api/sessions/{sessionId:guid}/narrative/resolve",async(Guid sessionId,ResolveNarrativeRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
     if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();
+    var before=(await runtime.GetSessionAsync(sessionId,ct))!;
     var result=await runtime.ExecuteAsync(new ResolveNarrativeCheckpoint(sessionId,request.ExpectedStateVersion,Context(http,commandId:request.CommandId)),ct);
     var state=(await runtime.GetSessionAsync(sessionId,ct))!;var notification=new NarrativeNotification(sessionId,null,result.StateVersion,state.CurrentCheckpointId!,nameof(NarrativeCheckpointResolved));
+    foreach(var proposal in state.Proposals??[])
+    {
+        var old=(before.Proposals??[]).SingleOrDefault(x=>x.ProposalId==proposal.ProposalId);if(old?.Status is ProposalStatus.Pending or ProposalStatus.Countered&&proposal.Status==ProposalStatus.Expired)await NotifyInteraction(hub,nameof(ProposalExpired),sessionId,proposal.ProposalId,null,result.StateVersion,[proposal.SenderTeamId,proposal.ReceiverTeamId]);
+    }
+    foreach(var agreement in state.Agreements??[])
+    {
+        var old=(before.Agreements??[]).SingleOrDefault(x=>x.AgreementId==agreement.AgreementId);if(old?.Status==AgreementStatus.Active&&agreement.Status==AgreementStatus.Executed)await NotifyInteraction(hub,nameof(AgreementExecuted),sessionId,agreement.ProposalId,agreement.AgreementId,result.StateVersion,agreement.PartyTeamIds,agreement.Visibility==AgreementVisibility.Public);else if(old?.Status==AgreementStatus.Active&&agreement.Status==AgreementStatus.Failed)await NotifyInteraction(hub,nameof(AgreementFailed),sessionId,agreement.ProposalId,agreement.AgreementId,result.StateVersion,agreement.PartyTeamIds,agreement.Visibility==AgreementVisibility.Public);
+    }
+    foreach(var consequence in state.ScheduledConsequences??[])
+    {
+        var old=(before.ScheduledConsequences??[]).SingleOrDefault(x=>x.ScheduledConsequenceId==consequence.ScheduledConsequenceId);if(old is null||old.Status!=consequence.Status)
+        {
+            var change=new NarrativeNotification(sessionId,consequence.SourceTeamId,result.StateVersion,state.CurrentCheckpointId!,consequence.Status==ScheduledConsequenceStatus.Triggered?nameof(ConsequenceTriggered):nameof(ConsequenceScheduled));if(consequence.Visibility==ConsequenceVisibility.Public){await hub.Clients.Group(HubGroups.Session(sessionId)).ConsequenceChanged(change);await hub.Clients.Group(HubGroups.Display(sessionId)).ConsequenceChanged(change);}else if(consequence.Visibility==ConsequenceVisibility.PrivateToSourceTeam&&consequence.SourceTeamId is { } team)await hub.Clients.Group(HubGroups.Team(team)).ConsequenceChanged(change);
+        }
+    }
+    if((state.AuthoredBehaviorSelections?.Count??0)>(before.AuthoredBehaviorSelections?.Count??0)){var behavior=new NarrativeNotification(sessionId,null,result.StateVersion,state.CurrentCheckpointId!,nameof(AuthoredBehaviorActionSelected));await hub.Clients.Group(HubGroups.Session(sessionId)).AuthoredBehaviorResolved(behavior);await hub.Clients.Group(HubGroups.Display(sessionId)).AuthoredBehaviorResolved(behavior);}
     await hub.Clients.Group(HubGroups.Session(sessionId)).NarrativeResolved(notification);
     await hub.Clients.Group(HubGroups.Display(sessionId)).WorldNarrativePublished(notification with { EventType=nameof(WorldNarrativePublished) });
     return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));

@@ -1,6 +1,8 @@
 namespace Hambaft.Contracts;
 
-public sealed record CreateSessionRequest(string StoryPackageId,string StoryVersion,string ContentHash,int Seed,long ExpectedVersion=0);
+using System.Text.Json;
+
+public sealed record CreateSessionRequest(string StoryPackageId,string StoryVersion,string ContentHash,int Seed,long ExpectedVersion=0,string DifficultyId="standard");
 public sealed record AddTeamRequest(string DisplayName,long ExpectedVersion);
 public sealed record CreateEntityRequest(string DefinitionId,string DisplayName,string ControllerType,string? BehaviorProfileId,long ExpectedVersion);
 public sealed record AssignEntityRequest(Guid EntityId,Guid TeamId,long ExpectedVersion);
@@ -17,6 +19,10 @@ public sealed record InitializeNarrativeRequest(long ExpectedStateVersion,Guid C
 public sealed record SubmitStoryChoiceRequest(Guid AssignmentId,string ChoiceId,long ExpectedStateVersion,Guid CommandId);
 public sealed record ResolveNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record NarrativeNotification(Guid SessionId,Guid? TeamId,long StateVersion,string CheckpointId,string EventType);
+public sealed record SendProposalRequest(string InteractionTypeId,Guid ReceiverTeamId,JsonElement TermsPayload,string? ValidityType,int? ValidForCheckpointCount,string? ValidUntilCheckpointId,long ExpectedStateVersion,Guid CommandId);
+public sealed record CounterProposalRequest(int ExpectedRevisionNumber,JsonElement TermsPayload,long ExpectedStateVersion,Guid CommandId);
+public sealed record ProposalDecisionRequest(int ExpectedRevisionNumber,long ExpectedStateVersion,Guid CommandId);
+public sealed record InteractionNotification(Guid SessionId,Guid ProposalId,Guid? AgreementId,long StateVersion,string EventType);
 
 public sealed record SessionResponse(
     Guid Id,

@@ -7,6 +7,7 @@ public sealed class StorySession
     public string StoryVersion { get; private set; } = string.Empty;
     public string ContentHash { get; private set; } = string.Empty;
     public int Seed { get; private set; }
+    public string DifficultyId { get; private set; } = "standard";
     public SessionStatus Status { get; private set; }
     public DateTimeOffset CreatedAtUtc { get; private set; }
     public DateTimeOffset? StartedAtUtc { get; private set; }
@@ -26,6 +27,12 @@ public sealed class StorySession
     public List<SubmittedStoryChoice> SubmittedChoices { get; private set; } = [];
     public HashSet<string> PreviouslyAssignedStoryletIds { get; private set; } = [];
     public HashSet<string> PreviouslySubmittedChoiceIds { get; private set; } = [];
+    public int CheckpointResolutionNumber { get; private set; }
+    public List<Proposal> Proposals { get; private set; } = [];
+    public List<ProposalRevision> ProposalRevisions { get; private set; } = [];
+    public List<Agreement> Agreements { get; private set; } = [];
+    public List<ScheduledConsequence> ScheduledConsequences { get; private set; } = [];
+    public List<AuthoredBehaviorSelection> AuthoredBehaviorSelections { get; private set; } = [];
 
     public static StorySession From(IEnumerable<IDomainEvent> history)
     {
@@ -34,14 +41,14 @@ public sealed class StorySession
         return session;
     }
 
-    public static SessionCreated Create(Guid id, string storyPackageId, string storyVersion, string contentHash, int seed, EventMetadata metadata)
+    public static SessionCreated Create(Guid id, string storyPackageId, string storyVersion, string contentHash, int seed, EventMetadata metadata, string difficultyId = "standard")
     {
         if (id == Guid.Empty) throw new DomainException("Session ID is required.");
         Require(storyPackageId, nameof(storyPackageId));
         Require(storyVersion, nameof(storyVersion));
         Require(contentHash, nameof(contentHash));
         if (metadata.SessionId != id) throw new DomainException("Event metadata Session ID must match the Session.");
-        return new(id, storyPackageId.Trim(), storyVersion.Trim(), contentHash.Trim(), seed, metadata);
+        return new(id, storyPackageId.Trim(), storyVersion.Trim(), contentHash.Trim(), seed, metadata, DomainKeys.Normalize(difficultyId,nameof(difficultyId)));
     }
 
     public TeamAdded AddTeam(Guid teamId, string displayName, string pairingCodeHash, EventMetadata metadata)
@@ -155,11 +162,87 @@ public sealed class StorySession
         return new(CurrentCheckpointId,nextCheckpointId,resolvedAssignmentIds,metadata with { CheckpointId=CurrentCheckpointId });
     }
 
+    public ProposalSent SendProposal(Guid proposalId,string interactionTypeId,Guid receiverTeamId,System.Text.Json.JsonElement terms,IReadOnlyList<string> offeredEffects,IReadOnlyList<string> requestedEffects,string validUntilCheckpointId,long createdAtVersion,EventMetadata metadata)
+    {
+        EnsureInteractionRuntime();
+        var senderTeamId=metadata.TeamId??throw new DomainException("Authenticated Team identity is required.");
+        if(proposalId==Guid.Empty||Proposals.Any(x=>x.ProposalId==proposalId)) throw new DomainException("Proposal ID must be unique and non-empty.");
+        if(senderTeamId==receiverTeamId) throw new DomainException("A Proposal requires distinct sender and receiver Teams.");
+        if(!Teams.Any(x=>x.Id==senderTeamId)||!Teams.Any(x=>x.Id==receiverTeamId)) throw new DomainException("Proposal Teams must belong to the same Session.");
+        if(Proposals.Any(x=>x.InteractionTypeId==interactionTypeId&&x.SenderTeamId==senderTeamId&&x.ReceiverTeamId==receiverTeamId&&x.Status is ProposalStatus.Pending or ProposalStatus.Countered)) throw new DomainException("A conflicting outstanding Proposal already exists.");
+        Require(interactionTypeId,nameof(interactionTypeId)); Require(validUntilCheckpointId,nameof(validUntilCheckpointId));
+        return new(proposalId,interactionTypeId,senderTeamId,receiverTeamId,1,terms.Clone(),offeredEffects.ToList(),requestedEffects.ToList(),CurrentCheckpointId!,validUntilCheckpointId,createdAtVersion,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public ProposalCountered CounterProposal(Guid proposalId,int expectedRevision,System.Text.Json.JsonElement terms,long createdAtVersion,EventMetadata metadata)
+    {
+        var proposal=ActiveProposal(proposalId); var teamId=metadata.TeamId??throw new DomainException("Authenticated Team identity is required.");
+        if(proposal.CurrentRevisionNumber!=expectedRevision) throw new DomainException("Counterproposal revision is stale.");
+        if(ExpectedResponder(proposal)!=teamId) throw new DomainException("Only the receiving party for the current revision may counter.");
+        var current=CurrentRevision(proposal);
+        return new(proposalId,proposal.InteractionTypeId,proposal.SenderTeamId,proposal.ReceiverTeamId,expectedRevision+1,teamId,terms.Clone(),current.OfferedEffects.ToList(),current.RequestedEffects.ToList(),createdAtVersion,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public ProposalAccepted AcceptProposal(Guid proposalId,int expectedRevision,Guid agreementId,EventMetadata metadata)
+    {
+        var proposal=ActiveProposal(proposalId); var teamId=metadata.TeamId??throw new DomainException("Authenticated Team identity is required.");
+        if(proposal.CurrentRevisionNumber!=expectedRevision) throw new DomainException("Only the current Proposal revision may be accepted.");
+        if(ExpectedResponder(proposal)!=teamId) throw new DomainException("The current Team is not allowed to accept this revision.");
+        if(agreementId==Guid.Empty||Agreements.Any(x=>x.AgreementId==agreementId)) throw new DomainException("Agreement ID must be unique and non-empty.");
+        return new(proposal.ProposalId,proposal.InteractionTypeId,proposal.SenderTeamId,proposal.ReceiverTeamId,proposal.CurrentRevisionNumber,agreementId,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public ProposalRejected RejectProposal(Guid proposalId,int expectedRevision,EventMetadata metadata)
+    {
+        var proposal=ActiveProposal(proposalId); var teamId=metadata.TeamId??throw new DomainException("Authenticated Team identity is required.");
+        if(proposal.CurrentRevisionNumber!=expectedRevision) throw new DomainException("Only the current Proposal revision may be rejected.");
+        if(ExpectedResponder(proposal)!=teamId) throw new DomainException("The current Team is not allowed to reject this revision.");
+        return new(proposal.ProposalId,proposal.InteractionTypeId,proposal.SenderTeamId,proposal.ReceiverTeamId,proposal.CurrentRevisionNumber,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public ProposalCancelled CancelProposal(Guid proposalId,int expectedRevision,EventMetadata metadata)
+    {
+        var proposal=ActiveProposal(proposalId); var teamId=metadata.TeamId??throw new DomainException("Authenticated Team identity is required.");
+        if(proposal.CurrentRevisionNumber!=expectedRevision) throw new DomainException("Only the current Proposal revision may be cancelled.");
+        if(CurrentRevision(proposal).CreatedByTeamId!=teamId) throw new DomainException("Only the Team awaiting a response may cancel its outstanding offer.");
+        return new(proposal.ProposalId,proposal.InteractionTypeId,proposal.SenderTeamId,proposal.ReceiverTeamId,proposal.CurrentRevisionNumber,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public ProposalExpired ExpireProposal(Guid proposalId,EventMetadata metadata)
+    {
+        var proposal=ActiveProposal(proposalId);
+        return new(proposal.ProposalId,proposal.InteractionTypeId,proposal.SenderTeamId,proposal.ReceiverTeamId,proposal.CurrentRevisionNumber,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public AgreementActivated ActivateAgreement(Guid proposalId,Guid agreementId,AgreementVisibility visibility,EventMetadata metadata)
+    {
+        var proposal=Proposals.SingleOrDefault(x=>x.ProposalId==proposalId)??throw new DomainException("Proposal does not exist.");
+        if(proposal.Status!=ProposalStatus.Accepted||proposal.AgreementId!=agreementId) throw new DomainException("Proposal has not been accepted for this Agreement.");
+        var revision=CurrentRevision(proposal);
+        return new(agreementId,proposalId,revision.RevisionNumber,proposal.InteractionTypeId,[proposal.SenderTeamId,proposal.ReceiverTeamId],revision.TermsPayload.Clone(),CurrentCheckpointId!,visibility,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public AgreementExecuted ExecuteAgreement(Guid agreementId,EventMetadata metadata)
+    {
+        var agreement=Agreements.SingleOrDefault(x=>x.AgreementId==agreementId)??throw new DomainException("Agreement does not exist.");
+        if(agreement.Status!=AgreementStatus.Active) throw new DomainException("Only an active Agreement may execute.");
+        var proposal=Proposals.Single(x=>x.ProposalId==agreement.ProposalId);
+        return new(agreementId,agreement.ProposalId,agreement.InteractionTypeId,agreement.PartyTeamIds,proposal.CurrentRevisionNumber,CurrentCheckpointId!,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public AgreementFailed FailAgreement(Guid agreementId,string reasonCode,EventMetadata metadata)
+    {
+        var agreement=Agreements.SingleOrDefault(x=>x.AgreementId==agreementId)??throw new DomainException("Agreement does not exist.");
+        if(agreement.Status!=AgreementStatus.Active) throw new DomainException("Only an active Agreement may fail.");
+        var proposal=Proposals.Single(x=>x.ProposalId==agreement.ProposalId);
+        return new(agreementId,agreement.ProposalId,agreement.InteractionTypeId,agreement.PartyTeamIds,proposal.CurrentRevisionNumber,CurrentCheckpointId!,DomainKeys.Normalize(reasonCode,nameof(reasonCode)),metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
     public void Apply(IDomainEvent @event)
     {
         switch (@event)
         {
-            case SessionCreated e: Id=e.Id; StoryPackageId=e.StoryPackageId; StoryVersion=e.StoryVersion; ContentHash=e.ContentHash; Seed=e.Seed; Status=SessionStatus.Created; CreatedAtUtc=e.Metadata.OccurredAtUtc; break;
+            case SessionCreated e: Id=e.Id; StoryPackageId=e.StoryPackageId; StoryVersion=e.StoryVersion; ContentHash=e.ContentHash; Seed=e.Seed; DifficultyId=e.DifficultyId; Status=SessionStatus.Created; CreatedAtUtc=e.Metadata.OccurredAtUtc; break;
             case TeamAdded e: Teams.Add(new(e.TeamId, Id, e.DisplayName, e.PairingCodeHash, null, e.Metadata.OccurredAtUtc)); if(Status==SessionStatus.Created) Status=SessionStatus.Lobby; break;
             case WorldEntityCreated e: Entities.Add(new(e.EntityId, Id, e.DefinitionId, e.DisplayName, e.ControllerType, null, e.BehaviorProfileId, e.Status)); break;
             case EntityAssignedToTeam e: ReplaceEntity(e.EntityId, x=>x with { ControlledByTeamId=e.TeamId, Status=EntityStatus.Active }); ReplaceTeam(e.TeamId, x=>x with { ControlledEntityId=e.EntityId }); break;
@@ -182,6 +265,7 @@ public sealed class StorySession
                 break;
             case NarrativeCheckpointResolved e:
                 CurrentCheckpointId=e.NextCheckpointId;
+                CheckpointResolutionNumber++;
                 foreach(var assignmentId in e.ResolvedAssignmentIds) ReplaceAssignment(assignmentId,x=>x with { Status=StoryletAssignmentStatus.Resolved });
                 break;
             case MetricChanged e: UpsertMetric(e.Scope,e.ScopeId,e.MetricKey,e.NewValue); break;
@@ -190,6 +274,32 @@ public sealed class StorySession
             case StoryMemoryRemoved e: Memories.RemoveAll(x=>x.Scope==e.Scope&&x.ScopeId==e.ScopeId&&x.Key==e.Key); break;
             case RelationshipChanged e: UpsertRelationship(e.SourceEntityId,e.TargetEntityId,e.RelationshipKey,e.NewValue); break;
             case WorldNarrativePublished e: CurrentWorldStoryletId=e.StoryletId; CurrentWorldNarrativeRef=e.NarrativeRef; CurrentNarrativeRevision=e.Revision; break;
+            case ProposalSent e:
+                Proposals.Add(new(e.ProposalId,Id,e.InteractionTypeId,e.SenderTeamId,e.ReceiverTeamId,e.CurrentRevisionNumber,ProposalStatus.Pending,e.CreatedAtCheckpointId,e.ValidUntilCheckpointId,e.CreatedAtStreamVersion));
+                ProposalRevisions.Add(new(e.ProposalId,e.CurrentRevisionNumber,e.SenderTeamId,e.TermsPayload.Clone(),e.OfferedEffects,e.RequestedEffects,e.Metadata.OccurredAtUtc,e.CreatedAtStreamVersion));
+                break;
+            case ProposalCountered e:
+                ReplaceProposal(e.ProposalId,x=>x with { CurrentRevisionNumber=e.CurrentRevisionNumber,Status=ProposalStatus.Countered });
+                ProposalRevisions.Add(new(e.ProposalId,e.CurrentRevisionNumber,e.CreatedByTeamId,e.TermsPayload.Clone(),e.OfferedEffects,e.RequestedEffects,e.Metadata.OccurredAtUtc,e.CreatedAtStreamVersion));
+                break;
+            case ProposalAccepted e: ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Accepted,AcceptedRevisionNumber=e.CurrentRevisionNumber,AgreementId=e.AgreementId }); break;
+            case ProposalRejected e: ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Rejected }); break;
+            case ProposalCancelled e: ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Cancelled }); break;
+            case ProposalExpired e: ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Expired }); break;
+            case AgreementActivated e: Agreements.Add(new(e.AgreementId,e.ProposalId,e.AcceptedRevisionNumber,e.InteractionTypeId,e.PartyTeamIds,e.TermsPayload.Clone(),AgreementStatus.Active,e.ActivatedAtCheckpointId,null,null,e.Visibility)); break;
+            case AgreementExecuted e:
+                ReplaceAgreement(e.AgreementId,x=>x with { Status=AgreementStatus.Executed,ExecutedAtCheckpointId=e.ExecutedAtCheckpointId });
+                ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Executed });
+                break;
+            case AgreementFailed e:
+                ReplaceAgreement(e.AgreementId,x=>x with { Status=AgreementStatus.Failed,FailedAtCheckpointId=e.FailedAtCheckpointId });
+                ReplaceProposal(e.ProposalId,x=>x with { Status=ProposalStatus.Failed });
+                break;
+            case AuthoredBehaviorActionSelected e: AuthoredBehaviorSelections.Add(new(e.EntityId,e.BehaviorProfileId,e.RuleId,e.ActionId,e.DifficultyId,e.Metadata.CheckpointId??CurrentCheckpointId??string.Empty,e.ResolutionNumber)); break;
+            case ConsequenceScheduled e: ScheduledConsequences.Add(new(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.ScheduledAtCheckpointId,e.DueCheckpointId,e.TriggerType,ScheduledConsequenceStatus.Pending,e.Visibility)); break;
+            case ConsequenceTriggered e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Triggered }); break;
+            case ConsequenceCancelled e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Cancelled }); break;
+            case ConsequenceFailed e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Failed }); break;
             default: throw new DomainException($"Unsupported event {@event.GetType().Name}.");
         }
         StateVersion++;
@@ -212,8 +322,22 @@ public sealed class StorySession
     private void ReplaceEntity(Guid id, Func<WorldEntity,WorldEntity> change) { var i=Entities.FindIndex(x=>x.Id==id); Entities[i]=change(Entities[i]); }
     private void ReplaceTeam(Guid id, Func<Team,Team> change) { var i=Teams.FindIndex(x=>x.Id==id); Teams[i]=change(Teams[i]); }
     private void ReplaceAssignment(Guid id,Func<StoryletAssignment,StoryletAssignment> change) { var i=StoryletAssignments.FindIndex(x=>x.AssignmentId==id); if(i<0) throw new DomainException("Storylet Assignment does not exist."); StoryletAssignments[i]=change(StoryletAssignments[i]); }
+    private void ReplaceProposal(Guid id,Func<Proposal,Proposal> change) { var i=Proposals.FindIndex(x=>x.ProposalId==id); if(i<0) throw new DomainException("Proposal does not exist."); Proposals[i]=change(Proposals[i]); }
+    private void ReplaceAgreement(Guid id,Func<Agreement,Agreement> change) { var i=Agreements.FindIndex(x=>x.AgreementId==id); if(i<0) throw new DomainException("Agreement does not exist."); Agreements[i]=change(Agreements[i]); }
+    private void ReplaceConsequence(Guid id,Func<ScheduledConsequence,ScheduledConsequence> change) { var i=ScheduledConsequences.FindIndex(x=>x.ScheduledConsequenceId==id); if(i<0) throw new DomainException("Scheduled Consequence does not exist."); ScheduledConsequences[i]=change(ScheduledConsequences[i]); }
     private void UpsertMetric(MetricScope scope,Guid id,string key,decimal value) { var i=Metrics.FindIndex(x=>x.Scope==scope&&x.ScopeId==id&&x.MetricKey==key); if(i<0) Metrics.Add(new(scope,id,key,value)); else Metrics[i]=Metrics[i] with { NumericValue=value }; }
     private void UpsertRelationship(Guid source,Guid target,string key,decimal value) { var i=Relationships.FindIndex(x=>x.SourceEntityId==source&&x.TargetEntityId==target&&x.RelationshipKey==key); if(i<0) Relationships.Add(new(source,target,key,value)); else Relationships[i]=Relationships[i] with { NumericValue=value }; }
     private static void Require(string value,string name) { if(string.IsNullOrWhiteSpace(value)) throw new DomainException($"{name} is required."); }
     private DomainException InvalidTransition(string action) => new($"Cannot {action} a Session in {Status} status.");
+    private void EnsureInteractionRuntime() { if(Status!=SessionStatus.Running||!NarrativeInitialized||CurrentCheckpointId is null) throw new DomainException("Interactions require a running initialized narrative."); }
+    private Proposal ActiveProposal(Guid proposalId)
+    {
+        EnsureInteractionRuntime(); var proposal=Proposals.SingleOrDefault(x=>x.ProposalId==proposalId)??throw new DomainException("Proposal does not exist.");
+        if(proposal.Status is not (ProposalStatus.Pending or ProposalStatus.Countered)) throw new DomainException("Proposal is no longer active."); return proposal;
+    }
+    private ProposalRevision CurrentRevision(Proposal proposal)=>ProposalRevisions.Single(x=>x.ProposalId==proposal.ProposalId&&x.RevisionNumber==proposal.CurrentRevisionNumber);
+    private Guid ExpectedResponder(Proposal proposal)
+    {
+        var creator=CurrentRevision(proposal).CreatedByTeamId; return creator==proposal.SenderTeamId?proposal.ReceiverTeamId:proposal.SenderTeamId;
+    }
 }

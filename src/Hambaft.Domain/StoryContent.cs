@@ -19,8 +19,14 @@ public enum ConditionTargetScope
 public enum EffectType
 {
     ChangeMetric, SetMetric, AddMemory, RemoveMemory, ChangeRelationship,
-    AssignStorylet, PublishWorldNarrative
+    AssignStorylet, PublishWorldNarrative, ScheduleConsequence, CancelConsequence
 }
+public enum InteractionTermType { Numeric, Boolean, ShortText, Compound }
+public enum InteractionExecutionMode { ImmediateOnAcceptance, ManualExecution, ExecuteAtCheckpointResolution }
+public enum ProposalValidityType { ValidUntilCheckpoint, ValidForCheckpointCount }
+public enum AgreementVisibility { PrivateToParties, Public }
+public enum ConsequenceTriggerType { AfterCheckpointCount, AtCheckpoint, WhenAgreementExecuted, WhenMemoryExistsAtResolution }
+public enum ConsequenceVisibility { SystemOnly, PrivateToSourceTeam, Public }
 
 public sealed record StoryPackageManifest(
     string Id,
@@ -93,7 +99,95 @@ public sealed record EffectDefinition(
     MemoryVisibility? Visibility = null,
     string? TargetEntityDefinitionId = null,
     string? RelationshipKey = null,
-    string? StoryletId = null);
+    string? StoryletId = null,
+    string? ConsequenceDefinitionId = null,
+    string? ScheduledConsequenceId = null);
+
+public sealed record InteractionTermSchemaDefinition(
+    InteractionTermType Type,
+    string? Name = null,
+    bool Required = true,
+    decimal? Minimum = null,
+    decimal? Maximum = null,
+    int? MaximumLength = null,
+    IReadOnlyList<InteractionTermSchemaDefinition>? Fields = null);
+
+public sealed record ProposalValidityDefinition(
+    ProposalValidityType Type,
+    string? CheckpointId = null,
+    int? CheckpointCount = null);
+
+public sealed record InteractionTypeDefinition(
+    string Id,
+    string DisplayNameRef,
+    string DescriptionRef,
+    IReadOnlyList<TargetSelectorDefinition> AllowedSenderSelectors,
+    IReadOnlyList<TargetSelectorDefinition> AllowedReceiverSelectors,
+    InteractionTermSchemaDefinition TermsSchema,
+    IReadOnlyList<string> OfferedEffectIds,
+    IReadOnlyList<string> RequestedEffectIds,
+    ProposalValidityDefinition DefaultValidity,
+    InteractionExecutionMode ExecutionMode,
+    AgreementVisibility AgreementVisibility = AgreementVisibility.PrivateToParties);
+
+public sealed record BehaviorRuleWeightModifier(string RuleId, decimal Multiplier);
+public sealed record BehaviorDifficultyModifier(string DifficultyId, decimal Multiplier);
+public sealed record DifficultyDefinition(
+    string Id,
+    string DisplayNameRef,
+    IReadOnlyList<BehaviorRuleWeightModifier> BehaviorRuleWeightModifiers,
+    IReadOnlyDictionary<string, decimal> ProposalStrictnessValues,
+    IReadOnlyDictionary<string, decimal> ResourceThresholdModifiers,
+    string? FallbackActionPreference = null);
+
+public sealed record BehaviorRuleDefinition(
+    string Id,
+    int Priority,
+    int Weight,
+    IReadOnlyList<ConditionDefinition> Conditions,
+    string ActionId,
+    IReadOnlyList<BehaviorDifficultyModifier> DifficultyModifiers,
+    RepeatPolicy RepeatPolicy);
+
+public sealed record BehaviorProfileDefinition(
+    string Id,
+    string DisplayNameRef,
+    IReadOnlyList<string> EligibleEntityDefinitions,
+    IReadOnlyList<BehaviorRuleDefinition> Rules,
+    string FallbackActionId);
+
+public sealed record BehaviorInteractionActionDefinition(
+    string InteractionTypeId,
+    string ReceiverEntityDefinitionId,
+    string TermsJson);
+
+public sealed record BehaviorActionDefinition(
+    string Id,
+    IReadOnlyList<string> EffectIds,
+    BehaviorInteractionActionDefinition? InteractionAction = null,
+    string? NarrativeRef = null,
+    string? SystemActionId = null);
+
+public sealed record BehaviorCatalogDefinition(
+    IReadOnlyList<BehaviorProfileDefinition> Profiles,
+    IReadOnlyList<BehaviorActionDefinition> Actions);
+
+public sealed record ConsequenceTriggerDefinition(
+    ConsequenceTriggerType Type,
+    int? CheckpointCount = null,
+    string? CheckpointId = null,
+    string? AgreementInteractionTypeId = null,
+    string? MemoryKey = null,
+    ConditionTargetScope? MemoryScope = null);
+
+public sealed record ConsequenceDefinition(
+    string Id,
+    ConsequenceTriggerDefinition Trigger,
+    IReadOnlyList<ConditionDefinition> Conditions,
+    IReadOnlyList<string> EffectIds,
+    string? NarrativeRef,
+    ConsequenceVisibility Visibility,
+    RepeatPolicy RepeatPolicy);
 
 public sealed record NarrativeDefinition(
     string Title,
@@ -109,7 +203,17 @@ public sealed record StoryPackage(
     IReadOnlyList<StoryletDefinition> Storylets,
     IReadOnlyList<EffectDefinition> Effects,
     IReadOnlyDictionary<string, IReadOnlyDictionary<string, NarrativeDefinition>> Narrative,
-    string ContentHash);
+    string ContentHash,
+    IReadOnlyList<InteractionTypeDefinition>? Interactions = null,
+    BehaviorCatalogDefinition? Behaviors = null,
+    IReadOnlyList<ConsequenceDefinition>? Consequences = null,
+    IReadOnlyList<DifficultyDefinition>? Difficulties = null)
+{
+    public IReadOnlyList<InteractionTypeDefinition> InteractionDefinitions => Interactions ?? [];
+    public BehaviorCatalogDefinition BehaviorDefinitions => Behaviors ?? new([], []);
+    public IReadOnlyList<ConsequenceDefinition> ConsequenceDefinitions => Consequences ?? [];
+    public IReadOnlyList<DifficultyDefinition> DifficultyDefinitions => Difficulties ?? [];
+}
 
 public sealed record StoryPackageValidationError(string FilePath, string? ContentId, string ErrorCode, string Message);
 public sealed record StoryPackageValidationResult(IReadOnlyList<StoryPackageValidationError> Errors)

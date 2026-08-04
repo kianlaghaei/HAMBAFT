@@ -2,24 +2,28 @@ using Hambaft.Domain;
 
 namespace Hambaft.Application;
 
-public sealed class SessionRuntime
+public sealed partial class SessionRuntime
 {
     private readonly ISessionStore store;
     private readonly IPairingCodeGenerator pairing;
     private readonly IStoryPackageLoader? packages;
     private readonly IStoryletSelector? selector;
     private readonly IEffectEngine? effects;
+    private readonly IInteractionTermsValidator interactionTerms = new InteractionTermsValidator();
+    private readonly IBehaviorResolver? behaviorResolver;
 
     public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing)
     { this.store=store; this.pairing=pairing; }
     public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing,IStoryPackageLoader packages,IStoryletSelector selector,IEffectEngine effects)
         : this(store,pairing) { this.packages=packages; this.selector=selector; this.effects=effects; }
+    public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing,IStoryPackageLoader packages,IStoryletSelector selector,IEffectEngine effects,IBehaviorResolver behaviorResolver)
+        : this(store,pairing,packages,selector,effects) { this.behaviorResolver=behaviorResolver; }
 
     public async Task<CommandResult> ExecuteAsync(CreateSession command, CancellationToken ct)
     {
         if(command.ExpectedVersion!=0) throw new ConcurrencyConflictException(command.SessionId,command.ExpectedVersion,0);
         if(await store.LoadAsync(command.SessionId,ct) is not null) throw new ConcurrencyConflictException(command.SessionId,0,1);
-        var e=StorySession.Create(command.SessionId,command.StoryPackageId,command.StoryVersion,command.ContentHash,command.Seed,command.Context.For(command.SessionId));
+        var e=StorySession.Create(command.SessionId,command.StoryPackageId,command.StoryVersion,command.ContentHash,command.Seed,command.Context.For(command.SessionId),command.DifficultyId);
         var state=StorySession.From([e]); await store.AppendAsync(command.SessionId,0,[e],state,ct); return Result(state,e);
     }
     public async Task<CommandResult> ExecuteAsync(AddTeam command,CancellationToken ct)
@@ -39,6 +43,7 @@ public sealed class SessionRuntime
     public async Task<CommandResult> ExecuteAsync(InitializeNarrative c,CancellationToken ct)
     {
         RequireStoryServices(); var state=await Load(c.SessionId,c.ExpectedVersion,ct); var package=await LoadLockedPackage(state,ct);
+        if(package.DifficultyDefinitions.Count>0&&!package.DifficultyDefinitions.Any(x=>x.Id==state.DifficultyId)) throw new DomainException("Difficulty is not defined by the locked Story Package.");
         if(state.Teams.Count<package.Manifest.MinimumTeams||state.Teams.Count>package.Manifest.MaximumTeams) throw new DomainException("Session Team count is outside the Story Package range.");
         ValidateRuntimeEntities(state,package);
         var appended=new List<IDomainEvent>();
@@ -75,6 +80,11 @@ public sealed class SessionRuntime
         }).OrderByDescending(x=>x.Storylet.Priority).ThenBy(x=>x.Assignment.AssignmentId).ThenBy(x=>x.Submission.TeamId).ToList();
         if(current.Any(x=>x.RequiredResponse)&&submissions.Count==0) throw new DomainException("Checkpoint has no submitted Choices to resolve.");
         var appended=new List<IDomainEvent>();
+        // Deterministic Phase 3 pipeline before Team Choice effects: expiration -> due Agreements -> due Consequences -> authored behavior.
+        ExpireDueProposalEvents(state,c.Context,appended);
+        ExecuteDueAgreementEvents(state,package,c.Context,appended);
+        ResolveConsequenceEvents(state,package,c.Context,appended);
+        ResolveBehaviorEvents(state,package,c.Context,appended);
         foreach(var item in submissions)
         {
             var choice=item.Storylet.Choices.Single(ch=>ch.Id==item.Submission.ChoiceId);

@@ -49,6 +49,7 @@ public sealed class JwtTokenIssuer(JwtConfiguration configuration)
     public TokenResponse IssueTeam(Guid sessionId,Guid teamId)
         =>Issue("Team",sessionId,teamId);
     public TokenResponse IssueAdmin(Guid sessionId)=>Issue("Admin",sessionId,null);
+    public TokenResponse IssuePublicDisplay(Guid sessionId)=>Issue("PublicDisplay",sessionId,null);
 
     private TokenResponse Issue(string role,Guid sessionId,Guid? teamId)
     {

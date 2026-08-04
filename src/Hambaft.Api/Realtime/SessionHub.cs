@@ -13,6 +13,17 @@ public interface ISessionHubClient
     Task ChoiceRecorded(NarrativeNotification notification);
     Task NarrativeResolved(NarrativeNotification notification);
     Task WorldNarrativePublished(NarrativeNotification notification);
+    Task ProposalReceived(InteractionNotification notification);
+    Task ProposalCountered(InteractionNotification notification);
+    Task ProposalAccepted(InteractionNotification notification);
+    Task ProposalRejected(InteractionNotification notification);
+    Task ProposalExpired(InteractionNotification notification);
+    Task ProposalCancelled(InteractionNotification notification);
+    Task AgreementActivated(InteractionNotification notification);
+    Task AgreementExecuted(InteractionNotification notification);
+    Task AgreementFailed(InteractionNotification notification);
+    Task ConsequenceChanged(NarrativeNotification notification);
+    Task AuthoredBehaviorResolved(NarrativeNotification notification);
 }
 
 [Authorize(Policy="SessionClient")]
