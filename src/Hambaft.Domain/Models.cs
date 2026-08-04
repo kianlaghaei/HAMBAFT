@@ -6,6 +6,7 @@ public enum EntityStatus { Draft, Active, Inactive }
 public enum MetricScope { World, Team, Entity, Relationship }
 public enum MemoryScope { World, Team, Entity, Relationship }
 public enum MemoryVisibility { Public, TeamPrivate, EntityPrivate, SystemOnly }
+public enum StoryletAssignmentStatus { Assigned, Responded, Resolved, Superseded }
 
 public sealed record Team(
     Guid Id,
@@ -40,6 +41,25 @@ public sealed record Relationship(
     Guid TargetEntityId,
     string RelationshipKey,
     decimal NumericValue);
+
+public sealed record StoryletAssignment(
+    Guid AssignmentId,
+    string StoryletId,
+    string CheckpointId,
+    StoryletScope Scope,
+    Guid? TargetTeamId,
+    Guid? TargetEntityId,
+    bool RequiredResponse,
+    long AssignedAtVersion,
+    StoryletAssignmentStatus Status);
+
+public sealed record SubmittedStoryChoice(
+    Guid AssignmentId,
+    Guid TeamId,
+    string ChoiceId,
+    DateTimeOffset SubmittedAtUtc,
+    long SubmittedAtStreamVersion,
+    Guid CommandId);
 
 public static class DomainKeys
 {

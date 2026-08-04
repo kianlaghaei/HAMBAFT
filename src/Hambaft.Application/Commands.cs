@@ -18,6 +18,9 @@ public sealed record StartSession(Guid SessionId, long ExpectedVersion, CommandC
 public sealed record PauseSession(Guid SessionId, long ExpectedVersion, CommandContext Context);
 public sealed record ResumeSession(Guid SessionId, long ExpectedVersion, CommandContext Context);
 public sealed record CancelSession(Guid SessionId, long ExpectedVersion, CommandContext Context);
+public sealed record InitializeNarrative(Guid SessionId,long ExpectedVersion,CommandContext Context);
+public sealed record SubmitStoryChoice(Guid SessionId,Guid AssignmentId,string ChoiceId,long ExpectedVersion,CommandContext Context);
+public sealed record ResolveNarrativeCheckpoint(Guid SessionId,long ExpectedVersion,CommandContext Context);
 public sealed record CommandResult(Guid SessionId, long StateVersion, string EventType, string? PairingCode = null);
 
 public sealed class SessionNotFoundException(Guid id) : Exception($"Session {id:D} was not found.");
