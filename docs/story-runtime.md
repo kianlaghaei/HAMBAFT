@@ -29,3 +29,8 @@ The implementation records the checkpoint transition before appending newly sele
 ## Privacy and replay
 
 Team claims determine Session and Team identity. Public views contain only public memories, narrative, Agreements and consequences. Team views contain only own private Storylets, party Proposals/Agreements and visible pending consequences. Terms never travel through SignalR or structured logs. Event replay and projection rebuild reproduce behavior Actions, expiration, Agreement status, consequence status and fingerprint.
+# Phase 4 completion
+
+Story assignments continue to store stable narrative references rather than rendered text. Team/Public reads hydrate those references through the exact locked Ink package. Checkpoint resolution remains authoritative and executes typed Effects, Agreements, behavior and consequences without consulting Ink state.
+
+After the final slice checkpoint has no unresolved required response, open Proposal or pending consequence, Admin may resolve Endings. Entity results are computed before the World result, followed by Session completion in the same append. A replay reconstructs identical assignments, choices, state and Ending input fingerprints; audit UTC fields are persisted facts rather than tie-break inputs.

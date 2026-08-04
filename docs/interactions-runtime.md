@@ -24,3 +24,6 @@ Acceptance emits `ProposalAccepted` and `AgreementActivated`. Immediate Agreemen
 REST endpoints are `/api/proposals/inbox`, `/api/proposals/outbox`, `/api/proposals`, the four proposal action routes, and `/api/agreements`. SignalR sends only Session/Proposal/Agreement IDs, state version and event type to affected `team:{id}` groups; public Agreement events also use `session:{id}` and `display:{id}`.
 
 The replayable full Session state is readable only through JWT-bound `GET /api/sessions/{sessionId}/admin`; the existing public Session response remains safe and excludes proposal terms.
+# Hezar Cheragh interactions
+
+The vertical slice exercises the existing immutable Proposal runtime through `emergency-supply`, `credit-guarantee`, `evidence-exchange`, `public-announcement` and `shared-purchase`. The reference E2E sends revision 1, counters into immutable revision 2, accepts the current revision, executes the resulting Agreement and lets a separate checkpoint-bound Proposal expire. Ending evidence refers to Proposal/Agreement IDs and interaction types; Ink never creates or accepts an Agreement.

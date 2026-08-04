@@ -17,3 +17,18 @@ Every reference is validated: effects, narrative, Entities, Actions, behavior pr
 ## Canonical hash and compatibility
 
 Every file, including optional files, participates in the canonical SHA-256 hash. Paths are ordinally sorted, JSON object properties are ordinally sorted, arrays retain authored order, and non-JSON line endings normalize to LF. Sessions lock exact ID/version/hash. `sample-cargo-delay` 1.0.0 and 1.1.0 have distinct hashes and remain independently loadable.
+# Phase 4 package files
+
+A Phase 4 package may add:
+
+```text
+narrative/*.ink
+narrative/compiled/*.ink.json
+ink.json
+endings/entity-endings.json
+endings/world-endings.json
+```
+
+The canonical SHA-256 content hash covers every package file in stable relative-path order, including both Ink source and compiled output. Runtime loads compiled JSON only. `ink.json` declares allowed scalar variables, visibility, approved tags, compiled paths, entry points, scopes and required variables. All Storylet/Choice/Ending narrative refs, `effect` tags, evidence references, Entity eligibility and aggregate Conditions are validated before a package becomes active. Immutable packages are cached by ID, semantic version and content hash.
+
+Ending definitions use typed Conditions, integer priority/positive weight, structured evidence selectors and presentation tags. Every playable Entity definition needs at least one candidate; each Hezar business has an unconditional fallback. At least one unconditional World Ending is mandatory. Hidden Endings use ordinary difficult Conditions.

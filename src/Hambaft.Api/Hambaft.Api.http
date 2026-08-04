@@ -1,196 +1,205 @@
 @host = http://localhost:5297
-@packageHash = replace-with-1.1.0-contentHash
+@packageHash = replace-from-package-list
 @sessionId = replace-after-create
-@supplierTeamId = replace-after-add
-@carrierTeamId = replace-after-add
-@supplierEntityId = replace-after-create
-@carrierEntityId = replace-after-create
-@creditProviderEntityId = replace-after-create
-@supplierPairingCode = replace-after-add
-@carrierPairingCode = replace-after-add
-@supplierToken = replace-after-pair
-@carrierToken = replace-after-pair
+@bakeryTeamId = replace-after-add
+@logisticsTeamId = replace-after-add
+@bakeryEntityId = replace-after-create
+@logisticsEntityId = replace-after-create
+@printingEntityId = replace-after-create
+@exchangeEntityId = replace-after-create
+@bakeryPairingCode = replace-after-add
+@logisticsPairingCode = replace-after-add
+@bakeryToken = replace-after-pair
+@logisticsToken = replace-after-pair
 @adminToken = deployment-provisioned-admin-token-for-session
-@supplierAssignmentId = replace-from-supplier-experience
-@carrierAssignmentId = replace-from-carrier-experience
+@bakeryAssignmentId = replace-from-experience
+@logisticsAssignmentId = replace-from-experience
 @proposalId = replace-after-send
-@secondProposalId = replace-after-send
+@expiringProposalId = replace-after-send
 @stateVersion = replace-with-latest-response-version
 
-### 1. Both immutable Package versions must be listed
+### 1. Find the valid immutable Hezar Cheragh package and copy contentHash
 GET {{host}}/api/story-packages
 
 ###
-GET {{host}}/api/story-packages/sample-cargo-delay/1.0.0
+GET {{host}}/api/story-packages/hezar-cheragh/0.1.0
 
-###
-GET {{host}}/api/story-packages/sample-cargo-delay/1.1.0
-
-### 2. Create a Standard 1.1.0 Session
+### 2. Create Standard Session and two Teams
 POST {{host}}/api/sessions
 Content-Type: application/json
 
-{"storyPackageId":"sample-cargo-delay","storyVersion":"1.1.0","contentHash":"{{packageHash}}","seed":42,"difficultyId":"standard","expectedVersion":0}
-
-### 3. Add Supplier and Carrier Teams
-POST {{host}}/api/sessions/{{sessionId}}/teams
-Content-Type: application/json
-
-{"displayName":"تیم تامین‌کننده","expectedVersion":1}
+{"storyPackageId":"hezar-cheragh","storyVersion":"0.1.0","contentHash":"{{packageHash}}","seed":1403,"difficultyId":"standard","expectedVersion":0}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
-{"displayName":"تیم حمل‌کننده","expectedVersion":2}
+{"displayName":"تیم نانوایی سپیده","expectedVersion":1}
 
-### 4. Add two human Entities and authored Credit Provider
+###
+POST {{host}}/api/sessions/{{sessionId}}/teams
+Content-Type: application/json
+
+{"displayName":"تیم باربری راه‌نو","expectedVersion":2}
+
+### 3. Create all businesses; Printing and Exchange are authored
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
-{"definitionId":"supplier","displayName":"تامین‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":3}
+{"definitionId":"bakery-sepideh","displayName":"نانوایی سپیده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":3}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
-{"definitionId":"carrier","displayName":"حمل‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":4}
+{"definitionId":"logistics-rah-no","displayName":"باربری راه‌نو","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":4}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
-{"definitionId":"credit-provider","displayName":"تامین‌کننده اعتبار","controllerType":"AuthoredBehavior","behaviorProfileId":"cooperative-credit","expectedVersion":5}
+{"definitionId":"printing-roshan","displayName":"چاپخانه روشن","controllerType":"AuthoredBehavior","behaviorProfileId":null,"expectedVersion":5}
 
-### 5. Assign human Entities
+###
+POST {{host}}/api/sessions/{{sessionId}}/entities
+Content-Type: application/json
+
+{"definitionId":"exchange-mizan","displayName":"صرافی میزان","controllerType":"AuthoredBehavior","behaviorProfileId":null,"expectedVersion":6}
+
+### 4. Assign controlled businesses, start, initialize Ink narrative
 POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"entityId":"{{supplierEntityId}}","teamId":"{{supplierTeamId}}","expectedVersion":6}
+{"entityId":"{{bakeryEntityId}}","teamId":"{{bakeryTeamId}}","expectedVersion":7}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"entityId":"{{carrierEntityId}}","teamId":"{{carrierTeamId}}","expectedVersion":7}
+{"entityId":"{{logisticsEntityId}}","teamId":"{{logisticsTeamId}}","expectedVersion":8}
 
-### 6. Start and initialize
+###
 POST {{host}}/api/sessions/{{sessionId}}/start
 Content-Type: application/json
 
-{"expectedVersion":8}
+{"expectedVersion":9}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/narrative/initialize
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedStateVersion":9,"commandId":"81000000-0000-0000-0000-000000000001"}
+{"expectedStateVersion":10,"commandId":"91000000-0000-0000-0000-000000000001"}
 
-### 7. Pair Teams and copy JWTs
+### 5. Pair and verify public/private Ink output
 POST {{host}}/api/sessions/{{sessionId}}/pair
 Content-Type: application/json
 
-{"teamId":"{{supplierTeamId}}","pairingCode":"{{supplierPairingCode}}"}
+{"teamId":"{{bakeryTeamId}}","pairingCode":"{{bakeryPairingCode}}"}
 
 ###
 POST {{host}}/api/sessions/{{sessionId}}/pair
 Content-Type: application/json
 
-{"teamId":"{{carrierTeamId}}","pairingCode":"{{carrierPairingCode}}"}
+{"teamId":"{{logisticsTeamId}}","pairingCode":"{{logisticsPairingCode}}"}
 
-### 8. Read isolated Storylets and submit initial Choices
-GET {{host}}/api/story/experience
-Authorization: Bearer {{supplierToken}}
+###
+GET {{host}}/api/public/sessions/{{sessionId}}
 
 ###
 GET {{host}}/api/story/experience
-Authorization: Bearer {{carrierToken}}
+Authorization: Bearer {{bakeryToken}}
+
+###
+GET {{host}}/api/story/experience
+Authorization: Bearer {{logisticsToken}}
+
+### 6. Submit opening private Choices
+POST {{host}}/api/story/choices
+Authorization: Bearer {{bakeryToken}}
+Content-Type: application/json
+
+{"assignmentId":"{{bakeryAssignmentId}}","choiceId":"bakery-disclose-fragment","expectedStateVersion":{{stateVersion}},"commandId":"92000000-0000-0000-0000-000000000001"}
 
 ###
 POST {{host}}/api/story/choices
-Authorization: Bearer {{supplierToken}}
+Authorization: Bearer {{logisticsToken}}
 Content-Type: application/json
 
-{"assignmentId":"{{supplierAssignmentId}}","choiceId":"promise-original-deadline","expectedStateVersion":{{stateVersion}},"commandId":"82000000-0000-0000-0000-000000000001"}
+{"assignmentId":"{{logisticsAssignmentId}}","choiceId":"logistics-hold-fragment","expectedStateVersion":{{stateVersion}},"commandId":"92000000-0000-0000-0000-000000000002"}
 
 ###
-POST {{host}}/api/story/choices
-Authorization: Bearer {{carrierToken}}
+POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"assignmentId":"{{carrierAssignmentId}}","choiceId":"reserve-emergency-capacity","expectedStateVersion":{{stateVersion}},"commandId":"82000000-0000-0000-0000-000000000002"}
+{"expectedStateVersion":{{stateVersion}},"commandId":"93000000-0000-0000-0000-000000000001"}
 
-### 9. Supplier sends, Carrier reads inbox and counters
+### 7. In shortage checkpoint send, counter and accept emergency supply
 POST {{host}}/api/proposals
-Authorization: Bearer {{supplierToken}}
+Authorization: Bearer {{bakeryToken}}
 Content-Type: application/json
 
-{"interactionTypeId":"emergency-capacity-support","receiverTeamId":"{{carrierTeamId}}","termsPayload":{"capacityUnits":8,"supportDurationCheckpoints":1,"publicDisclosure":true,"note":"پشتیبانی فوری"},"validityType":null,"validForCheckpointCount":null,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000001"}
-
-###
-GET {{host}}/api/proposals/inbox
-Authorization: Bearer {{carrierToken}}
+{"interactionTypeId":"emergency-supply","receiverTeamId":"{{logisticsTeamId}}","termsPayload":{"units":8,"public":true},"validityType":"ValidForCheckpointCount","validForCheckpointCount":2,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"94000000-0000-0000-0000-000000000001"}
 
 ###
 POST {{host}}/api/proposals/{{proposalId}}/counter
-Authorization: Bearer {{carrierToken}}
+Authorization: Bearer {{logisticsToken}}
 Content-Type: application/json
 
-{"expectedRevisionNumber":1,"termsPayload":{"capacityUnits":12,"supportDurationCheckpoints":2,"publicDisclosure":false},"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000002"}
-
-### 10. Supplier sees revision 2 and accepts
-GET {{host}}/api/proposals/inbox
-Authorization: Bearer {{supplierToken}}
+{"expectedRevisionNumber":1,"termsPayload":{"units":6,"public":true},"expectedStateVersion":{{stateVersion}},"commandId":"94000000-0000-0000-0000-000000000002"}
 
 ###
 POST {{host}}/api/proposals/{{proposalId}}/accept
-Authorization: Bearer {{supplierToken}}
+Authorization: Bearer {{bakeryToken}}
 Content-Type: application/json
 
-{"expectedRevisionNumber":2,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000003"}
+{"expectedRevisionNumber":2,"expectedStateVersion":{{stateVersion}},"commandId":"94000000-0000-0000-0000-000000000003"}
 
-### 11. Send second unanswered Proposal
+### Send another Proposal that will expire
 POST {{host}}/api/proposals
-Authorization: Bearer {{supplierToken}}
+Authorization: Bearer {{bakeryToken}}
 Content-Type: application/json
 
-{"interactionTypeId":"emergency-capacity-support","receiverTeamId":"{{carrierTeamId}}","termsPayload":{"capacityUnits":3,"supportDurationCheckpoints":1,"publicDisclosure":false},"validityType":null,"validForCheckpointCount":null,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000004"}
+{"interactionTypeId":"public-announcement","receiverTeamId":"{{logisticsTeamId}}","termsPayload":{"units":1,"public":true},"validityType":"ValidForCheckpointCount","validForCheckpointCount":1,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"94000000-0000-0000-0000-000000000004"}
 
-### 12. First resolution expires Proposal, executes Agreement, resolves Behavior and schedules Consequence
+### 8. For each remaining checkpoint: read experience, submit both required Choices, resolve
+# At بار نرسید use bakery-stable-price / logistics-use-hidden-route.
+# At پیشنهاد آوان use bakery-accept-avan / logistics-decline-avan.
+# At جمع‌شدن بازار use bakery-market-cooperation / logistics-market-cooperation.
 POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedStateVersion":{{stateVersion}},"commandId":"85000000-0000-0000-0000-000000000001"}
+{"expectedStateVersion":{{stateVersion}},"commandId":"95000000-0000-0000-0000-000000000001"}
 
-### Admin replayable state: expiration, Agreement, Behavior selection and pending Consequence
-GET {{host}}/api/sessions/{{sessionId}}/admin
+### Inspect deterministic behaviors, Agreement, expiration and consequences
+GET {{host}}/api/admin/sessions/{{sessionId}}
 Authorization: Bearer {{adminToken}}
 
-###
-GET {{host}}/api/agreements
-Authorization: Bearer {{supplierToken}}
-
-###
-GET {{host}}/api/story/experience
-Authorization: Bearer {{supplierToken}}
-
-### 13. Second resolution triggers deadline consequence and reaches coordination-result
-POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
+### 9. Resolve dual Endings atomically after slice-complete
+POST {{host}}/api/sessions/{{sessionId}}/endings/resolve
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedStateVersion":{{stateVersion}},"commandId":"85000000-0000-0000-0000-000000000002"}
+{"expectedStateVersion":{{stateVersion}},"commandId":"96000000-0000-0000-0000-000000000001"}
 
-### 14. Public/private projections and health
-GET {{host}}/api/sessions/{{sessionId}}/public
-
-###
-GET {{host}}/api/story/experience
-Authorization: Bearer {{carrierToken}}
+### Team-scoped Entity Ending and public World Ending
+GET {{host}}/api/endings
+Authorization: Bearer {{bakeryToken}}
 
 ###
+GET {{host}}/api/endings
+Authorization: Bearer {{logisticsToken}}
+
+### Admin evidence
+GET {{host}}/api/sessions/{{sessionId}}/endings
+Authorization: Bearer {{adminToken}}
+
+### Public ending projection
+GET {{host}}/api/public/sessions/{{sessionId}}
+
+### 10. Health
 GET {{host}}/health
 
 ###

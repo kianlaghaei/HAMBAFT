@@ -1,6 +1,6 @@
 # HAMBAFT
 
-HAMBAFT is a generic multiplayer authored-story backend on .NET 10. Phase 3 adds structured Team-to-Team proposals, immutable counter revisions, accepted Agreements, checkpoint expiration, Package-owned difficulty, deterministic behavior for uncontrolled Entities, and replayable scheduled consequences to the Phase 2 narrative runtime.
+HAMBAFT is a generic multiplayer authored-story backend on .NET 10. Phase 4 adds compiled Ink narrative rendering, deterministic Entity and World Endings with structured evidence, and the first playable `hezar-cheragh/0.1.0` vertical slice. HAMBAFT remains authoritative for state, choices, effects, interactions, consequences, endings, authorization, persistence and replay; Ink supplies authored text and presentation metadata only.
 
 The runtime uses one optimistic-concurrency Marten stream per Session. Story content remains immutable repository data locked by exact Package ID, version and SHA-256 hash. Both `sample-cargo-delay/1.0.0` and `1.1.0` are installed simultaneously; an old Session is never hydrated from new content.
 
@@ -19,6 +19,6 @@ dotnet test
 dotnet run --project src/Hambaft.Api
 ```
 
-The Phase 3 REST walkthrough is in `src/Hambaft.Api/Hambaft.Api.http`. Format and runtime details are in `docs/story-package-format.md`, `docs/story-runtime.md`, `docs/interactions-runtime.md`, `docs/behavior-runtime.md`, and `docs/scheduled-consequences.md`.
+The Hezar Cheragh REST walkthrough is in `src/Hambaft.Api/Hambaft.Api.http`. Format and runtime details are in `docs/story-package-format.md`, `docs/story-runtime.md`, `docs/ink-integration.md`, `docs/ending-runtime.md`, and `docs/hezar-cheragh-vertical-slice.md`.
 
-Deferred: Ink, Entity endings, World endings, React, full Hezar Cheragh content, runtime generative AI, and a visual story editor.
+Deferred: React, PixiJS, the multi-hour Hezar Cheragh story, visual/final content editing tools, production deployment, and runtime generative AI.
