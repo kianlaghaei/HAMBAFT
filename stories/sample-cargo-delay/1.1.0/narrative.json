@@ -1,0 +1,25 @@
+{
+  "fa-IR": {
+    "cargo-delay-opening": { "title": "محموله حیاتی متوقف شده است", "paragraphs": ["ارسال مشترک به تاخیر افتاده و دو تیم باید هم تصمیم بگیرند و هم درباره ظرفیت اضطراری مذاکره کنند."], "choiceLabel": null, "shortOutcome": "تاخیر اعلام شد.", "presentationTags": { "direction": "rtl", "scene": "cargo-yard" } },
+    "supplier-private": { "title": "تصمیم تامین‌کننده", "paragraphs": ["تاخیر را افشا می‌کنید یا موعد اولیه را وعده می‌دهید؟"], "choiceLabel": null, "shortOutcome": "پاسخ تامین‌کننده ثبت شد.", "presentationTags": { "direction": "rtl", "scene": "supplier-office" } },
+    "carrier-private": { "title": "تصمیم حمل‌کننده", "paragraphs": ["ظرفیت اضطراری رزرو می‌کنید یا عملیات عادی را حفظ می‌کنید؟"], "choiceLabel": null, "shortOutcome": "پاسخ حمل‌کننده ثبت شد.", "presentationTags": { "direction": "rtl", "scene": "dispatch-floor" } },
+    "choice-supplier-disclose": { "title": "", "paragraphs": [], "choiceLabel": "افشای کامل تاخیر", "shortOutcome": "تاخیر شفاف شد.", "presentationTags": {} },
+    "choice-supplier-promise": { "title": "", "paragraphs": [], "choiceLabel": "وعده موعد اولیه", "shortOutcome": "وعده برای بازبینی بعدی ثبت شد.", "presentationTags": {} },
+    "choice-carrier-reserve": { "title": "", "paragraphs": [], "choiceLabel": "رزرو ظرفیت اضطراری", "shortOutcome": "ظرفیت کنار گذاشته شد.", "presentationTags": {} },
+    "choice-carrier-protect": { "title": "", "paragraphs": [], "choiceLabel": "حفظ عملیات عادی", "shortOutcome": "عملیات عادی در اولویت ماند.", "presentationTags": {} },
+    "outcome-coordinated": { "title": "هماهنگی موثر", "paragraphs": ["افشا، ظرفیت اضطراری و توافق عمومی فشار را کاهش دادند."], "choiceLabel": null, "shortOutcome": "تاخیر مهار شد.", "presentationTags": { "direction": "rtl", "scene": "cargo-departure" } },
+    "outcome-pressured": { "title": "فشار عملیاتی ادامه دارد", "paragraphs": ["وعده موعد اولیه هنوز باید در checkpoint بعدی بازبینی شود."], "choiceLabel": null, "shortOutcome": "فشار باقی ماند.", "presentationTags": { "direction": "rtl", "scene": "cargo-yard" } },
+    "coordination-result": { "title": "نتیجه هماهنگی ثبت شد", "paragraphs": ["وضعیت مشترک، توافق‌ها و پیامدهای بازگشتی در یک نقطه فنی پایدار ثبت شدند."], "choiceLabel": null, "shortOutcome": "جریان فنی کامل شد.", "presentationTags": { "direction": "rtl", "scene": "coordination-board" } },
+    "interaction-capacity-name": { "title": "پشتیبانی ظرفیت اضطراری", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": { "direction": "rtl" } },
+    "interaction-capacity-description": { "title": "پیشنهاد ساختاریافته ظرفیت", "paragraphs": ["تامین‌کننده از حمل‌کننده ظرفیت موقت درخواست می‌کند."], "choiceLabel": null, "shortOutcome": null, "presentationTags": { "direction": "rtl" } },
+    "behavior-credit-name": { "title": "رفتار تالیفی تامین‌کننده اعتبار", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": { "direction": "rtl" } },
+    "behavior-credit-extended": { "title": "اعتبار پل تمدید شد", "paragraphs": ["تامین‌کننده اعتبار با قاعده تالیفی، فشار کوتاه‌مدت را کاهش داد."], "choiceLabel": null, "shortOutcome": "اعتبار تمدید شد.", "presentationTags": { "direction": "rtl", "actor": "credit-provider" } },
+    "behavior-credit-costly": { "title": "اعتبار پرهزینه پیشنهاد شد", "paragraphs": ["تامین‌کننده اعتبار از فشار موجود برای پیشنهاد شرایط سخت‌تر استفاده کرد."], "choiceLabel": null, "shortOutcome": "اعتبار پرهزینه شد.", "presentationTags": { "direction": "rtl", "actor": "credit-provider" } },
+    "behavior-credit-tightened": { "title": "اعتبار محدود شد", "paragraphs": ["قاعده fallback دسترسی به اعتبار را محدود کرد."], "choiceLabel": null, "shortOutcome": "اعتبار محدود شد.", "presentationTags": { "direction": "rtl", "actor": "credit-provider" } },
+    "deadline-review-public": { "title": "بازبینی وعده موعد اولیه", "paragraphs": ["تاخیر کاملاً جذب نشد و وعده پیشین بر قابلیت اتکای تامین‌کننده و اعتماد حمل‌کننده اثر گذاشت."], "choiceLabel": null, "shortOutcome": "پیامد وعده فعال شد.", "presentationTags": { "direction": "rtl", "scene": "review" } },
+    "difficulty-calm": { "title": "آرام", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} },
+    "difficulty-standard": { "title": "استاندارد", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} },
+    "difficulty-hard": { "title": "سخت", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} },
+    "difficulty-relentless": { "title": "بی‌امان", "paragraphs": [], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} }
+  }
+}

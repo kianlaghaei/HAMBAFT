@@ -7,6 +7,15 @@ namespace Hambaft.UnitTests;
 public sealed class StoryPackageTests
 {
     [Fact] public async Task Valid_package_loads(){var s=StoryRuntimeTestSupport.PackageServices();var p=await s.Loader.LoadAsync("sample-cargo-delay","1.0.0",default);p.Manifest.Id.Should().Be("sample-cargo-delay");p.ContentHash.Should().StartWith("sha256:");}
+    [Fact] public async Task Versions_1_0_and_1_1_load_independently_with_distinct_hashes()
+    {
+        var services=StoryRuntimeTestSupport.PackageServices();var oldPackage=await services.Loader.LoadAsync("sample-cargo-delay","1.0.0",default);var phase3=await services.Loader.LoadAsync("sample-cargo-delay","1.1.0",default);
+        oldPackage.Manifest.Version.Should().Be("1.0.0");oldPackage.InteractionDefinitions.Should().BeEmpty();phase3.Manifest.Version.Should().Be("1.1.0");phase3.InteractionDefinitions.Should().ContainSingle(x=>x.Id=="emergency-capacity-support");phase3.ContentHash.Should().NotBe(oldPackage.ContentHash);
+    }
+    [Fact] public async Task Session_locked_to_1_0_cannot_hydrate_from_1_1()
+    {
+        var scenario=await StoryRuntimeTestSupport.CreateStartedAsync();var phase3=await StoryRuntimeTestSupport.PackageServices().Loader.LoadAsync("sample-cargo-delay","1.1.0",default);var runtime=new Hambaft.Application.SessionRuntime(scenario.Store,new FixedTestPairing(),new FixedPackageLoader(phase3),new Hambaft.Application.DeterministicStoryletSelector(new Hambaft.Application.ConditionEngine()),new Hambaft.Application.EffectEngine(),new Hambaft.Application.DeterministicBehaviorResolver(new Hambaft.Application.ConditionEngine()));await FluentActions.Invoking(()=>runtime.ExecuteAsync(new Hambaft.Application.InitializeNarrative(scenario.SessionId,8,StoryRuntimeTestSupport.Context()),default)).Should().ThrowAsync<Hambaft.Application.StoryPackageHashMismatchException>();
+    }
     [Fact] public async Task Duplicate_ids_fail(){var(s,p)=await Package();var duplicate=p with { Metrics=p.Metrics.Append(p.Metrics[0]).ToList() };s.Validate(duplicate).Errors.Should().Contain(x=>x.ErrorCode=="duplicate-metric-id");}
     [Fact] public async Task Missing_narrative_reference_fails(){var(s,p)=await Package();var changed=p with { Storylets=p.Storylets.Select((x,i)=>i==0?x with { NarrativeRef="missing" }:x).ToList() };s.Validate(changed).Errors.Should().Contain(x=>x.ErrorCode=="missing-narrative-reference");}
     [Fact] public async Task Unknown_effect_fails(){var(s,p)=await Package();var story=p.Storylets[1];var choice=story.Choices[0] with { EffectIds=["missing"] };var changed=p with { Storylets=p.Storylets.Select(x=>x.Id==story.Id?x with { Choices=[choice,..story.Choices.Skip(1)] }:x).ToList() };s.Validate(changed).Errors.Should().Contain(x=>x.ErrorCode=="unknown-effect");}

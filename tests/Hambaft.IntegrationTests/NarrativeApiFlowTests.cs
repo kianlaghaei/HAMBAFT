@@ -14,7 +14,7 @@ public sealed class NarrativeApiFlowTests(PostgresFixture fixture)
     public async Task Authenticated_two_team_rest_story_flow_preserves_privacy()
     {
         await using var factory=new HambaftApiFactory(fixture.ConnectionString);using var client=factory.CreateClient();
-        var packages=await Body(await client.GetAsync("/api/story-packages"));var sample=packages.EnumerateArray().Single(x=>x.GetProperty("id").GetString()=="sample-cargo-delay");sample.GetProperty("isValid").GetBoolean().Should().BeTrue();var hash=sample.GetProperty("contentHash").GetString()!;
+        var packages=await Body(await client.GetAsync("/api/story-packages"));var sample=packages.EnumerateArray().Single(x=>x.GetProperty("id").GetString()=="sample-cargo-delay"&&x.GetProperty("version").GetString()=="1.0.0");sample.GetProperty("isValid").GetBoolean().Should().BeTrue();var hash=sample.GetProperty("contentHash").GetString()!;
         var created=await Body(await client.PostAsJsonAsync("/api/sessions",new{storyPackageId="sample-cargo-delay",storyVersion="1.0.0",contentHash=hash,seed=42,expectedVersion=0}));var sessionId=created.GetProperty("sessionId").GetGuid();
         var supplierAdded=await Body(await client.PostAsJsonAsync($"/api/sessions/{sessionId}/teams",new{displayName="تامین‌کننده",expectedVersion=1}));var supplierTeam=supplierAdded.GetProperty("resourceId").GetGuid();var supplierCode=supplierAdded.GetProperty("pairingCode").GetString()!;
         var carrierAdded=await Body(await client.PostAsJsonAsync($"/api/sessions/{sessionId}/teams",new{displayName="حمل‌کننده",expectedVersion=2}));var carrierTeam=carrierAdded.GetProperty("resourceId").GetGuid();var carrierCode=carrierAdded.GetProperty("pairingCode").GetString()!;

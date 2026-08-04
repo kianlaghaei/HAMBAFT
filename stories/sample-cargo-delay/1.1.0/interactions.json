@@ -1,0 +1,23 @@
+[
+  {
+    "id": "emergency-capacity-support",
+    "displayNameRef": "interaction-capacity-name",
+    "descriptionRef": "interaction-capacity-description",
+    "allowedSenderSelectors": [{ "type": "TeamControllingEntityDefinition", "entityDefinitionId": "supplier" }],
+    "allowedReceiverSelectors": [{ "type": "TeamControllingEntityDefinition", "entityDefinitionId": "carrier" }],
+    "termsSchema": {
+      "type": "Compound",
+      "fields": [
+        { "name": "capacityUnits", "type": "Numeric", "minimum": 1, "maximum": 30 },
+        { "name": "supportDurationCheckpoints", "type": "Numeric", "minimum": 1, "maximum": 3 },
+        { "name": "publicDisclosure", "type": "Boolean" },
+        { "name": "note", "type": "ShortText", "required": false, "maximumLength": 120 }
+      ]
+    },
+    "offeredEffectIds": ["agreement-carrier-capacity", "agreement-pressure-relief", "agreement-carrier-trust"],
+    "requestedEffectIds": ["agreement-supplier-trust"],
+    "defaultValidity": { "type": "ValidForCheckpointCount", "checkpointCount": 1 },
+    "executionMode": "ExecuteAtCheckpointResolution",
+    "agreementVisibility": "Public"
+  }
+]

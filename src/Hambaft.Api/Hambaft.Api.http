@@ -1,10 +1,11 @@
 @host = http://localhost:5297
-@packageHash = replace-from-package-list
+@packageHash = replace-with-1.1.0-contentHash
 @sessionId = replace-after-create
 @supplierTeamId = replace-after-add
 @carrierTeamId = replace-after-add
 @supplierEntityId = replace-after-create
 @carrierEntityId = replace-after-create
+@creditProviderEntityId = replace-after-create
 @supplierPairingCode = replace-after-add
 @carrierPairingCode = replace-after-add
 @supplierToken = replace-after-pair
@@ -12,113 +13,184 @@
 @adminToken = deployment-provisioned-admin-token-for-session
 @supplierAssignmentId = replace-from-supplier-experience
 @carrierAssignmentId = replace-from-carrier-experience
+@proposalId = replace-after-send
+@secondProposalId = replace-after-send
+@stateVersion = replace-with-latest-response-version
 
-### 1. List installed Story Packages and copy sample contentHash
+### 1. Both immutable Package versions must be listed
 GET {{host}}/api/story-packages
 
-### 2. Inspect safe package metadata
+###
 GET {{host}}/api/story-packages/sample-cargo-delay/1.0.0
 
-### 3. Create Session — state version 1
+###
+GET {{host}}/api/story-packages/sample-cargo-delay/1.1.0
+
+### 2. Create a Standard 1.1.0 Session
 POST {{host}}/api/sessions
 Content-Type: application/json
 
-{"storyPackageId":"sample-cargo-delay","storyVersion":"1.0.0","contentHash":"{{packageHash}}","seed":42,"expectedVersion":0}
+{"storyPackageId":"sample-cargo-delay","storyVersion":"1.1.0","contentHash":"{{packageHash}}","seed":42,"difficultyId":"standard","expectedVersion":0}
 
-### 4. Add Supplier Team — version 2
+### 3. Add Supplier and Carrier Teams
 POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
 {"displayName":"تیم تامین‌کننده","expectedVersion":1}
 
-### 5. Add Carrier Team — version 3
+###
 POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
 {"displayName":"تیم حمل‌کننده","expectedVersion":2}
 
-### 6. Create Supplier Entity — version 4
+### 4. Add two human Entities and authored Credit Provider
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
 {"definitionId":"supplier","displayName":"تامین‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":3}
 
-### 7. Create Carrier Entity — version 5
+###
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
 {"definitionId":"carrier","displayName":"حمل‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":4}
 
-### 8. Assign Supplier — version 6
+###
+POST {{host}}/api/sessions/{{sessionId}}/entities
+Content-Type: application/json
+
+{"definitionId":"credit-provider","displayName":"تامین‌کننده اعتبار","controllerType":"AuthoredBehavior","behaviorProfileId":"cooperative-credit","expectedVersion":5}
+
+### 5. Assign human Entities
 POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"entityId":"{{supplierEntityId}}","teamId":"{{supplierTeamId}}","expectedVersion":5}
+{"entityId":"{{supplierEntityId}}","teamId":"{{supplierTeamId}}","expectedVersion":6}
 
-### 9. Assign Carrier — version 7
+###
 POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"entityId":"{{carrierEntityId}}","teamId":"{{carrierTeamId}}","expectedVersion":6}
+{"entityId":"{{carrierEntityId}}","teamId":"{{carrierTeamId}}","expectedVersion":7}
 
-### 10. Start Session — version 8
+### 6. Start and initialize
 POST {{host}}/api/sessions/{{sessionId}}/start
 Content-Type: application/json
 
-{"expectedVersion":7}
+{"expectedVersion":8}
 
-### 11. Initialize narrative as Admin; copy returned stateVersion
+###
 POST {{host}}/api/sessions/{{sessionId}}/narrative/initialize
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedStateVersion":8,"commandId":"81000000-0000-0000-0000-000000000001"}
+{"expectedStateVersion":9,"commandId":"81000000-0000-0000-0000-000000000001"}
 
-### 12. Pair Supplier
+### 7. Pair Teams and copy JWTs
 POST {{host}}/api/sessions/{{sessionId}}/pair
 Content-Type: application/json
 
 {"teamId":"{{supplierTeamId}}","pairingCode":"{{supplierPairingCode}}"}
 
-### 13. Pair Carrier
+###
 POST {{host}}/api/sessions/{{sessionId}}/pair
 Content-Type: application/json
 
 {"teamId":"{{carrierTeamId}}","pairingCode":"{{carrierPairingCode}}"}
 
-### 14. Supplier private experience (must not contain Carrier Storylet)
+### 8. Read isolated Storylets and submit initial Choices
 GET {{host}}/api/story/experience
 Authorization: Bearer {{supplierToken}}
 
-### 15. Carrier private experience (must not contain Supplier Storylet)
+###
 GET {{host}}/api/story/experience
 Authorization: Bearer {{carrierToken}}
 
-### 16. Supplier choice — replace expectedStateVersion
+###
 POST {{host}}/api/story/choices
 Authorization: Bearer {{supplierToken}}
 Content-Type: application/json
 
-{"assignmentId":"{{supplierAssignmentId}}","choiceId":"disclose-full-delay","expectedStateVersion":20,"commandId":"82000000-0000-0000-0000-000000000001"}
+{"assignmentId":"{{supplierAssignmentId}}","choiceId":"promise-original-deadline","expectedStateVersion":{{stateVersion}},"commandId":"82000000-0000-0000-0000-000000000001"}
 
-### 17. Carrier choice — replace expectedStateVersion
+###
 POST {{host}}/api/story/choices
 Authorization: Bearer {{carrierToken}}
 Content-Type: application/json
 
-{"assignmentId":"{{carrierAssignmentId}}","choiceId":"reserve-emergency-capacity","expectedStateVersion":21,"commandId":"82000000-0000-0000-0000-000000000002"}
+{"assignmentId":"{{carrierAssignmentId}}","choiceId":"reserve-emergency-capacity","expectedStateVersion":{{stateVersion}},"commandId":"82000000-0000-0000-0000-000000000002"}
 
-### 18. Resolve as Admin — replace expectedStateVersion
+### 9. Supplier sends, Carrier reads inbox and counters
+POST {{host}}/api/proposals
+Authorization: Bearer {{supplierToken}}
+Content-Type: application/json
+
+{"interactionTypeId":"emergency-capacity-support","receiverTeamId":"{{carrierTeamId}}","termsPayload":{"capacityUnits":8,"supportDurationCheckpoints":1,"publicDisclosure":true,"note":"پشتیبانی فوری"},"validityType":null,"validForCheckpointCount":null,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000001"}
+
+###
+GET {{host}}/api/proposals/inbox
+Authorization: Bearer {{carrierToken}}
+
+###
+POST {{host}}/api/proposals/{{proposalId}}/counter
+Authorization: Bearer {{carrierToken}}
+Content-Type: application/json
+
+{"expectedRevisionNumber":1,"termsPayload":{"capacityUnits":12,"supportDurationCheckpoints":2,"publicDisclosure":false},"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000002"}
+
+### 10. Supplier sees revision 2 and accepts
+GET {{host}}/api/proposals/inbox
+Authorization: Bearer {{supplierToken}}
+
+###
+POST {{host}}/api/proposals/{{proposalId}}/accept
+Authorization: Bearer {{supplierToken}}
+Content-Type: application/json
+
+{"expectedRevisionNumber":2,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000003"}
+
+### 11. Send second unanswered Proposal
+POST {{host}}/api/proposals
+Authorization: Bearer {{supplierToken}}
+Content-Type: application/json
+
+{"interactionTypeId":"emergency-capacity-support","receiverTeamId":"{{carrierTeamId}}","termsPayload":{"capacityUnits":3,"supportDurationCheckpoints":1,"publicDisclosure":false},"validityType":null,"validForCheckpointCount":null,"validUntilCheckpointId":null,"expectedStateVersion":{{stateVersion}},"commandId":"84000000-0000-0000-0000-000000000004"}
+
+### 12. First resolution expires Proposal, executes Agreement, resolves Behavior and schedules Consequence
 POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
 Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedStateVersion":22,"commandId":"83000000-0000-0000-0000-000000000001"}
+{"expectedStateVersion":{{stateVersion}},"commandId":"85000000-0000-0000-0000-000000000001"}
 
-### 19. Read public outcome and metrics
+### Admin replayable state: expiration, Agreement, Behavior selection and pending Consequence
+GET {{host}}/api/sessions/{{sessionId}}/admin
+Authorization: Bearer {{adminToken}}
+
+###
+GET {{host}}/api/agreements
+Authorization: Bearer {{supplierToken}}
+
+###
+GET {{host}}/api/story/experience
+Authorization: Bearer {{supplierToken}}
+
+### 13. Second resolution triggers deadline consequence and reaches coordination-result
+POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"expectedStateVersion":{{stateVersion}},"commandId":"85000000-0000-0000-0000-000000000002"}
+
+### 14. Public/private projections and health
 GET {{host}}/api/sessions/{{sessionId}}/public
 
-### 20. Verify health
+###
+GET {{host}}/api/story/experience
+Authorization: Bearer {{carrierToken}}
+
+###
 GET {{host}}/health
 
 ###

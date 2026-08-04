@@ -1,0 +1,11 @@
+[
+  {
+    "id": "deadline-promise-review",
+    "trigger": { "type": "AfterCheckpointCount", "checkpointCount": 1 },
+    "conditions": [{ "type": "MetricAbove", "scope": "World", "metricKey": "world.pressure", "expected": 0 }],
+    "effectIds": ["deadline-review-reliability", "deadline-review-trust"],
+    "narrativeRef": "deadline-review-public",
+    "visibility": "Public",
+    "repeatPolicy": "OncePerSession"
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "id": "cargo-delay-public-entry", "checkpointId": "response", "scope": "WorldPublic", "targetSelector": { "type": "World" }, "narrativeRef": "cargo-delay-opening", "conditions": [], "choices": [], "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false, "nextCheckpointId": "outcome"
+  },
+  {
+    "id": "supplier-delay-response", "checkpointId": "response", "scope": "TeamPrivate", "targetSelector": { "type": "TeamControllingEntityDefinition", "entityDefinitionId": "supplier" }, "narrativeRef": "supplier-private", "conditions": [],
+    "choices": [
+      { "id": "disclose-full-delay", "labelRef": "choice-supplier-disclose", "effectIds": ["supplier-disclose-reliability", "supplier-disclose-pressure", "supplier-disclose-memory", "supplier-disclose-trust"] },
+      { "id": "promise-original-deadline", "labelRef": "choice-supplier-promise", "effectIds": ["supplier-promise-reliability", "supplier-promise-pressure", "supplier-promise-memory", "supplier-promise-schedule"] }
+    ],
+    "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": true, "nextCheckpointId": "outcome"
+  },
+  {
+    "id": "carrier-delay-response", "checkpointId": "response", "scope": "TeamPrivate", "targetSelector": { "type": "TeamControllingEntityDefinition", "entityDefinitionId": "carrier" }, "narrativeRef": "carrier-private", "conditions": [],
+    "choices": [
+      { "id": "reserve-emergency-capacity", "labelRef": "choice-carrier-reserve", "effectIds": ["carrier-reserve-capacity", "carrier-reserve-pressure", "carrier-reserve-trust", "carrier-reserve-memory"] },
+      { "id": "protect-normal-operations", "labelRef": "choice-carrier-protect", "effectIds": ["carrier-protect-capacity", "carrier-protect-pressure", "carrier-protect-memory"] }
+    ],
+    "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": true, "nextCheckpointId": "outcome"
+  },
+  {
+    "id": "cargo-delay-coordinated-outcome", "checkpointId": "outcome", "scope": "WorldPublic", "targetSelector": { "type": "World" }, "narrativeRef": "outcome-coordinated",
+    "conditions": [{ "type": "MemoryExists", "scope": "ExplicitEntityDefinition", "entityDefinitionId": "supplier", "memoryKey": "supplier_disclosed_delay" }, { "type": "MemoryExists", "scope": "ExplicitEntityDefinition", "entityDefinitionId": "carrier", "memoryKey": "carrier_reserved_capacity" }],
+    "choices": [], "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false, "nextCheckpointId": "coordination-result"
+  },
+  {
+    "id": "cargo-delay-pressured-outcome", "checkpointId": "outcome", "scope": "WorldPublic", "targetSelector": { "type": "World" }, "narrativeRef": "outcome-pressured",
+    "conditions": [{ "type": "Any", "conditions": [{ "type": "MemoryExists", "scope": "ExplicitEntityDefinition", "entityDefinitionId": "supplier", "memoryKey": "supplier_promised_original_deadline" }, { "type": "MetricAbove", "scope": "World", "metricKey": "world.pressure", "expected": 50 }] }],
+    "choices": [], "priority": 90, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false, "nextCheckpointId": "coordination-result"
+  },
+  {
+    "id": "coordination-result-public", "checkpointId": "coordination-result", "scope": "WorldPublic", "targetSelector": { "type": "World" }, "narrativeRef": "coordination-result", "conditions": [], "choices": [], "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false
+  }
+]
