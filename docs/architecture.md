@@ -1,21 +1,25 @@
 # Architecture
 
 ```text
-REST command
-    ↓
-Application handler
-    ↓
-StorySession aggregate
-    ↓
-Domain events
-    ↓
-Marten Session stream
-    ↓
-Inline Session / Public / SessionExperience projections
+Repository Story Package files
+        ↓ canonical validation + SHA-256 lock
+REST command → Application runtime → StorySession aggregate
+                                      ↓
+                              meaningful Domain events
+                                      ↓
+                              Marten Session stream
+                                      ↓
+                  inline Session / Public / Experience projections
+                                      ↓
+                   package-hash-checked narrative hydration
 ```
 
-HAMBAFT is an independent repository with no project or assembly reference to SharedWorld. PostgreSQL provides one local persistence technology and Marten provides an event store with optimistic stream concurrency. One authoritative stream per Session keeps the consistency boundary explicit and replay straightforward. Session and Public views are direct projections. The replayable SessionExperience projection holds the generic state needed to materialize Team- and Entity-scoped views without imperative document writes.
+HAMBAFT is independent and has no reference to SharedWorld. One Marten stream per Session is the optimistic-concurrency and atomic-resolution boundary. Aggregate state contains stable content IDs and runtime facts, never localized paragraphs. Projection documents are replayed from events; the filesystem package locked by ID, version and hash supplies localized narrative at query time. Hydration fails on a package hash mismatch.
 
-The Team pairing code is returned once when the Team is created; only its PBKDF2 hash is event-stored. A successful pairing exchange issues a short-lived JWT scoped by `client_role`, `session_id`, and `team_id`. SignalR validates that token before accepting negotiation and selects all group names on the server from validated claims.
+The Domain remains generic. Sample-specific metric names and entity definitions exist only under `stories/sample-cargo-delay`. Conditions are immutable reads. Effects create meaningful fact events and never write projection documents directly. Numeric effects use one policy: clamp to the declared metric minimum/maximum.
 
-There is no runtime AI. Story content, Ink, storylets, choices, effects, authored behavior resolution and endings are deferred. The current design is intentionally minimal so a playable-test runtime can be continued without speculative infrastructure.
+Private Storylet assignments carry a target Team/Entity ID. Team views filter before localization; public views contain only `WorldPublic` publication IDs. SignalR sends only routing metadata and clients refetch REST projections.
+
+The Team pairing code is returned once and only its PBKDF2 hash is stored. Team identity for choice submission comes from JWT claims. Admin/PublicDisplay credentials remain deployment-provisioned.
+
+Deferred architecture: Ink, proposals, agreements, Behavior Resolver, difficulty, scheduled consequences, entity/world endings, React and full Hezar Cheragh content.

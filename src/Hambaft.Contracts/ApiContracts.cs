@@ -13,6 +13,10 @@ public sealed record PairingRequest(Guid TeamId,string PairingCode);
 public sealed record TokenResponse(string AccessToken,string TokenType,DateTimeOffset ExpiresAtUtc);
 public sealed record CommandResponse(Guid SessionId,long StateVersion,string EventType,Guid? ResourceId=null,string? PairingCode=null);
 public sealed record StateChangedNotification(Guid SessionId,long StateVersion,string EventType,string Scope);
+public sealed record InitializeNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
+public sealed record SubmitStoryChoiceRequest(Guid AssignmentId,string ChoiceId,long ExpectedStateVersion,Guid CommandId);
+public sealed record ResolveNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
+public sealed record NarrativeNotification(Guid SessionId,Guid? TeamId,long StateVersion,string CheckpointId,string EventType);
 
 public sealed record SessionResponse(
     Guid Id,

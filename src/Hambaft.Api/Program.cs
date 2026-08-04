@@ -3,6 +3,7 @@ using Hambaft.Api.Realtime;
 using Hambaft.Api.Security;
 using Hambaft.Application;
 using Hambaft.Contracts;
+using Hambaft.Domain;
 using Hambaft.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
@@ -11,7 +12,7 @@ using Microsoft.IdentityModel.Tokens;
 
 var builder=WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();builder.Services.AddOpenApi();builder.Services.AddSignalR();
-builder.Services.AddHambaftInfrastructure(builder.Configuration);
+builder.Services.AddHambaftInfrastructure(builder.Configuration,builder.Environment.ContentRootPath);
 
 var jwt=JwtConfiguration.From(builder.Configuration);
 builder.Services.AddSingleton(jwt);
@@ -41,15 +42,21 @@ app.Use(async(context,next)=>{var supplied=context.Request.Headers["X-Correlatio
 app.UseAuthentication();app.UseAuthorization();
 if(app.Environment.IsDevelopment()){app.MapOpenApi();app.UseSwaggerUI(options=>options.SwaggerEndpoint("/openapi/v1.json","HAMBAFT API v1"));}
 
-static CommandContext Context(HttpContext http,Guid? teamId=null)
+static CommandContext Context(HttpContext http,Guid? teamId=null,Guid? commandId=null)
 {
-    var correlation=Guid.TryParse(http.TraceIdentifier,out var parsed)?parsed:Guid.NewGuid();var commandId=Guid.NewGuid();return new(correlation,commandId,commandId,teamId,DateTimeOffset.UtcNow);
+    var correlation=Guid.TryParse(http.TraceIdentifier,out var parsed)?parsed:Guid.NewGuid();var id=commandId is { } supplied&&supplied!=Guid.Empty?supplied:Guid.NewGuid();return new(correlation,id,id,teamId,DateTimeOffset.UtcNow);
 }
+static Guid ClaimGuid(HttpContext http,string name)=>Guid.TryParse(http.User.FindFirst(name)?.Value,out var id)?id:throw new ArgumentException($"Required claim '{name}' is missing.");
 static async Task Notify(IHubContext<SessionHub,ISessionHubClient> hub,CommandResult result,string scope,CancellationToken ct)=>await hub.Clients.Group(HubGroups.Session(result.SessionId)).StateChanged(new(result.SessionId,result.StateVersion,result.EventType,scope));
 
 app.MapPost("/api/sessions",async(CreateSessionRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
     var id=Guid.NewGuid();var result=await runtime.ExecuteAsync(new CreateSession(id,request.StoryPackageId,request.StoryVersion,request.ContentHash,request.Seed,request.ExpectedVersion,Context(http)),ct);await Notify(hub,result,"Session",ct);return Results.Created($"/api/sessions/{id:D}",new CommandResponse(id,result.StateVersion,result.EventType,id));
+});
+app.MapGet("/api/story-packages",async(IStoryPackageCatalog catalog,CancellationToken ct)=>Results.Ok(await catalog.ListAsync(ct)));
+app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,string version,IStoryPackageCatalog catalog,CancellationToken ct)=>
+{
+    var package=(await catalog.ListAsync(ct)).SingleOrDefault(x=>x.Id==packageId&&x.Version==version); return package is null?Results.NotFound():Results.Ok(package);
 });
 app.MapGet("/api/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(ToResponse(view)):Results.NotFound());
 app.MapPost("/api/sessions/{sessionId:guid}/teams",async(Guid sessionId,AddTeamRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
@@ -75,6 +82,49 @@ app.MapPost("/api/sessions/{sessionId:guid}/pair",async(Guid sessionId,PairingRe
     if(team is null||string.IsNullOrWhiteSpace(request.PairingCode)||!pairing.Verify(request.PairingCode.Trim().ToUpperInvariant(),team.PairingCodeHash))return Results.Unauthorized();
     return Results.Ok(tokens.IssueTeam(sessionId,team.Id));
 });
+
+app.MapGet("/api/story/experience",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);
+    return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(view);
+}).RequireAuthorization("Team");
+
+app.MapPost("/api/sessions/{sessionId:guid}/narrative/initialize",async(Guid sessionId,InitializeNarrativeRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();
+    var result=await runtime.ExecuteAsync(new InitializeNarrative(sessionId,request.ExpectedStateVersion,Context(http,commandId:request.CommandId)),ct);
+    var state=(await runtime.GetSessionAsync(sessionId,ct))!;var checkpoint=state.CurrentCheckpointId!;
+    var initialized=new NarrativeNotification(sessionId,null,result.StateVersion,checkpoint,nameof(NarrativeInitialized));
+    await hub.Clients.Group(HubGroups.Session(sessionId)).NarrativeInitialized(initialized);
+    foreach(var assignment in state.StoryletAssignments.Where(x=>x.CheckpointId==checkpoint&&x.TargetTeamId is not null&&x.Status==StoryletAssignmentStatus.Assigned))
+    {
+        var notification=new NarrativeNotification(sessionId,assignment.TargetTeamId,result.StateVersion,checkpoint,nameof(StoryletAssigned));
+        await hub.Clients.Group(HubGroups.Team(assignment.TargetTeamId!.Value)).PrivateStoryAssigned(notification);
+        if(assignment.RequiredResponse)await hub.Clients.Group(HubGroups.Team(assignment.TargetTeamId.Value)).DecisionRequested(notification with { EventType="DecisionRequested" });
+    }
+    await hub.Clients.Group(HubGroups.Display(sessionId)).WorldNarrativePublished(initialized with { EventType=nameof(WorldNarrativePublished) });
+    return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
+}).RequireAuthorization("Admin");
+
+app.MapPost("/api/story/choices",async(SubmitStoryChoiceRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");
+    var result=await runtime.ExecuteAsync(new SubmitStoryChoice(sessionId,request.AssignmentId,request.ChoiceId,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);
+    var state=(await runtime.GetSessionAsync(sessionId,ct))!;var notification=new NarrativeNotification(sessionId,teamId,result.StateVersion,state.CurrentCheckpointId!,nameof(StoryChoiceSubmitted));
+    await hub.Clients.Group(HubGroups.Team(teamId)).ChoiceRecorded(notification);
+    await hub.Clients.Group(HubGroups.Admins(sessionId)).ChoiceRecorded(notification);
+    return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
+}).RequireAuthorization("Team");
+
+app.MapPost("/api/sessions/{sessionId:guid}/narrative/resolve",async(Guid sessionId,ResolveNarrativeRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();
+    var result=await runtime.ExecuteAsync(new ResolveNarrativeCheckpoint(sessionId,request.ExpectedStateVersion,Context(http,commandId:request.CommandId)),ct);
+    var state=(await runtime.GetSessionAsync(sessionId,ct))!;var notification=new NarrativeNotification(sessionId,null,result.StateVersion,state.CurrentCheckpointId!,nameof(NarrativeCheckpointResolved));
+    await hub.Clients.Group(HubGroups.Session(sessionId)).NarrativeResolved(notification);
+    await hub.Clients.Group(HubGroups.Display(sessionId)).WorldNarrativePublished(notification with { EventType=nameof(WorldNarrativePublished) });
+    return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
+}).RequireAuthorization("Admin");
 
 if(app.Environment.IsDevelopment())app.MapPost("/internal/sessions/{sessionId:guid}/bootstrap",async(Guid sessionId,BootstrapRequest request,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
 {

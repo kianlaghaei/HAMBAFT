@@ -1,81 +1,124 @@
 @host = http://localhost:5297
+@packageHash = replace-from-package-list
 @sessionId = replace-after-create
-@teamId = replace-after-add-team
-@pairingCode = replace-once-after-add-team
-@teamToken = replace-after-pair
-@humanEntityId = replace-after-create-human
+@supplierTeamId = replace-after-add
+@carrierTeamId = replace-after-add
+@supplierEntityId = replace-after-create
+@carrierEntityId = replace-after-create
+@supplierPairingCode = replace-after-add
+@carrierPairingCode = replace-after-add
+@supplierToken = replace-after-pair
+@carrierToken = replace-after-pair
+@adminToken = deployment-provisioned-admin-token-for-session
+@supplierAssignmentId = replace-from-supplier-experience
+@carrierAssignmentId = replace-from-carrier-experience
 
-### Create Session (version 1)
+### 1. List installed Story Packages and copy sample contentHash
+GET {{host}}/api/story-packages
+
+### 2. Inspect safe package metadata
+GET {{host}}/api/story-packages/sample-cargo-delay/1.0.0
+
+### 3. Create Session — state version 1
 POST {{host}}/api/sessions
 Content-Type: application/json
 
-{"storyPackageId":"demo.story","storyVersion":"1.0.0","contentHash":"sha256:demo","seed":42,"expectedVersion":0}
+{"storyPackageId":"sample-cargo-delay","storyVersion":"1.0.0","contentHash":"{{packageHash}}","seed":42,"expectedVersion":0}
 
-### Add Team (copy pairingCode once; version 2)
+### 4. Add Supplier Team — version 2
 POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
-{"displayName":"گروه آبی","expectedVersion":1}
+{"displayName":"تیم تامین‌کننده","expectedVersion":1}
 
-### Exchange the copied value for a scoped Team JWT
-POST {{host}}/api/sessions/{{sessionId}}/pair
+### 5. Add Carrier Team — version 3
+POST {{host}}/api/sessions/{{sessionId}}/teams
 Content-Type: application/json
 
-{"teamId":"{{teamId}}","pairingCode":"{{pairingCode}}"}
+{"displayName":"تیم حمل‌کننده","expectedVersion":2}
 
-### Authorized SignalR negotiation (anonymous negotiation returns 401)
-POST {{host}}/hubs/session/negotiate?negotiateVersion=1
-Authorization: Bearer {{teamToken}}
-
-### Create human-controlled Entity draft (version 3)
+### 6. Create Supplier Entity — version 4
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
-{"definitionId":"hero.blue","displayName":"قهرمان آبی","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":2}
+{"definitionId":"supplier","displayName":"تامین‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":3}
 
-### Create authored-behavior Entity (version 4)
+### 7. Create Carrier Entity — version 5
 POST {{host}}/api/sessions/{{sessionId}}/entities
 Content-Type: application/json
 
-{"definitionId":"guide","displayName":"راهنما","controllerType":"AuthoredBehavior","behaviorProfileId":"guide.v1","expectedVersion":3}
+{"definitionId":"carrier","displayName":"حمل‌کننده","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":4}
 
-### Assign human Entity (version 5)
+### 8. Assign Supplier — version 6
 POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"entityId":"{{humanEntityId}}","teamId":"{{teamId}}","expectedVersion":4}
+{"entityId":"{{supplierEntityId}}","teamId":"{{supplierTeamId}}","expectedVersion":5}
 
-### Development-only generic initial state (version 6)
-POST {{host}}/internal/sessions/{{sessionId}}/bootstrap
+### 9. Assign Carrier — version 7
+POST {{host}}/api/sessions/{{sessionId}}/assignments
 Content-Type: application/json
 
-{"expectedVersion":5,"metrics":[{"scope":"World","scopeId":"{{sessionId}}","metricKey":"chapter.progress","numericValue":0}],"memories":[],"relationships":[]}
+{"entityId":"{{carrierEntityId}}","teamId":"{{carrierTeamId}}","expectedVersion":6}
 
-### Start / read / public / pause / resume
+### 10. Start Session — version 8
 POST {{host}}/api/sessions/{{sessionId}}/start
-Content-Type: application/json
-
-{"expectedVersion":6}
-
-###
-GET {{host}}/api/sessions/{{sessionId}}
-
-###
-GET {{host}}/api/sessions/{{sessionId}}/public
-
-###
-POST {{host}}/api/sessions/{{sessionId}}/pause
 Content-Type: application/json
 
 {"expectedVersion":7}
 
-###
-POST {{host}}/api/sessions/{{sessionId}}/resume
+### 11. Initialize narrative as Admin; copy returned stateVersion
+POST {{host}}/api/sessions/{{sessionId}}/narrative/initialize
+Authorization: Bearer {{adminToken}}
 Content-Type: application/json
 
-{"expectedVersion":8}
+{"expectedStateVersion":8,"commandId":"81000000-0000-0000-0000-000000000001"}
 
-###
+### 12. Pair Supplier
+POST {{host}}/api/sessions/{{sessionId}}/pair
+Content-Type: application/json
+
+{"teamId":"{{supplierTeamId}}","pairingCode":"{{supplierPairingCode}}"}
+
+### 13. Pair Carrier
+POST {{host}}/api/sessions/{{sessionId}}/pair
+Content-Type: application/json
+
+{"teamId":"{{carrierTeamId}}","pairingCode":"{{carrierPairingCode}}"}
+
+### 14. Supplier private experience (must not contain Carrier Storylet)
+GET {{host}}/api/story/experience
+Authorization: Bearer {{supplierToken}}
+
+### 15. Carrier private experience (must not contain Supplier Storylet)
+GET {{host}}/api/story/experience
+Authorization: Bearer {{carrierToken}}
+
+### 16. Supplier choice — replace expectedStateVersion
+POST {{host}}/api/story/choices
+Authorization: Bearer {{supplierToken}}
+Content-Type: application/json
+
+{"assignmentId":"{{supplierAssignmentId}}","choiceId":"disclose-full-delay","expectedStateVersion":20,"commandId":"82000000-0000-0000-0000-000000000001"}
+
+### 17. Carrier choice — replace expectedStateVersion
+POST {{host}}/api/story/choices
+Authorization: Bearer {{carrierToken}}
+Content-Type: application/json
+
+{"assignmentId":"{{carrierAssignmentId}}","choiceId":"reserve-emergency-capacity","expectedStateVersion":21,"commandId":"82000000-0000-0000-0000-000000000002"}
+
+### 18. Resolve as Admin — replace expectedStateVersion
+POST {{host}}/api/sessions/{{sessionId}}/narrative/resolve
+Authorization: Bearer {{adminToken}}
+Content-Type: application/json
+
+{"expectedStateVersion":22,"commandId":"83000000-0000-0000-0000-000000000001"}
+
+### 19. Read public outcome and metrics
+GET {{host}}/api/sessions/{{sessionId}}/public
+
+### 20. Verify health
 GET {{host}}/health
 
 ###

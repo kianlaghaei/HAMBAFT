@@ -2,7 +2,7 @@
 
 - `../shared-world` (SharedWorld) is read-only. Never change it, commit in it, connect to its database, or reference its assemblies.
 - Docker and container-based databases are out of scope. PostgreSQL runs locally as an operating-system service.
-- Storylets, authored story functionality, Ink, choices, effects, behavior resolution, and endings are not implemented yet.
+- Phase 2 provides repository Story Packages, typed conditions/effects, deterministic Storylet assignment, authored choices and replayable narrative checkpoints. Ink, behavior resolution and endings remain deferred.
 - Prefer simple code and a runnable build over speculative abstractions.
 - Keep Domain generic; do not introduce market-specific or economic-specific concepts.
 - Use UTF-8 and ensure user-facing Persian text is RTL-compatible. Keep code identifiers in English.

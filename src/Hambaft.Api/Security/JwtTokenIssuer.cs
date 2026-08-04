@@ -47,17 +47,21 @@ public sealed class JwtConfiguration
 public sealed class JwtTokenIssuer(JwtConfiguration configuration)
 {
     public TokenResponse IssueTeam(Guid sessionId,Guid teamId)
+        =>Issue("Team",sessionId,teamId);
+    public TokenResponse IssueAdmin(Guid sessionId)=>Issue("Admin",sessionId,null);
+
+    private TokenResponse Issue(string role,Guid sessionId,Guid? teamId)
     {
         var now=DateTimeOffset.UtcNow;
         var expires=now.Add(configuration.TokenLifetime);
-        var claims=new[]
+        var claims=new List<Claim>
         {
-            new Claim(JwtRegisteredClaimNames.Sub,$"team:{teamId:D}"),
+            new Claim(JwtRegisteredClaimNames.Sub,teamId is null?$"admin:{sessionId:D}":$"team:{teamId:D}"),
             new Claim(JwtRegisteredClaimNames.Jti,Guid.NewGuid().ToString("D")),
-            new Claim("client_role","Team"),
-            new Claim("session_id",sessionId.ToString("D")),
-            new Claim("team_id",teamId.ToString("D"))
+            new Claim("client_role",role),
+            new Claim("session_id",sessionId.ToString("D"))
         };
+        if(teamId is not null)claims.Add(new Claim("team_id",teamId.Value.ToString("D")));
         var token=new JwtSecurityToken(
             issuer:configuration.Issuer,
             audience:configuration.Audience,

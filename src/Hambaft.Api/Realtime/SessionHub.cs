@@ -4,7 +4,16 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace Hambaft.Api.Realtime;
 
-public interface ISessionHubClient { Task StateChanged(StateChangedNotification notification); }
+public interface ISessionHubClient
+{
+    Task StateChanged(StateChangedNotification notification);
+    Task NarrativeInitialized(NarrativeNotification notification);
+    Task PrivateStoryAssigned(NarrativeNotification notification);
+    Task DecisionRequested(NarrativeNotification notification);
+    Task ChoiceRecorded(NarrativeNotification notification);
+    Task NarrativeResolved(NarrativeNotification notification);
+    Task WorldNarrativePublished(NarrativeNotification notification);
+}
 
 [Authorize(Policy="SessionClient")]
 public sealed class SessionHub : Hub<ISessionHubClient>

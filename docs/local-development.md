@@ -1,6 +1,6 @@
 # Local development
 
-HAMBAFT expects PostgreSQL to run as a normal local service. Do not use Docker.
+HAMBAFT uses the local PostgreSQL operating-system service. Docker and container databases are out of scope.
 
 ```powershell
 createdb hambaft_dev
@@ -19,6 +19,8 @@ dotnet test
 dotnet run --project src/Hambaft.Api
 ```
 
-Alternatively, expose the development connection as `ConnectionStrings__Hambaft`; it must target only `hambaft_dev`. Use `src/Hambaft.Api/Hambaft.Api.http` for the development smoke flow. Copy the raw pairing code only into the pairing request and do not log or persist it. The response JWT can be used for the SignalR negotiate request.
+`ConnectionStrings__Hambaft` may replace the development user secret and must target `hambaft_dev`. Integration tests enforce database `hambaft_test` and schema `hambaft`; they reject other database names and SharedWorld.
 
-The API fails startup with a setup-oriented message when `ConnectionStrings:Hambaft` is missing. Integration tests reject any database name other than `hambaft_test`, reject SharedWorld explicitly, drop/recreate only schema `hambaft`, and never operate on `hambaft_dev`.
+Development defaults the Story Package root to repository folder `stories`. Override it with `StoryPackages__Root` when necessary. Run `src/Hambaft.Api/Hambaft.Api.http`: copy the sample hash, pairing codes, scoped Team JWTs, deployment-provisioned Admin JWT, assignment IDs and returned state versions into subsequent requests. Never log or persist raw pairing codes or JWTs.
+
+The `/internal/.../bootstrap` state endpoint remains Development-only. No unrestricted production endpoint mutates metrics.
