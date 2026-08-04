@@ -1,0 +1,67 @@
+@host = http://localhost:5000
+@sessionId = replace-after-create
+@teamId = replace-after-add-team
+@humanEntityId = replace-after-create-human
+
+### Create Session (version 1)
+POST {{host}}/api/sessions
+Content-Type: application/json
+
+{"storyPackageId":"demo.story","storyVersion":"1.0.0","contentHash":"sha256:demo","seed":42,"expectedVersion":0}
+
+### Add Team (copy pairingCode once; version 2)
+POST {{host}}/api/sessions/{{sessionId}}/teams
+Content-Type: application/json
+
+{"displayName":"گروه آبی","expectedVersion":1}
+
+### Create human-controlled Entity draft (version 3)
+POST {{host}}/api/sessions/{{sessionId}}/entities
+Content-Type: application/json
+
+{"definitionId":"hero.blue","displayName":"قهرمان آبی","controllerType":"HumanTeam","behaviorProfileId":null,"expectedVersion":2}
+
+### Create authored-behavior Entity (version 4)
+POST {{host}}/api/sessions/{{sessionId}}/entities
+Content-Type: application/json
+
+{"definitionId":"guide","displayName":"راهنما","controllerType":"AuthoredBehavior","behaviorProfileId":"guide.v1","expectedVersion":3}
+
+### Assign human Entity (version 5)
+POST {{host}}/api/sessions/{{sessionId}}/assignments
+Content-Type: application/json
+
+{"entityId":"{{humanEntityId}}","teamId":"{{teamId}}","expectedVersion":4}
+
+### Development-only generic initial state (version 6)
+POST {{host}}/internal/sessions/{{sessionId}}/bootstrap
+Content-Type: application/json
+
+{"expectedVersion":5,"metrics":[{"scope":"World","scopeId":"{{sessionId}}","metricKey":"chapter.progress","numericValue":0}],"memories":[],"relationships":[]}
+
+### Start / read / public / pause / resume
+POST {{host}}/api/sessions/{{sessionId}}/start
+Content-Type: application/json
+
+{"expectedVersion":6}
+
+###
+GET {{host}}/api/sessions/{{sessionId}}
+###
+GET {{host}}/api/sessions/{{sessionId}}/public
+###
+POST {{host}}/api/sessions/{{sessionId}}/pause
+Content-Type: application/json
+
+{"expectedVersion":7}
+###
+POST {{host}}/api/sessions/{{sessionId}}/resume
+Content-Type: application/json
+
+{"expectedVersion":8}
+###
+GET {{host}}/health
+###
+GET {{host}}/alive
+###
+GET {{host}}/ready
