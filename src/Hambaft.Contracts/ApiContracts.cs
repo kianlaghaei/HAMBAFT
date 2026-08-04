@@ -18,11 +18,13 @@ public sealed record StateChangedNotification(Guid SessionId,long StateVersion,s
 public sealed record InitializeNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record SubmitStoryChoiceRequest(Guid AssignmentId,string ChoiceId,long ExpectedStateVersion,Guid CommandId);
 public sealed record ResolveNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
+public sealed record ResolveEndingsRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record NarrativeNotification(Guid SessionId,Guid? TeamId,long StateVersion,string CheckpointId,string EventType);
 public sealed record SendProposalRequest(string InteractionTypeId,Guid ReceiverTeamId,JsonElement TermsPayload,string? ValidityType,int? ValidForCheckpointCount,string? ValidUntilCheckpointId,long ExpectedStateVersion,Guid CommandId);
 public sealed record CounterProposalRequest(int ExpectedRevisionNumber,JsonElement TermsPayload,long ExpectedStateVersion,Guid CommandId);
 public sealed record ProposalDecisionRequest(int ExpectedRevisionNumber,long ExpectedStateVersion,Guid CommandId);
 public sealed record InteractionNotification(Guid SessionId,Guid ProposalId,Guid? AgreementId,long StateVersion,string EventType);
+public sealed record EndingNotification(Guid SessionId,Guid? ScopeId,string EndingDefinitionId,long StateVersion,string EventType);
 
 public sealed record SessionResponse(
     Guid Id,

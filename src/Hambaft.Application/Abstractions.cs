@@ -10,6 +10,7 @@ public interface ISessionStore
     Task<SessionStateView?> LoadSessionViewAsync(Guid sessionId, CancellationToken cancellationToken);
     Task<PublicWorldView?> LoadPublicViewAsync(Guid sessionId, CancellationToken cancellationToken);
     Task<TeamExperienceView?> LoadTeamViewAsync(Guid teamId, CancellationToken cancellationToken);
+    Task<EndingEvidenceView?> LoadEndingEvidenceAsync(Guid sessionId,CancellationToken cancellationToken)=>Task.FromResult<EndingEvidenceView?>(null);
 }
 
 public sealed record PairingCodeMaterial(string RawCode, string Hash);

@@ -79,6 +79,28 @@ public sealed class ConditionEngine : IConditionEngine
                 actual=x.State.CurrentCheckpointId; expected=c.CheckpointId; result=x.State.CurrentCheckpointId==c.CheckpointId; break;
             case ConditionType.ChoiceWasSubmitted:
                 target=x.AssignmentId is null?"session":$"assignment:{x.AssignmentId:D}"; actual=x.State.SubmittedChoices.Any(s=>(x.AssignmentId is null||s.AssignmentId==x.AssignmentId)&&s.ChoiceId==c.ChoiceId); expected=true; result=(bool)actual; break;
+            case ConditionType.MetricDistributionAbove:
+            case ConditionType.MetricDistributionBelow:
+            case ConditionType.EntityCountWithMetricAbove:
+                var metricValues=x.State.Entities.OrderBy(e=>e.DefinitionId,StringComparer.Ordinal).ThenBy(e=>e.Id)
+                    .Select(e=>x.State.Metrics.SingleOrDefault(m=>m.Scope==MetricScope.Entity&&m.ScopeId==e.Id&&m.MetricKey==c.MetricKey)?.NumericValue).Where(v=>v is not null).Select(v=>v!.Value).ToList();
+                var matching=metricValues.Count(v=>c.Type==ConditionType.MetricDistributionBelow?v<c.Expected:v>c.Expected);target="entity-distribution";actual=matching;expected=c.Count??1;result=matching>=(c.Count??1);break;
+            case ConditionType.AgreementCountAtLeast:
+                var agreementCount=x.State.Agreements.Count(a=>(c.AgreementTypeId is null||a.InteractionTypeId==c.AgreementTypeId)&&a.Status is AgreementStatus.Active or AgreementStatus.Executed);target="agreements";actual=agreementCount;expected=c.Count??1;result=agreementCount>=(c.Count??1);break;
+            case ConditionType.AgreementTypeExists:
+                target="agreements";actual=x.State.Agreements.Any(a=>a.InteractionTypeId==c.AgreementTypeId&&a.Status is AgreementStatus.Active or AgreementStatus.Executed);expected=true;result=(bool)actual;break;
+            case ConditionType.RelationshipNetworkAverageAbove:
+            case ConditionType.RelationshipNetworkMinimumAbove:
+                var network=x.State.Relationships.Where(r=>r.RelationshipKey==c.RelationshipKey).OrderBy(r=>r.SourceEntityId).ThenBy(r=>r.TargetEntityId).Select(r=>r.NumericValue).ToList();
+                decimal? networkValue=network.Count==0?null:c.Type==ConditionType.RelationshipNetworkAverageAbove?network.Average():network.Min();target="relationship-network";actual=networkValue;expected=c.Expected;result=networkValue is { } nv&&c.Expected is { } ne&&nv>ne;break;
+            case ConditionType.EntityCountWithMemoryAtLeast:
+                var memoryCount=x.State.Entities.OrderBy(e=>e.DefinitionId,StringComparer.Ordinal).Count(e=>x.State.Memories.Any(m=>m.Scope==MemoryScope.Entity&&m.ScopeId==e.Id&&m.Key==c.MemoryKey));target="entities-with-memory";actual=memoryCount;expected=c.Count??1;result=memoryCount>=(c.Count??1);break;
+            case ConditionType.ProposalExpiredCountAtLeast:
+                var expired=x.State.Proposals.Count(p=>p.Status==ProposalStatus.Expired);target="expired-proposals";actual=expired;expected=c.Count??1;result=expired>=(c.Count??1);break;
+            case ConditionType.ConsequenceTriggered:
+                target="consequences";actual=x.State.ScheduledConsequences.Any(s=>s.DefinitionId==c.ConsequenceId&&s.Status==ScheduledConsequenceStatus.Triggered);expected=true;result=(bool)actual;break;
+            case ConditionType.AuthoredBehaviorActionWas:
+                target="authored-behavior";actual=x.State.AuthoredBehaviorSelections.Any(s=>s.ActionId==c.BehaviorActionId);expected=true;result=(bool)actual;break;
             default: throw new DomainException($"Unsupported condition type {c.Type}.");
         }
         trace.Add(new(c.Type,target,Format(actual),Format(expected),result)); return result;

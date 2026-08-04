@@ -12,6 +12,8 @@ public enum StoryletAssignmentStatus { Assigned, Responded, Resolved, Superseded
 public enum ProposalStatus { Pending, Countered, Accepted, Rejected, Expired, Cancelled, Executed, Failed }
 public enum AgreementStatus { Active, Executed, Failed, Cancelled }
 public enum ScheduledConsequenceStatus { Pending, Triggered, Cancelled, Failed }
+public enum EndingScope { Entity, World }
+public enum EndingEvidenceKind { DomainEvent, Choice, Proposal, Agreement, Memory, MetricSnapshot, Relationship, BehaviorAction, Consequence }
 
 public sealed record Team(
     Guid Id,
@@ -123,6 +125,15 @@ public sealed record AuthoredBehaviorSelection(
     string DifficultyId,
     string CheckpointId,
     int ResolutionNumber);
+
+public sealed record EndingEvidence(EndingEvidenceKind Kind, Guid? ReferenceId, string? StableId, string? Key, string? Value, bool IsPublic);
+public sealed record EndingMetricSnapshot(MetricScope Scope, Guid ScopeId, string MetricKey, decimal NumericValue);
+public sealed record EndingResult(
+    Guid EndingResultId, Guid SessionId, EndingScope Scope, Guid ScopeId, string EndingDefinitionId,
+    string PackageId, string PackageVersion, string ContentHash, long ResolvedAtStreamVersion,
+    string InputFingerprint, string NarrativeRef, IReadOnlyDictionary<string,string> PresentationTags,
+    DateTimeOffset ResolvedAtUtc, IReadOnlyList<EndingEvidence> Evidence,
+    IReadOnlyList<EndingMetricSnapshot> MetricSnapshot, string? PublicSummaryNarrativeRef = null);
 
 public static class DomainKeys
 {

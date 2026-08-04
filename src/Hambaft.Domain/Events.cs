@@ -89,3 +89,7 @@ public sealed record ConsequenceCancelled(
 public sealed record ConsequenceFailed(
     Guid ScheduledConsequenceId, string DefinitionId, Guid SourceEventId, Guid? SourceTeamId,
     Guid? SourceEntityId, string ReasonCode, EventMetadata Metadata) : IDomainEvent;
+
+public sealed record EntityEndingResolved(EndingResult Result, EventMetadata Metadata) : IDomainEvent;
+public sealed record WorldEndingResolved(EndingResult Result, EventMetadata Metadata) : IDomainEvent;
+public sealed record SessionCompleted(EventMetadata Metadata) : IDomainEvent;

@@ -81,7 +81,7 @@ app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,st
 app.MapGet("/api/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(ToResponse(view)):Results.NotFound());
 app.MapGet("/api/sessions/{sessionId:guid}/admin",async(Guid sessionId,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
 {
-    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();return await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound();
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();return await runtime.GetAdminAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound();
 }).RequireAuthorization("Admin");
 app.MapPost("/api/sessions/{sessionId:guid}/teams",async(Guid sessionId,AddTeamRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
@@ -99,6 +99,8 @@ app.MapPost("/api/sessions/{sessionId:guid}/start",(Guid sessionId,TransitionReq
 app.MapPost("/api/sessions/{sessionId:guid}/pause",(Guid sessionId,TransitionRequest r,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>Transition(new PauseSession(sessionId,r.ExpectedVersion,Context(http)),runtime,hub,ct));
 app.MapPost("/api/sessions/{sessionId:guid}/resume",(Guid sessionId,TransitionRequest r,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>Transition(new ResumeSession(sessionId,r.ExpectedVersion,Context(http)),runtime,hub,ct));
 app.MapGet("/api/sessions/{sessionId:guid}/public",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetPublicAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound());
+app.MapGet("/api/public/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetPublicAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound());
+app.MapGet("/api/admin/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>ClaimGuid(http,"session_id")!=sessionId?Results.Forbid():await runtime.GetAdminAsync(sessionId,ct) is { } view?Results.Ok(view):Results.NotFound()).RequireAuthorization("Admin");
 app.MapPost("/api/sessions/{sessionId:guid}/pair",async(Guid sessionId,PairingRequest request,SessionRuntime runtime,IPairingCodeGenerator pairing,JwtTokenIssuer tokens,CancellationToken ct)=>
 {
     var session=await runtime.GetSessionAsync(sessionId,ct);
@@ -199,6 +201,37 @@ app.MapPost("/api/sessions/{sessionId:guid}/narrative/resolve",async(Guid sessio
     await hub.Clients.Group(HubGroups.Display(sessionId)).WorldNarrativePublished(notification with { EventType=nameof(WorldNarrativePublished) });
     return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
 }).RequireAuthorization("Admin");
+
+app.MapPost("/api/sessions/{sessionId:guid}/endings/resolve",async(Guid sessionId,ResolveEndingsRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();
+    var result=await runtime.ExecuteAsync(new ResolveEndings(sessionId,request.ExpectedStateVersion,Context(http,commandId:request.CommandId)),ct);
+    var endings=(await runtime.GetEndingsAsync(sessionId,ct))!;var state=(await runtime.GetSessionAsync(sessionId,ct))!;
+    foreach(var entityEnding in endings.EntityEndings)
+    {
+        var teamId=state.Entities.Single(x=>x.Id==entityEnding.ScopeId).ControlledByTeamId;
+        if(teamId is { } team)await hub.Clients.Group(HubGroups.Team(team)).EntityEndingPublished(new(sessionId,entityEnding.ScopeId,entityEnding.EndingDefinitionId,result.StateVersion,nameof(EntityEndingResolved)));
+    }
+    var world=endings.WorldEnding!;var worldNotice=new EndingNotification(sessionId,sessionId,world.EndingDefinitionId,result.StateVersion,nameof(WorldEndingResolved));
+    foreach(var client in new[]{hub.Clients.Group(HubGroups.Session(sessionId)),hub.Clients.Group(HubGroups.Display(sessionId)),hub.Clients.Group(HubGroups.Admins(sessionId))})await client.WorldEndingPublished(worldNotice);
+    var completed=worldNotice with { EventType=nameof(SessionCompleted) };
+    foreach(var client in new[]{hub.Clients.Group(HubGroups.Session(sessionId)),hub.Clients.Group(HubGroups.Display(sessionId)),hub.Clients.Group(HubGroups.Admins(sessionId))})await client.SessionCompleted(completed);
+    return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
+}).RequireAuthorization("Admin");
+
+app.MapGet("/api/endings",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);
+    return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(new { view.EntityEnding,view.WorldEnding,view.StateVersion });
+}).RequireAuthorization("Team");
+
+app.MapGet("/api/sessions/{sessionId:guid}/endings",async(Guid sessionId,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
+{
+    if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();var role=http.User.FindFirst("client_role")?.Value;
+    if(role=="Admin")return await runtime.GetEndingsAsync(sessionId,ct) is { } evidence?Results.Ok(evidence):Results.NotFound();
+    if(role=="Team"){var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);return view is null?Results.NotFound():Results.Ok(new { view.EntityEnding,view.WorldEnding,view.StateVersion });}
+    var publicView=await runtime.GetPublicAsync(sessionId,ct);return publicView is null?Results.NotFound():Results.Ok(new { publicView.WorldEnding,publicView.PublicEntityEndingSummaries,publicView.StateVersion });
+}).RequireAuthorization("SessionClient");
 
 if(app.Environment.IsDevelopment())app.MapPost("/internal/sessions/{sessionId:guid}/bootstrap",async(Guid sessionId,BootstrapRequest request,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
 {

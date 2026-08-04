@@ -48,10 +48,14 @@ public static class EventFingerprint
             ConsequenceTriggered e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.TriggeredAtCheckpointId,e.Visibility),
             ConsequenceCancelled e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId),
             ConsequenceFailed e => Join(e.ScheduledConsequenceId,e.DefinitionId,e.SourceEventId,e.SourceTeamId,e.SourceEntityId,e.ReasonCode),
+            EntityEndingResolved e => Ending(e.Result),
+            WorldEndingResolved e => Ending(e.Result),
+            SessionCompleted => string.Empty,
             _ => throw new DomainException($"Unsupported fingerprint event {value.GetType().Name}.")
         };
         var m=value.Metadata;
         return $"{value.GetType().Name}|{body}|meta:{m.CorrelationId:D}|{m.CausationId:D}|{m.CommandId:D}|{m.SessionId:D}|{m.TeamId?.ToString("D")}|{m.OccurredAtUtc.UtcDateTime:O}|{m.CheckpointId}|{m.StoryletAssignmentId?.ToString("D")}|{m.ChoiceSubmissionId?.ToString("D")}";
     }
     private static string Join(params object?[] values) => string.Join("|", values.Select(x => x switch { null=>"", decimal d=>d.ToString(CultureInfo.InvariantCulture), IFormattable f=>f.ToString(null,CultureInfo.InvariantCulture), _=>x.ToString() }));
+    private static string Ending(EndingResult r)=>Join(r.EndingResultId,r.SessionId,r.Scope,r.ScopeId,r.EndingDefinitionId,r.PackageId,r.PackageVersion,r.ContentHash,r.ResolvedAtStreamVersion,r.InputFingerprint,r.NarrativeRef,string.Join(",",r.PresentationTags.OrderBy(x=>x.Key,StringComparer.Ordinal).Select(x=>$"{x.Key}={x.Value}")),r.ResolvedAtUtc,string.Join(",",r.Evidence.Select(x=>Join(x.Kind,x.ReferenceId,x.StableId,x.Key,x.Value,x.IsPublic))),string.Join(",",r.MetricSnapshot.Select(x=>Join(x.Scope,x.ScopeId,x.MetricKey,x.NumericValue))),r.PublicSummaryNarrativeRef);
 }

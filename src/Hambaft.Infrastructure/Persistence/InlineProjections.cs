@@ -7,7 +7,7 @@ namespace Hambaft.Infrastructure.Persistence;
 public sealed partial class SessionStateProjection : SingleStreamProjection<SessionStateView,Guid>
 {
     public SessionStateProjection()=>Name="SessionState";
-    public SessionStateView Create(SessionCreated e)=>new(e.Id,e.StoryPackageId,e.StoryVersion,e.ContentHash,e.Seed,SessionStatus.Created,e.Metadata.OccurredAtUtc,null,null,[],[],1,null,false,[],[],e.DifficultyId,0,[],[],[],[],[]);
+    public SessionStateView Create(SessionCreated e)=>new(e.Id,e.StoryPackageId,e.StoryVersion,e.ContentHash,e.Seed,SessionStatus.Created,e.Metadata.OccurredAtUtc,null,null,[],[],1,null,false,[],[],e.DifficultyId,0,[],[],[],[],[],[]);
     public SessionStateView Apply(TeamAdded e,SessionStateView v)=>v with { Status=v.Status==SessionStatus.Created?SessionStatus.Lobby:v.Status,Teams=v.Teams.Append(new Team(e.TeamId,v.Id,e.DisplayName,e.PairingCodeHash,null,e.Metadata.OccurredAtUtc)).ToList(),StateVersion=v.StateVersion+1 };
     public SessionStateView Apply(WorldEntityCreated e,SessionStateView v)=>v with { Entities=v.Entities.Append(new WorldEntity(e.EntityId,v.Id,e.DefinitionId,e.DisplayName,e.ControllerType,null,e.BehaviorProfileId,e.Status)).ToList(),StateVersion=v.StateVersion+1 };
     public SessionStateView Apply(EntityAssignedToTeam e,SessionStateView v)=>v with { Teams=v.Teams.Select(x=>x.Id==e.TeamId?x with { ControlledEntityId=e.EntityId }:x).ToList(),Entities=v.Entities.Select(x=>x.Id==e.EntityId?x with { ControlledByTeamId=e.TeamId,Status=EntityStatus.Active }:x).ToList(),StateVersion=v.StateVersion+1 };
@@ -35,6 +35,9 @@ public sealed partial class SessionStateProjection : SingleStreamProjection<Sess
     public SessionStateView Apply(ConsequenceTriggered e,SessionStateView v)=>Phase3Projection.Apply(v,e);
     public SessionStateView Apply(ConsequenceCancelled e,SessionStateView v)=>Phase3Projection.Apply(v,e);
     public SessionStateView Apply(ConsequenceFailed e,SessionStateView v)=>Phase3Projection.Apply(v,e);
+    public SessionStateView Apply(EntityEndingResolved e,SessionStateView v)=>v with { EndingResults=(v.EndingResults??[]).Append(e.Result).ToList(),StateVersion=v.StateVersion+1 };
+    public SessionStateView Apply(WorldEndingResolved e,SessionStateView v)=>v with { EndingResults=(v.EndingResults??[]).Append(e.Result).ToList(),StateVersion=v.StateVersion+1 };
+    public SessionStateView Apply(SessionCompleted e,SessionStateView v)=>v with { Status=SessionStatus.Completed,CompletedAtUtc=e.Metadata.OccurredAtUtc,StateVersion=v.StateVersion+1 };
     private static SessionStateView Bump(SessionStateView v)=>v with { StateVersion=v.StateVersion+1 };
     internal static StoryletAssignment ToAssignment(StoryletAssigned e)=>new(e.AssignmentId,e.StoryletId,e.CheckpointId,e.Scope,e.TargetTeamId,e.TargetEntityId,e.RequiredResponse,e.AssignedAtVersion,StoryletAssignmentStatus.Assigned);
     internal static SubmittedStoryChoice ToChoice(StoryChoiceSubmitted e)=>new(e.AssignmentId,e.TeamId,e.ChoiceId,e.SubmittedAtUtc,e.SubmittedAtStreamVersion,e.Metadata.CommandId);
@@ -45,7 +48,7 @@ public sealed partial class SessionStateProjection : SingleStreamProjection<Sess
 public sealed partial class PublicWorldProjection : SingleStreamProjection<PublicWorldView,Guid>
 {
     public PublicWorldProjection()=>Name="PublicWorld";
-    public PublicWorldView Create(SessionCreated e)=>new(e.Id,SessionStatus.Created,[],[],[],[],1,e.StoryPackageId,e.StoryVersion,e.ContentHash,null,null,null,null);
+    public PublicWorldView Create(SessionCreated e)=>new(e.Id,SessionStatus.Created,[],[],[],[],1,e.StoryPackageId,e.StoryVersion,e.ContentHash,null,null,null,null,DifficultyId:e.DifficultyId);
     public PublicWorldView Apply(TeamAdded _,PublicWorldView v)=>v with { Status=v.Status==SessionStatus.Created?SessionStatus.Lobby:v.Status,StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(WorldEntityCreated e,PublicWorldView v)=>v with { Entities=v.Entities.Append(new WorldEntity(e.EntityId,v.Id,e.DefinitionId,e.DisplayName,e.ControllerType,null,e.BehaviorProfileId,e.Status)).ToList(),StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(EntityAssignedToTeam e,PublicWorldView v)=>v with { Entities=v.Entities.Select(x=>x.Id==e.EntityId?x with { ControlledByTeamId=e.TeamId,Status=EntityStatus.Active }:x).ToList(),StateVersion=v.StateVersion+1 };
@@ -72,9 +75,22 @@ public sealed partial class PublicWorldProjection : SingleStreamProjection<Publi
     public PublicWorldView Apply(ConsequenceTriggered e,PublicWorldView v)=>v with { PublicConsequences=(v.PublicConsequences??[]).Select(x=>x.ScheduledConsequenceId==e.ScheduledConsequenceId?x with { Status=ScheduledConsequenceStatus.Triggered }:x).ToList(),StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(ConsequenceCancelled e,PublicWorldView v)=>v with { PublicConsequences=(v.PublicConsequences??[]).Select(x=>x.ScheduledConsequenceId==e.ScheduledConsequenceId?x with { Status=ScheduledConsequenceStatus.Cancelled }:x).ToList(),StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(ConsequenceFailed e,PublicWorldView v)=>v with { PublicConsequences=(v.PublicConsequences??[]).Select(x=>x.ScheduledConsequenceId==e.ScheduledConsequenceId?x with { Status=ScheduledConsequenceStatus.Failed }:x).ToList(),StateVersion=v.StateVersion+1 };
+    public PublicWorldView Apply(EntityEndingResolved e,PublicWorldView v)=>v with { PublicEntityEndingSummaries=e.Result.PublicSummaryNarrativeRef is null?v.PublicEntityEndingSummaries:(v.PublicEntityEndingSummaries??[]).Append(Presentation(e.Result,[])).ToList(),StateVersion=v.StateVersion+1 };
+    public PublicWorldView Apply(WorldEndingResolved e,PublicWorldView v)=>v with { WorldEnding=Presentation(e.Result,e.Result.Evidence.Where(x=>x.IsPublic).ToList()),StateVersion=v.StateVersion+1 };
+    public PublicWorldView Apply(SessionCompleted _,PublicWorldView v)=>v with { Status=SessionStatus.Completed,StateVersion=v.StateVersion+1 };
     private static PublicWorldView Bump(PublicWorldView v)=>v with { StateVersion=v.StateVersion+1 };
     private static IReadOnlyList<Metric> Upsert(IReadOnlyList<Metric> values,Metric value)=>values.Where(x=>!(x.Scope==value.Scope&&x.ScopeId==value.ScopeId&&x.MetricKey==value.MetricKey)).Append(value).ToList();
     private static IReadOnlyList<Relationship> Upsert(IReadOnlyList<Relationship> values,Relationship value)=>values.Where(x=>!(x.SourceEntityId==value.SourceEntityId&&x.TargetEntityId==value.TargetEntityId&&x.RelationshipKey==value.RelationshipKey)).Append(value).ToList();
+    internal static EndingPresentationView Presentation(EndingResult r,IReadOnlyList<EndingEvidence> evidence)=>new(r.EndingResultId,r.Scope,r.ScopeId,r.EndingDefinitionId,string.Empty,[],r.PresentationTags,evidence,r.ContentHash,r.ResolvedAtStreamVersion);
+}
+
+public sealed partial class EndingEvidenceProjection : SingleStreamProjection<EndingEvidenceView,Guid>
+{
+    public EndingEvidenceProjection()=>Name="EndingEvidence";
+    public EndingEvidenceView Create(SessionCreated e)=>new(e.Id,[],null,e.StoryPackageId,e.StoryVersion,e.ContentHash,1);
+    public EndingEvidenceView Apply(EntityEndingResolved e,EndingEvidenceView v)=>v with { EntityEndings=v.EntityEndings.Append(e.Result).ToList(),StateVersion=e.Result.ResolvedAtStreamVersion };
+    public EndingEvidenceView Apply(WorldEndingResolved e,EndingEvidenceView v)=>v with { WorldEnding=e.Result,StateVersion=e.Result.ResolvedAtStreamVersion };
+    public EndingEvidenceView Apply(SessionCompleted _,EndingEvidenceView v)=>v with { StateVersion=v.StateVersion+1 };
 }
 
 internal static class Phase3Projection

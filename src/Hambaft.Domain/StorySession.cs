@@ -33,6 +33,7 @@ public sealed class StorySession
     public List<Agreement> Agreements { get; private set; } = [];
     public List<ScheduledConsequence> ScheduledConsequences { get; private set; } = [];
     public List<AuthoredBehaviorSelection> AuthoredBehaviorSelections { get; private set; } = [];
+    public List<EndingResult> EndingResults { get; private set; } = [];
 
     public static StorySession From(IEnumerable<IDomainEvent> history)
     {
@@ -238,6 +239,29 @@ public sealed class StorySession
         return new(agreementId,agreement.ProposalId,agreement.InteractionTypeId,agreement.PartyTeamIds,proposal.CurrentRevisionNumber,CurrentCheckpointId!,DomainKeys.Normalize(reasonCode,nameof(reasonCode)),metadata with { CheckpointId=CurrentCheckpointId });
     }
 
+    public EntityEndingResolved ResolveEntityEnding(EndingResult result,EventMetadata metadata)
+    {
+        if(Status!=SessionStatus.Running) throw new DomainException("Endings require a running Session.");
+        if(result.Scope!=EndingScope.Entity||result.SessionId!=Id||EndingResults.Any(x=>x.Scope==EndingScope.Entity&&x.ScopeId==result.ScopeId)) throw new DomainException("Entity Ending is invalid or already resolved.");
+        var entity=Entities.SingleOrDefault(x=>x.Id==result.ScopeId)??throw new DomainException("Ending Entity does not belong to this Session.");
+        if(entity.ControllerType!=ControllerType.HumanTeam) throw new DomainException("Only controlled Entity Endings are required by default.");
+        return new(result,metadata with { TeamId=entity.ControlledByTeamId,CheckpointId=CurrentCheckpointId });
+    }
+
+    public WorldEndingResolved ResolveWorldEnding(EndingResult result,EventMetadata metadata)
+    {
+        if(Status!=SessionStatus.Running||result.Scope!=EndingScope.World||result.SessionId!=Id||result.ScopeId!=Id) throw new DomainException("World Ending is invalid for this Session.");
+        if(EndingResults.Any(x=>x.Scope==EndingScope.World)) throw new DomainException("World Ending is already resolved.");
+        if(Entities.Where(x=>x.ControllerType==ControllerType.HumanTeam).Any(x=>EndingResults.All(r=>r.Scope!=EndingScope.Entity||r.ScopeId!=x.Id))) throw new DomainException("All controlled Entity Endings must resolve before the World Ending.");
+        return new(result,metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
+    public SessionCompleted Complete(EventMetadata metadata)
+    {
+        if(Status!=SessionStatus.Running||EndingResults.Count(x=>x.Scope==EndingScope.World)!=1) throw new DomainException("Session completion requires one World Ending.");
+        return new(metadata with { CheckpointId=CurrentCheckpointId });
+    }
+
     public void Apply(IDomainEvent @event)
     {
         switch (@event)
@@ -300,6 +324,9 @@ public sealed class StorySession
             case ConsequenceTriggered e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Triggered }); break;
             case ConsequenceCancelled e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Cancelled }); break;
             case ConsequenceFailed e: ReplaceConsequence(e.ScheduledConsequenceId,x=>x with { Status=ScheduledConsequenceStatus.Failed }); break;
+            case EntityEndingResolved e: EndingResults.Add(e.Result); break;
+            case WorldEndingResolved e: EndingResults.Add(e.Result); break;
+            case SessionCompleted e: Status=SessionStatus.Completed; CompletedAtUtc=e.Metadata.OccurredAtUtc; break;
             default: throw new DomainException($"Unsupported event {@event.GetType().Name}.");
         }
         StateVersion++;

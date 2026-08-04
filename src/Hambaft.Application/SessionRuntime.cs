@@ -11,6 +11,8 @@ public sealed partial class SessionRuntime
     private readonly IEffectEngine? effects;
     private readonly IInteractionTermsValidator interactionTerms = new InteractionTermsValidator();
     private readonly IBehaviorResolver? behaviorResolver;
+    private readonly IEntityEndingResolver? entityEndingResolver;
+    private readonly IWorldEndingResolver? worldEndingResolver;
 
     public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing)
     { this.store=store; this.pairing=pairing; }
@@ -18,6 +20,8 @@ public sealed partial class SessionRuntime
         : this(store,pairing) { this.packages=packages; this.selector=selector; this.effects=effects; }
     public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing,IStoryPackageLoader packages,IStoryletSelector selector,IEffectEngine effects,IBehaviorResolver behaviorResolver)
         : this(store,pairing,packages,selector,effects) { this.behaviorResolver=behaviorResolver; }
+    public SessionRuntime(ISessionStore store,IPairingCodeGenerator pairing,IStoryPackageLoader packages,IStoryletSelector selector,IEffectEngine effects,IBehaviorResolver behaviorResolver,IEntityEndingResolver entityEndingResolver,IWorldEndingResolver worldEndingResolver)
+        : this(store,pairing,packages,selector,effects,behaviorResolver) { this.entityEndingResolver=entityEndingResolver;this.worldEndingResolver=worldEndingResolver; }
 
     public async Task<CommandResult> ExecuteAsync(CreateSession command, CancellationToken ct)
     {
@@ -104,13 +108,62 @@ public sealed partial class SessionRuntime
         return new(state.Id,state.StateVersion,nameof(NarrativeCheckpointResolved));
     }
 
-    public Task<CommandResult> CreateEntityAsync(Guid sessionId,Guid entityId,string definitionId,string displayName,string controllerType,string? behaviorProfileId,long expectedVersion,CommandContext context,CancellationToken ct)=>ExecuteAsync(CommandFactory.CreateEntity(sessionId,entityId,definitionId,displayName,controllerType,behaviorProfileId,expectedVersion,context),ct);
+    public async Task<CommandResult> ExecuteAsync(ResolveEndings c,CancellationToken ct)
+    {
+        RequireStoryServices();
+        if(entityEndingResolver is null||worldEndingResolver is null)throw new InvalidOperationException("Ending runtime services are not configured.");
+        var state=await Load(c.SessionId,c.ExpectedVersion,ct);
+        if(state.Status==SessionStatus.Completed)throw new EndingResolutionConflictException("Session Endings have already been resolved.");
+        var package=await LoadLockedPackage(state,ct);
+        if(!state.NarrativeInitialized||state.CurrentCheckpointId is null)throw new EndingResolutionConflictException("Narrative is incomplete.");
+        if(state.StoryletAssignments.Any(x=>x.Status is StoryletAssignmentStatus.Assigned or StoryletAssignmentStatus.Responded))throw new EndingResolutionConflictException("Narrative assignments remain unresolved.");
+        if(state.ScheduledConsequences.Any(x=>x.Status==ScheduledConsequenceStatus.Pending))throw new EndingResolutionConflictException("A mandatory or visible scheduled consequence is still pending.");
+        if(state.Proposals.Any(x=>x.Status is ProposalStatus.Pending or ProposalStatus.Countered))throw new EndingResolutionConflictException("A Proposal response remains unresolved.");
+        var history=(await store.LoadEventsAsync(c.SessionId,ct)).ToList();
+        var appended=new List<IDomainEvent>();
+        foreach(var entity in state.Entities.Where(x=>x.ControllerType==ControllerType.HumanTeam).OrderBy(x=>x.DefinitionId,StringComparer.Ordinal).ThenBy(x=>x.Id))
+        {
+            var result=entityEndingResolver.Resolve(package,state,entity,history,state.StateVersion+1,c.Context.OccurredAtUtc);
+            Add(state,appended,state.ResolveEntityEnding(result,c.Context.For(c.SessionId)));
+        }
+        var world=worldEndingResolver.Resolve(package,state,history,state.StateVersion+1,c.Context.OccurredAtUtc);
+        Add(state,appended,state.ResolveWorldEnding(world,c.Context.For(c.SessionId)));
+        Add(state,appended,state.Complete(c.Context.For(c.SessionId)));
+        await store.AppendAsync(c.SessionId,c.ExpectedVersion,appended,state,ct);
+        return new(state.Id,state.StateVersion,nameof(SessionCompleted),AffectedTeamIds:state.Teams.Select(x=>x.Id).OrderBy(x=>x).ToList(),IsPublic:true,EmittedEventTypes:appended.Select(x=>x.GetType().Name).ToList());
+    }
+
+    public async Task<CommandResult> CreateEntityAsync(Guid sessionId,Guid entityId,string definitionId,string displayName,string controllerType,string? behaviorProfileId,long expectedVersion,CommandContext context,CancellationToken ct)
+    {
+        if(Enum.TryParse<ControllerType>(controllerType,true,out var controller)&&controller==ControllerType.AuthoredBehavior&&string.IsNullOrWhiteSpace(behaviorProfileId))
+        {
+            RequireStoryServices();var state=await Load(sessionId,expectedVersion,ct);var package=await LoadLockedPackage(state,ct);
+            var eligible=package.BehaviorDefinitions.Profiles.Where(x=>x.EligibleEntityDefinitions.Contains(definitionId,StringComparer.Ordinal)).OrderBy(x=>x.Id,StringComparer.Ordinal).ToList();
+            if(eligible.Count==0)throw new DomainException($"Entity definition '{definitionId}' has no eligible authored Behavior Profile.");
+            var selection=DeterministicIds.Create(package.ContentHash,state.Seed,state.DifficultyId,definitionId).ToByteArray();
+            var index=(int)(System.Buffers.Binary.BinaryPrimitives.ReadUInt32BigEndian(selection.AsSpan(0,4))%(uint)eligible.Count);
+            behaviorProfileId=eligible[index].Id;
+        }
+        return await ExecuteAsync(CommandFactory.CreateEntity(sessionId,entityId,definitionId,displayName,controllerType,behaviorProfileId,expectedVersion,context),ct);
+    }
     public Task<CommandResult> SetMetricAsync(Guid sessionId,string scope,Guid scopeId,string key,decimal value,long expectedVersion,CommandContext context,CancellationToken ct)=>ExecuteAsync(CommandFactory.SetMetric(sessionId,scope,scopeId,key,value,expectedVersion,context),ct);
     public Task<CommandResult> AddMemoryAsync(Guid sessionId,string scope,Guid scopeId,string key,string? json,string visibility,long expectedVersion,CommandContext context,CancellationToken ct)=>ExecuteAsync(CommandFactory.AddMemory(sessionId,scope,scopeId,key,json,visibility,expectedVersion,context),ct);
 
     public Task<SessionStateView?> GetSessionAsync(Guid id,CancellationToken ct)=>store.LoadSessionViewAsync(id,ct);
     public Task<PublicWorldView?> GetPublicAsync(Guid id,CancellationToken ct)=>store.LoadPublicViewAsync(id,ct);
     public Task<TeamExperienceView?> GetTeamAsync(Guid teamId,CancellationToken ct)=>store.LoadTeamViewAsync(teamId,ct);
+    public Task<EndingEvidenceView?> GetEndingsAsync(Guid sessionId,CancellationToken ct)=>store.LoadEndingEvidenceAsync(sessionId,ct);
+    public async Task<AdminSessionView?> GetAdminAsync(Guid sessionId,CancellationToken ct)
+    {
+        var state=await store.LoadAsync(sessionId,ct);if(state is null)return null;var package=await LoadLockedPackage(state,ct);var conditionEngine=new ConditionEngine();var diagnostics=new List<EndingEligibilityDiagnostic>();
+        foreach(var entity in state.Entities.Where(x=>x.ControllerType==ControllerType.HumanTeam).OrderBy(x=>x.DefinitionId,StringComparer.Ordinal))
+        {
+            var team=state.Teams.SingleOrDefault(x=>x.ControlledEntityId==entity.Id);
+            diagnostics.AddRange(package.EntityEndingDefinitions.Where(x=>x.EligibleEntityDefinitions.Contains(entity.DefinitionId)).Select(x=>new EndingEligibilityDiagnostic(EndingScope.Entity,entity.Id,x.Id,conditionEngine.EvaluateAll(x.Conditions,new(state,package,team?.Id,entity.Id)).Result,x.Priority)));
+        }
+        diagnostics.AddRange(package.WorldEndingDefinitions.Select(x=>new EndingEligibilityDiagnostic(EndingScope.World,state.Id,x.Id,conditionEngine.EvaluateAll(x.Conditions,new(state,package)).Result,x.Priority)));
+        return new(state.Id,state.StoryletAssignments.Where(x=>x.RequiredResponse&&x.Status==StoryletAssignmentStatus.Assigned&&x.TargetTeamId is not null).Select(x=>x.TargetTeamId!.Value).Distinct().OrderBy(x=>x).ToList(),state.StoryletAssignments.Where(x=>x.Status is StoryletAssignmentStatus.Assigned or StoryletAssignmentStatus.Responded).Select(x=>x.StoryletId).ToList(),state.CurrentCheckpointId,state.Proposals.Where(x=>x.Status is ProposalStatus.Pending or ProposalStatus.Countered).ToList(),state.Agreements.Where(x=>x.Status==AgreementStatus.Active).ToList(),state.ScheduledConsequences.Where(x=>x.Status==ScheduledConsequenceStatus.Pending).ToList(),state.AuthoredBehaviorSelections.ToList(),diagnostics,state.StoryVersion,state.ContentHash,state.StateVersion);
+    }
 
     private async Task<CommandResult> Change(Guid id,long version,CommandContext _,Func<StorySession,IDomainEvent> decide,CancellationToken ct)
     {

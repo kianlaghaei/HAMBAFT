@@ -33,9 +33,11 @@ public sealed record ScheduleConsequence(Guid SessionId,string DefinitionId,Guid
 public sealed record CancelConsequence(Guid SessionId,Guid ScheduledConsequenceId,long ExpectedVersion,CommandContext Context);
 public sealed record ResolveDueConsequences(Guid SessionId,long ExpectedVersion,CommandContext Context);
 public sealed record ResolveUncontrolledEntityActions(Guid SessionId,long ExpectedVersion,CommandContext Context);
+public sealed record ResolveEndings(Guid SessionId,long ExpectedVersion,CommandContext Context);
 public sealed record CommandResult(Guid SessionId, long StateVersion, string EventType, string? PairingCode = null, Guid? ResourceId = null, IReadOnlyList<Guid>? AffectedTeamIds = null, bool IsPublic = false, IReadOnlyList<string>? EmittedEventTypes = null);
 
 public sealed class SessionNotFoundException(Guid id) : Exception($"Session {id:D} was not found.");
+public sealed class EndingResolutionConflictException(string message) : Exception(message);
 public sealed class ConcurrencyConflictException(Guid id, long expected, long actual) : Exception($"Session {id:D} expected stream version {expected}, but current version is {actual}.")
 {
     public long ExpectedVersion { get; }=expected;

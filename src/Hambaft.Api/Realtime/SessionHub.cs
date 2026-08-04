@@ -24,6 +24,9 @@ public interface ISessionHubClient
     Task AgreementFailed(InteractionNotification notification);
     Task ConsequenceChanged(NarrativeNotification notification);
     Task AuthoredBehaviorResolved(NarrativeNotification notification);
+    Task EntityEndingPublished(EndingNotification notification);
+    Task WorldEndingPublished(EndingNotification notification);
+    Task SessionCompleted(EndingNotification notification);
 }
 
 [Authorize(Policy="SessionClient")]
