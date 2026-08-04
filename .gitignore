@@ -7,3 +7,8 @@ obj/
 TestResults/
 appsettings.Local.json
 *.log
+apps/hambaft-web/node_modules/
+apps/hambaft-web/coverage/
+apps/hambaft-web/playwright-report/
+apps/hambaft-web/test-results/
+src/Hambaft.Api/wwwroot/
