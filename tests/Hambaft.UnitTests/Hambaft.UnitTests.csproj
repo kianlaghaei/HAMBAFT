@@ -16,8 +16,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\Hambaft.Contracts\Hambaft.Contracts.csproj" />
     <ProjectReference Include="..\..\src\Hambaft.Domain\Hambaft.Domain.csproj" />
     <ProjectReference Include="..\..\src\Hambaft.Infrastructure\Hambaft.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Hambaft.Narrative.Ink\Hambaft.Narrative.Ink.csproj" />
   </ItemGroup>
 
   <ItemGroup>

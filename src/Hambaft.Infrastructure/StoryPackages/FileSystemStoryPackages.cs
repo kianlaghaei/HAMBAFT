@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Hambaft.Application;
 using Hambaft.Domain;
+using Hambaft.Narrative.Ink;
 
 namespace Hambaft.Infrastructure.StoryPackages;
 
@@ -74,11 +75,15 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
     private readonly string root;
     private readonly IStoryPackageHasher hasher;
     private readonly IStoryPackageValidator validator;
+    private readonly IInkPackageValidator? inkValidator;
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<(string Id,string Version,string Hash),StoryPackage> cache=new();
 
     public FileSystemStoryPackageLoader(StoryPackageOptions options,IStoryPackageHasher hasher,IStoryPackageValidator validator)
     {
         root=Path.GetFullPath(options.Root); this.hasher=hasher; this.validator=validator;
     }
+    public FileSystemStoryPackageLoader(StoryPackageOptions options,IStoryPackageHasher hasher,IStoryPackageValidator validator,IInkPackageValidator inkValidator)
+        :this(options,hasher,validator) { this.inkValidator=inkValidator; }
 
     public async Task<StoryPackage> LoadAsync(string packageId,string version,CancellationToken ct)
     {
@@ -90,6 +95,8 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
         if(missing.Count>0) throw new InvalidStoryPackageException(missing);
         try
         {
+            var contentHash=await hasher.ComputeAsync(directory,ct);
+            if(cache.TryGetValue((safeId,safeVersion,contentHash),out var cached)) return cached;
             var manifest=await Read<StoryPackageManifest>(directory,"manifest.json",ct);
             var metrics=await Read<List<MetricDefinition>>(directory,"metrics.json",ct);
             var entities=await Read<List<EntityDefinition>>(directory,"entities.json",ct);
@@ -100,10 +107,16 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
             var behaviors=await ReadOptional(directory,"behaviors.json",new BehaviorCatalogDefinition([],[]),ct);
             var consequences=await ReadOptional(directory,"consequences.json",new List<ConsequenceDefinition>(),ct);
             var difficulties=await ReadOptional(directory,"difficulties.json",new List<DifficultyDefinition>(),ct);
-            var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,await hasher.ComputeAsync(directory,ct),interactions,behaviors,consequences,difficulties);
+            var ink=await ReadOptional<InkPackageDefinition?>(directory,"ink.json",null,ct);
+            var entityEndings=await ReadOptional(directory,Path.Combine("endings","entity-endings.json"),new List<EntityEndingDefinition>(),ct);
+            var worldEndings=await ReadOptional(directory,Path.Combine("endings","world-endings.json"),new List<WorldEndingDefinition>(),ct);
+            var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,contentHash,interactions,behaviors,consequences,difficulties,ink,entityEndings,worldEndings);
             var errors=validator.Validate(package).Errors.ToList();
+            if(inkValidator is not null&&package.InkDefinition.References.Count>0)
+                errors.AddRange((await inkValidator.ValidateAsync(package,ct)).Errors.Select(x=>new StoryPackageValidationError("ink.json",x.NarrativeReference,x.Code,x.Message)));
             if(!string.Equals(manifest.Id,safeId,StringComparison.Ordinal)||!string.Equals(manifest.Version,safeVersion,StringComparison.Ordinal)) errors.Add(new("manifest.json",manifest.Id,"manifest-path-mismatch","Manifest ID and version must match their package directory names."));
             if(errors.Count>0) throw new InvalidStoryPackageException(errors);
+            cache.TryAdd((safeId,safeVersion,contentHash),package);
             return package;
         }
         catch(JsonException ex)
@@ -128,8 +141,8 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         var m=p.Manifest;
         if(string.IsNullOrWhiteSpace(m.Id)||string.IsNullOrWhiteSpace(m.Version)||string.IsNullOrWhiteSpace(m.Title)||string.IsNullOrWhiteSpace(m.Description)||string.IsNullOrWhiteSpace(m.EntryCheckpointId)||string.IsNullOrWhiteSpace(m.DefaultLocale)||m.SupportedLocales.Count==0||string.IsNullOrWhiteSpace(m.RequiredRuntimeVersion))
             Error("manifest.json",m.Id,"missing-manifest-field","All required manifest fields must be populated.");
-        if(m.RequiredRuntimeVersion is not ("2.0" or "3.0")) Error("manifest.json",m.Id,"unsupported-runtime-version","requiredRuntimeVersion must be '2.0' or '3.0'.");
-        if(!Version.TryParse(m.Version,out var packageVersion)||packageVersion.Major!=1) Error("manifest.json",m.Id,"unsupported-package-version","Phase 2 supports Story Package format versions with major version 1.");
+        if(m.RequiredRuntimeVersion is not ("2.0" or "3.0" or "4.0")) Error("manifest.json",m.Id,"unsupported-runtime-version","requiredRuntimeVersion must be '2.0', '3.0' or '4.0'.");
+        if(!Version.TryParse(m.Version,out _)) Error("manifest.json",m.Id,"unsupported-package-version","version must be semantic numeric version text.");
         if(m.MinimumTeams<1||m.MaximumTeams<m.MinimumTeams) Error("manifest.json",m.Id,"invalid-team-range","minimumTeams must be positive and no greater than maximumTeams.");
         if(!m.SupportedLocales.Contains(m.DefaultLocale,StringComparer.OrdinalIgnoreCase)) Error("manifest.json",m.Id,"invalid-default-locale","defaultLocale must be included in supportedLocales.");
         Duplicates(p.Metrics.Select(x=>x.Key),"metrics.json","duplicate-metric-id");
@@ -141,6 +154,9 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         Duplicates(p.BehaviorDefinitions.Actions.Select(x=>x.Id),"behaviors.json","duplicate-behavior-action-id");
         Duplicates(p.ConsequenceDefinitions.Select(x=>x.Id),"consequences.json","duplicate-consequence-id");
         Duplicates(p.DifficultyDefinitions.Select(x=>x.Id),"difficulties.json","duplicate-difficulty-id");
+        Duplicates(p.InkDefinition.References.Select(x=>x.Id),"ink.json","duplicate-ink-reference");
+        Duplicates(p.EntityEndingDefinitions.Select(x=>x.Id),"endings/entity-endings.json","duplicate-ending-id");
+        Duplicates(p.WorldEndingDefinitions.Select(x=>x.Id),"endings/world-endings.json","duplicate-ending-id");
         foreach(var metric in p.Metrics)
         {
             if(metric.Minimum>metric.Maximum||metric.DefaultValue<metric.Minimum||metric.DefaultValue>metric.Maximum) Error("metrics.json",metric.Key,"invalid-metric-range","Metric minimum, maximum and defaultValue form an impossible range.");
@@ -170,6 +186,7 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         }
         foreach(var effect in p.Effects) ValidateEffect(effect,p,metrics,entities,storylets,Error);
         ValidatePhase3(p,effects,entities,Error);
+        ValidatePhase4(p,metrics,entities,Error);
         var entryRequired=p.Storylets.Where(x=>x.CheckpointId==m.EntryCheckpointId&&x.RequiredResponse).ToList();
         if(entryRequired.Count>0&&(entryRequired.Any(x=>string.IsNullOrWhiteSpace(x.NextCheckpointId))||!entryRequired.Select(x=>x.NextCheckpointId).Distinct(StringComparer.Ordinal).Any(next=>p.Storylets.Any(s=>s.CheckpointId==next))))
             Error("storylets.json",m.EntryCheckpointId,"checkpoint-no-exit","Mandatory entry checkpoint progression has no possible next Storylet.");
@@ -181,7 +198,7 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         }
     }
 
-    private static bool HasNarrative(StoryPackage p,string key)=>p.Narrative.TryGetValue(p.Manifest.DefaultLocale,out var locale)&&locale.ContainsKey(key);
+    private static bool HasNarrative(StoryPackage p,string key)=>(p.Narrative.TryGetValue(p.Manifest.DefaultLocale,out var locale)&&locale.ContainsKey(key))||p.InkDefinition.References.Any(x=>x.Id==key);
     private static bool ValidTarget(TargetSelectorDefinition selector,IReadOnlyDictionary<string,EntityDefinition> entities)=>selector.Type switch
     {
         TargetSelectorType.AllTeams or TargetSelectorType.World=>selector.EntityDefinitionId is null,
@@ -195,23 +212,28 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         TargetSelectorType.EntityDefinition=>entities.Any(x=>x.Id==s.TargetSelector.EntityDefinitionId),
         _=>false
     };
-    private static void ValidateCondition(ConditionDefinition c,string owner,IReadOnlyDictionary<(MetricScope,string),MetricDefinition> metrics,IReadOnlyDictionary<string,EntityDefinition> entities,Action<string,string?,string,string> error)
+    private static void ValidateCondition(ConditionDefinition c,string owner,IReadOnlyDictionary<(MetricScope,string),MetricDefinition> metrics,IReadOnlyDictionary<string,EntityDefinition> entities,Action<string,string?,string,string> error,string sourceFile="storylets.json")
     {
         if(c.Type is ConditionType.All or ConditionType.Any)
         {
-            if(c.Conditions is null||c.Conditions.Count==0) error("storylets.json",owner,"invalid-condition","All and Any require non-empty conditions.");
-            else foreach(var child in c.Conditions) ValidateCondition(child,owner,metrics,entities,error);
+            if(c.Conditions is null||c.Conditions.Count==0) error(sourceFile,owner,"invalid-condition","All and Any require non-empty conditions.");
+            else foreach(var child in c.Conditions) ValidateCondition(child,owner,metrics,entities,error,sourceFile);
             return;
         }
-        if(c.Type==ConditionType.Not) { if(c.Condition is null) error("storylets.json",owner,"invalid-condition","Not requires condition."); else ValidateCondition(c.Condition,owner,metrics,entities,error); return; }
+        if(c.Type==ConditionType.Not) { if(c.Condition is null) error(sourceFile,owner,"invalid-condition","Not requires condition."); else ValidateCondition(c.Condition,owner,metrics,entities,error,sourceFile); return; }
         if(c.Type is ConditionType.MetricAbove or ConditionType.MetricAtLeast or ConditionType.MetricBelow or ConditionType.MetricAtMost or ConditionType.MetricEquals)
         {
             var scope=MetricScopeFor(c.Scope);
-            if(scope is null||c.MetricKey is null||!metrics.ContainsKey((scope.Value,c.MetricKey))||c.Expected is null) error("storylets.json",owner,"unknown-metric","Metric condition has an invalid scope, key or expected value.");
+            if(scope is null||c.MetricKey is null||!metrics.ContainsKey((scope.Value,c.MetricKey))||c.Expected is null) error(sourceFile,owner,"unknown-metric","Metric condition has an invalid scope, key or expected value.");
         }
-        if(c.Type is ConditionType.MemoryExists or ConditionType.MemoryMissing) { if(c.Scope is null||string.IsNullOrWhiteSpace(c.MemoryKey)) error("storylets.json",owner,"invalid-condition","Memory condition requires an explicit scope and memoryKey."); }
-        if(c.Scope==ConditionTargetScope.ExplicitEntityDefinition&&(c.EntityDefinitionId is null||!entities.ContainsKey(c.EntityDefinitionId))) error("storylets.json",owner,"missing-entity-reference","Condition references a missing Entity definition.");
-        if(c.Type is ConditionType.RelationshipAbove or ConditionType.RelationshipBelow&&(c.TargetEntityDefinitionId is null||!entities.ContainsKey(c.TargetEntityDefinitionId))) error("storylets.json",owner,"missing-entity-reference","Relationship condition requires a valid target Entity definition.");
+        if(c.Type is ConditionType.MetricDistributionAbove or ConditionType.MetricDistributionBelow or ConditionType.EntityCountWithMetricAbove)
+            if(c.MetricKey is null||!metrics.ContainsKey((MetricScope.Entity,c.MetricKey))||c.Expected is null||c.Count is <1)error(sourceFile,owner,"invalid-aggregate-condition","Entity metric aggregate requires a known Entity metric, expected value and positive count.");
+        if(c.Type is ConditionType.MemoryExists or ConditionType.MemoryMissing) { if(c.Scope is null||string.IsNullOrWhiteSpace(c.MemoryKey)) error(sourceFile,owner,"invalid-condition","Memory condition requires an explicit scope and memoryKey."); }
+        if(c.Type==ConditionType.EntityCountWithMemoryAtLeast&&(string.IsNullOrWhiteSpace(c.MemoryKey)||c.Count is <1))error(sourceFile,owner,"invalid-aggregate-condition","Entity memory aggregate requires memoryKey and positive count.");
+        if(c.Type is ConditionType.AgreementCountAtLeast or ConditionType.ProposalExpiredCountAtLeast&&c.Count is <1)error(sourceFile,owner,"invalid-aggregate-condition","Count aggregate requires a positive count.");
+        if(c.Type is ConditionType.RelationshipNetworkAverageAbove or ConditionType.RelationshipNetworkMinimumAbove&&(string.IsNullOrWhiteSpace(c.RelationshipKey)||c.Expected is null))error(sourceFile,owner,"invalid-network-condition","Relationship network condition requires relationshipKey and expected value.");
+        if(c.Scope==ConditionTargetScope.ExplicitEntityDefinition&&(c.EntityDefinitionId is null||!entities.ContainsKey(c.EntityDefinitionId))) error(sourceFile,owner,"missing-entity-reference","Condition references a missing Entity definition.");
+        if(c.Type is ConditionType.RelationshipAbove or ConditionType.RelationshipBelow&&(c.TargetEntityDefinitionId is null||!entities.ContainsKey(c.TargetEntityDefinitionId))) error(sourceFile,owner,"missing-entity-reference","Relationship condition requires a valid target Entity definition.");
     }
     private static void ValidateEffect(EffectDefinition e,StoryPackage p,IReadOnlyDictionary<(MetricScope,string),MetricDefinition> metrics,IReadOnlyDictionary<string,EntityDefinition> entities,IReadOnlyDictionary<string,StoryletDefinition> storylets,Action<string,string?,string,string> error)
     {
@@ -265,6 +287,60 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
             if(consequence.Trigger.Type==ConsequenceTriggerType.AtCheckpoint&&(string.IsNullOrWhiteSpace(consequence.Trigger.CheckpointId)||!p.Storylets.Any(x=>x.CheckpointId==consequence.Trigger.CheckpointId)))error("consequences.json",consequence.Id,"invalid-trigger","AtCheckpoint requires a known checkpoint.");
         }
         foreach(var entity in p.Entities.Where(x=>x.ControllerRequirement==ControllerRequirement.AuthoredBehavior))if(!p.BehaviorDefinitions.Profiles.Any(x=>x.EligibleEntityDefinitions.Contains(entity.Id,StringComparer.Ordinal)))error("behaviors.json",entity.Id,"missing-behavior-profile","AuthoredBehavior Entity has no eligible Behavior Profile.");
+    }
+    private static void ValidatePhase4(StoryPackage p,IReadOnlyDictionary<(MetricScope,string),MetricDefinition> metrics,IReadOnlyDictionary<string,EntityDefinition> entities,Action<string,string?,string,string> error)
+    {
+        var refs=p.InkDefinition.References.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+        foreach(var storylet in p.Storylets.Where(x=>refs.Contains(x.NarrativeRef)))
+        {
+            var reference=p.InkDefinition.References.Single(x=>x.Id==storylet.NarrativeRef);
+            if(reference.Scope!=storylet.Scope)error("ink.json",reference.Id,"ink-scope-mismatch","Ink reference scope must match its Storylet scope.");
+        }
+        foreach(var ending in p.EntityEndingDefinitions)
+        {
+            if(ending.Weight<1||ending.EligibleEntityDefinitions.Count==0)error("endings/entity-endings.json",ending.Id,"invalid-ending","Entity Ending requires positive weight and eligible Entity definitions.");
+            foreach(var entity in ending.EligibleEntityDefinitions)if(!entities.ContainsKey(entity))error("endings/entity-endings.json",ending.Id,"missing-entity-reference",$"Unknown Entity definition '{entity}'.");
+            foreach(var narrative in new[]{ending.TitleNarrativeRef,ending.BodyNarrativeRef,ending.PublicSummaryNarrativeRef}.Where(x=>x is not null))if(!HasNarrative(p,narrative!))error("endings/entity-endings.json",ending.Id,"missing-narrative-reference",$"Ending narrative '{narrative}' is missing.");
+            foreach(var condition in ending.Conditions)ValidateEndingCondition(condition,ending.Id,"endings/entity-endings.json");
+            ValidateEvidence(ending.EvidenceSelectors,ending.Id,"endings/entity-endings.json");
+        }
+        foreach(var ending in p.WorldEndingDefinitions)
+        {
+            if(ending.Weight<1)error("endings/world-endings.json",ending.Id,"invalid-ending","World Ending weight must be positive.");
+            foreach(var narrative in new[]{ending.TitleNarrativeRef,ending.BodyNarrativeRef})if(!HasNarrative(p,narrative))error("endings/world-endings.json",ending.Id,"missing-narrative-reference",$"Ending narrative '{narrative}' is missing.");
+            foreach(var condition in ending.Conditions)ValidateEndingCondition(condition,ending.Id,"endings/world-endings.json");
+            ValidateEvidence(ending.EvidenceSelectors,ending.Id,"endings/world-endings.json");
+        }
+        if(p.EntityEndingDefinitions.Count>0)
+            foreach(var entity in entities.Values.Where(x=>x.ControllerRequirement is ControllerRequirement.HumanTeam or ControllerRequirement.Any))if(!p.EntityEndingDefinitions.Any(x=>x.EligibleEntityDefinitions.Contains(entity.Id)))error("endings/entity-endings.json",entity.Id,"missing-ending-fallback","Playable Entity has no Entity Ending definition.");
+        if(p.WorldEndingDefinitions.Count>0&&!p.WorldEndingDefinitions.Any(x=>x.Conditions.Count==0))error("endings/world-endings.json",null,"missing-world-ending-fallback","At least one unconditional World Ending is required.");
+
+        void ValidateEndingCondition(ConditionDefinition condition,string owner,string file)
+        {
+            ValidateCondition(condition,owner,metrics,entities,error,file);
+            foreach(var item in Flatten(condition))
+            {
+                if(item.Type==ConditionType.AgreementTypeExists&&item.AgreementTypeId is not null&&!p.InteractionDefinitions.Any(x=>x.Id==item.AgreementTypeId))error(file,owner,"missing-interaction-reference",$"Unknown Agreement type '{item.AgreementTypeId}'.");
+                if(item.Type==ConditionType.ConsequenceTriggered&&(item.ConsequenceId is null||!p.ConsequenceDefinitions.Any(x=>x.Id==item.ConsequenceId)))error(file,owner,"missing-consequence-reference",$"Unknown Consequence '{item.ConsequenceId}'.");
+                if(item.Type==ConditionType.AuthoredBehaviorActionWas&&(item.BehaviorActionId is null||!p.BehaviorDefinitions.Actions.Any(x=>x.Id==item.BehaviorActionId)))error(file,owner,"missing-behavior-action-reference",$"Unknown Behavior Action '{item.BehaviorActionId}'.");
+            }
+        }
+        void ValidateEvidence(IReadOnlyList<EndingEvidenceSelector> selectors,string owner,string file)
+        {
+            foreach(var selector in selectors)
+            {
+                if(selector.Type==EndingEvidenceSelectorType.Metric&&(selector.Key is null||!p.Metrics.Any(x=>x.Key==selector.Key)))error(file,owner,"missing-metric-reference",$"Evidence references unknown Metric '{selector.Key}'.");
+                if(selector.Type==EndingEvidenceSelectorType.Agreement&&selector.Id is not null&&!p.InteractionDefinitions.Any(x=>x.Id==selector.Id))error(file,owner,"missing-interaction-reference",$"Evidence references unknown Agreement type '{selector.Id}'.");
+                if(selector.Type==EndingEvidenceSelectorType.Consequence&&selector.Id is not null&&!p.ConsequenceDefinitions.Any(x=>x.Id==selector.Id))error(file,owner,"missing-consequence-reference",$"Evidence references unknown Consequence '{selector.Id}'.");
+                if(selector.Type==EndingEvidenceSelectorType.BehaviorAction&&selector.Id is not null&&!p.BehaviorDefinitions.Actions.Any(x=>x.Id==selector.Id))error(file,owner,"missing-behavior-action-reference",$"Evidence references unknown Behavior Action '{selector.Id}'.");
+            }
+        }
+        static IEnumerable<ConditionDefinition> Flatten(ConditionDefinition condition)
+        {
+            yield return condition;
+            if(condition.Condition is not null)foreach(var nested in Flatten(condition.Condition))yield return nested;
+            foreach(var child in condition.Conditions??[])foreach(var nested in Flatten(child))yield return nested;
+        }
     }
     private static MetricScope? MetricScopeFor(ConditionTargetScope? scope)=>scope switch
     {

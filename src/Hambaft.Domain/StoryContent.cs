@@ -9,7 +9,11 @@ public enum ConditionType
     MetricAbove, MetricAtLeast, MetricBelow, MetricAtMost, MetricEquals,
     MemoryExists, MemoryMissing, RelationshipAbove, RelationshipBelow,
     EntityControllerIs, EntityDefinitionIs, TeamControlsEntityDefinition,
-    SessionStatusIs, CheckpointIs, ChoiceWasSubmitted, All, Any, Not
+    SessionStatusIs, CheckpointIs, ChoiceWasSubmitted,
+    MetricDistributionAbove, MetricDistributionBelow, AgreementCountAtLeast, AgreementTypeExists,
+    RelationshipNetworkAverageAbove, RelationshipNetworkMinimumAbove, EntityCountWithMemoryAtLeast,
+    EntityCountWithMetricAbove, ProposalExpiredCountAtLeast, ConsequenceTriggered, AuthoredBehaviorActionWas,
+    All, Any, Not
 }
 public enum ConditionTargetScope
 {
@@ -66,7 +70,11 @@ public sealed record ConditionDefinition(
     string? CheckpointId = null,
     string? ChoiceId = null,
     IReadOnlyList<ConditionDefinition>? Conditions = null,
-    ConditionDefinition? Condition = null);
+    ConditionDefinition? Condition = null,
+    int? Count = null,
+    string? AgreementTypeId = null,
+    string? ConsequenceId = null,
+    string? BehaviorActionId = null);
 
 public sealed record ChoiceDefinition(
     string Id,
@@ -196,6 +204,27 @@ public sealed record NarrativeDefinition(
     string? ShortOutcome,
     IReadOnlyDictionary<string, string> PresentationTags);
 
+public enum InkScalarType { String, Integer, Decimal, Boolean }
+public enum InkVariableVisibility { Public, Private }
+
+public sealed record InkInputVariableDefinition(string Name, InkScalarType Type, bool Required, InkVariableVisibility Visibility);
+public sealed record InkNarrativeReferenceDefinition(string Id, string CompiledFile, string EntryPoint, StoryletScope Scope, IReadOnlyList<string> RequiredVariables);
+public sealed record InkPackageDefinition(IReadOnlyList<InkInputVariableDefinition> Variables, IReadOnlyList<InkNarrativeReferenceDefinition> References, IReadOnlyList<string> ApprovedTags, bool AllowUnknownPresentationTags = false);
+
+public enum EndingEvidenceSelectorType { Choice, Proposal, Agreement, Memory, Metric, Relationship, BehaviorAction, Consequence, DomainEvent }
+public sealed record EndingEvidenceSelector(EndingEvidenceSelectorType Type, string? Id = null, string? Key = null, ConditionTargetScope? Scope = null);
+
+public sealed record EntityEndingDefinition(
+    string Id, IReadOnlyList<string> EligibleEntityDefinitions, string TitleNarrativeRef, string BodyNarrativeRef,
+    IReadOnlyList<ConditionDefinition> Conditions, int Priority, int Weight,
+    IReadOnlyList<EndingEvidenceSelector> EvidenceSelectors, string? PublicSummaryNarrativeRef,
+    IReadOnlyDictionary<string,string> PresentationTags);
+
+public sealed record WorldEndingDefinition(
+    string Id, string TitleNarrativeRef, string BodyNarrativeRef, IReadOnlyList<ConditionDefinition> Conditions,
+    int Priority, int Weight, IReadOnlyList<EndingEvidenceSelector> EvidenceSelectors,
+    IReadOnlyDictionary<string,string> PresentationTags);
+
 public sealed record StoryPackage(
     StoryPackageManifest Manifest,
     IReadOnlyList<MetricDefinition> Metrics,
@@ -207,12 +236,19 @@ public sealed record StoryPackage(
     IReadOnlyList<InteractionTypeDefinition>? Interactions = null,
     BehaviorCatalogDefinition? Behaviors = null,
     IReadOnlyList<ConsequenceDefinition>? Consequences = null,
-    IReadOnlyList<DifficultyDefinition>? Difficulties = null)
+    IReadOnlyList<DifficultyDefinition>? Difficulties = null,
+    InkPackageDefinition? Ink = null,
+    IReadOnlyList<EntityEndingDefinition>? EntityEndings = null,
+    IReadOnlyList<WorldEndingDefinition>? WorldEndings = null,
+    bool ResolveUncontrolledEntityEndings = false)
 {
     public IReadOnlyList<InteractionTypeDefinition> InteractionDefinitions => Interactions ?? [];
     public BehaviorCatalogDefinition BehaviorDefinitions => Behaviors ?? new([], []);
     public IReadOnlyList<ConsequenceDefinition> ConsequenceDefinitions => Consequences ?? [];
     public IReadOnlyList<DifficultyDefinition> DifficultyDefinitions => Difficulties ?? [];
+    public InkPackageDefinition InkDefinition => Ink ?? new([],[],["scene","sound","music","camera","animation","portrait","mood","speaker","effect","narrative_ref","visibility"]);
+    public IReadOnlyList<EntityEndingDefinition> EntityEndingDefinitions => EntityEndings ?? [];
+    public IReadOnlyList<WorldEndingDefinition> WorldEndingDefinitions => WorldEndings ?? [];
 }
 
 public sealed record StoryPackageValidationError(string FilePath, string? ContentId, string ErrorCode, string Message);
