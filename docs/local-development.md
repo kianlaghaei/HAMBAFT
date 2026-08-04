@@ -39,3 +39,37 @@ dotnet run --project src/Hambaft.Api
 ```
 
 Use `src/Hambaft.Api/Hambaft.Api.http` for the 2-Team walkthrough. Admin/PublicDisplay tokens are deployment-provisioned; integration tests issue them through `JwtTokenIssuer` inside the test host. Do not add a production token-minting endpoint.
+
+# Phase 5 React workflow
+
+Keep the API on `http://localhost:5297`, then use a second terminal:
+
+```powershell
+npm install --prefix apps/hambaft-web
+npm run dev --prefix apps/hambaft-web
+```
+
+Open `http://localhost:5173/admin`. Vite proxies REST, SignalR, health and Development-only auth endpoints. Optional overrides are `VITE_API_BASE_URL`, `VITE_SIGNALR_HUB_URL`, and `VITE_DEFAULT_LOCALE`; defaults work without `.env`. Never place JWTs or secrets in these values.
+
+Admin setup creates a Session, then requests a Session-bound token from Development-only `/internal/auth/admin`. Public Display REST follows the existing unauthenticated public projection; its Development SignalR connection obtains `/internal/auth/public-display`. Neither token-provisioning endpoint exists outside Development.
+
+For a one-URL local demo:
+
+```powershell
+npm run build --prefix apps/hambaft-web
+dotnet run --project src/Hambaft.Api
+```
+
+Open `http://localhost:5297`. Vite emits to the ignored `src/Hambaft.Api/wwwroot`, and ASP.NET fallback routing restores nested SPA routes after refresh.
+
+Frontend verification:
+
+```powershell
+npm run typecheck --prefix apps/hambaft-web
+npm run lint --prefix apps/hambaft-web
+npm run test --prefix apps/hambaft-web
+npm run build --prefix apps/hambaft-web
+npm run e2e --prefix apps/hambaft-web
+```
+
+Playwright uses the installed stable Chrome channel. The bundled Chromium CDN returned a regional HTTP 403 in the Phase 5 environment; the full Chrome run remains automated and verified.

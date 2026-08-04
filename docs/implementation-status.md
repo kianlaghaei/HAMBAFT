@@ -26,3 +26,21 @@ Operational invariants: filesystem Packages are never database content; no Sessi
 - Deterministic 2/3/4-Team and Hard scenarios, PostgreSQL persistence/rebuild/concurrency coverage, and local replay performance guard.
 
 Deferred: React, PixiJS, full multi-hour Hezar Cheragh, Visual Story Editor, final content editing tools, production deployment and runtime AI.
+
+# Phase 5 — implemented
+
+| Area | Status | Evidence / limitation |
+| --- | --- | --- |
+| React foundation | Complete | Vite, strict TypeScript, Router, Query, Zustand-local-only, Motion, SignalR and Zod |
+| RTL design | Complete | Persian-first paper/olive/gold system, responsive Team/Admin/Display and reduced motion |
+| Pairing/auth | Complete | Code-only pairing, claim-derived Team identity, sessionStorage and explicit unpair |
+| Team play | Complete | private Storylets, Choices, metrics, Memories, Consequences and market |
+| Negotiation | Complete | typed terms, immutable revision history, Counter/Accept/Reject/Cancel and 409 handling |
+| Admin | Complete | two-to-four Team wizard, package helper, one-time codes and runtime actions/diagnostics |
+| Public Display | Complete | public narrative, businesses, Agreements/Consequences and World Ending only |
+| Realtime | Complete | centralized connection, focused invalidations, offline/online reconnect and refetch |
+| Ending UI | Complete | private Entity evidence and public World result without win/loss reduction |
+| Frontend tests | Complete | 14 unit/component/contract tests and one full real-browser Playwright flow |
+| Local demo | Complete | Vite production output hosted by ASP.NET static files/fallback |
+
+Deferred after Phase 5: PixiJS market world, full animated navigation, final generated artwork, full multi-hour content, Visual Story Editor, production deployment and runtime AI.

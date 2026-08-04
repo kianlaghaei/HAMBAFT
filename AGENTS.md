@@ -3,6 +3,9 @@
 - `../shared-world` (SharedWorld) is read-only. Never change it, commit in it, connect to its database, or reference its assemblies.
 - Docker and container-based databases are out of scope. PostgreSQL runs locally as an operating-system service.
 - Phase 4 provides compiled Ink presentation, deterministic Entity/World Endings with evidence, the `hezar-cheragh/0.1.0` vertical slice, frontend-ready projections, and retains all Phase 3 interaction, behavior, consequence and replay guarantees.
+- Phase 5 provides the RTL React playable client. Keep TanStack Query as server state, Zustand local-only, SignalR as a refetch hint, and all game authority in the Backend.
+- Development-only Admin/PublicDisplay token provisioning must never be enabled outside the Development environment.
+- Frontend builds are emitted to `src/Hambaft.Api/wwwroot` for the one-URL local demo; generated assets remain ignored.
 - Ink is presentation-only. It must never mutate authoritative state, execute Effects, resolve behavior/agreements/endings, or access persistence. Runtime loads compiled Ink JSON only.
 - Resolve Entity Endings before the World Ending and append all Ending events plus Session completion atomically. Preserve structured evidence and privacy.
 - Preserve Proposal revision immutability, Team privacy, exact Package ID/version/hash locks, stable Entity ordering and checkpoint-based (never wall-clock) expiration.
