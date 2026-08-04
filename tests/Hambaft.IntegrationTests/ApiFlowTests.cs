@@ -40,6 +40,23 @@ public sealed class ApiFlowTests(PostgresFixture fixture)
         var pair=await client.PostAsJsonAsync($"/api/sessions/{sessionId:D}/pair",new{teamId,pairingCode});
         pair.EnsureSuccessStatusCode();
         var token=(await Body(pair)).GetProperty("accessToken").GetString()!;
+        var codeOnlyPair=await client.PostAsJsonAsync("/api/pair",new{pairingCode});
+        codeOnlyPair.EnsureSuccessStatusCode();
+        (await Body(codeOnlyPair)).GetProperty("accessToken").GetString().Should().NotBeNullOrWhiteSpace();
+        (await client.PostAsJsonAsync("/api/pair",new{pairingCode="WRONG234"})).StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+
+        var adminToken=await client.PostAsJsonAsync("/internal/auth/admin",new{sessionId});
+        adminToken.EnsureSuccessStatusCode();
+        (await Body(adminToken)).GetProperty("accessToken").GetString().Should().NotBeNullOrWhiteSpace();
+        var displayToken=await client.PostAsJsonAsync("/internal/auth/public-display",new{sessionId});
+        displayToken.EnsureSuccessStatusCode();
+        (await Body(displayToken)).GetProperty("accessToken").GetString().Should().NotBeNullOrWhiteSpace();
+
+        var packageResponse=await client.GetAsync("/api/story-packages/hezar-cheragh/0.1.0");
+        packageResponse.EnsureSuccessStatusCode();
+        var package=await Body(packageResponse);
+        package.GetProperty("entities").GetArrayLength().Should().Be(4);
+        package.GetProperty("interactions")[0].GetProperty("termsSchema").GetProperty("fields").GetArrayLength().Should().BeGreaterThan(0);
 
         var anonymousNegotiate=await client.PostAsync("/hubs/session/negotiate?negotiateVersion=1",null);
         anonymousNegotiate.StatusCode.Should().Be(HttpStatusCode.Unauthorized);

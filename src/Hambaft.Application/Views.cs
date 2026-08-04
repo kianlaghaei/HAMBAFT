@@ -23,7 +23,8 @@ public sealed record SessionStateView(
     public IReadOnlyList<string> SubmittedChoiceIds=>SubmittedChoices.Select(x=>x.ChoiceId).ToList();
 }
 
-public sealed record ProposalItemView(Guid ProposalId,string InteractionTypeId,Guid SenderTeamId,Guid ReceiverTeamId,int CurrentRevisionNumber,JsonElement TermsPayload,ProposalStatus Status,string DeadlineCheckpoint,IReadOnlyList<string> AllowedActions,long StateVersion);
+public sealed record ProposalRevisionView(int RevisionNumber,Guid CreatedByTeamId,JsonElement TermsPayload,DateTimeOffset CreatedAtUtc);
+public sealed record ProposalItemView(Guid ProposalId,string InteractionTypeId,Guid SenderTeamId,Guid ReceiverTeamId,int CurrentRevisionNumber,JsonElement TermsPayload,ProposalStatus Status,string DeadlineCheckpoint,IReadOnlyList<string> AllowedActions,long StateVersion,IReadOnlyList<ProposalRevisionView>? Revisions=null);
 public sealed record ProposalInboxView(Guid Id,Guid SessionId,IReadOnlyList<ProposalItemView> Incoming,IReadOnlyList<ProposalItemView> Outgoing,long StateVersion);
 public sealed record AgreementView(Guid AgreementId,string InteractionTypeId,IReadOnlyList<Guid> Parties,JsonElement TermsPayload,AgreementStatus Status,string ActivationCheckpoint,string? ExecutionCheckpoint,AgreementVisibility Visibility);
 public sealed record ScheduledConsequenceView(Guid ScheduledConsequenceId,string DefinitionId,string? DueCheckpointId,ConsequenceTriggerType TriggerType,ScheduledConsequenceStatus Status,ConsequenceVisibility Visibility);
@@ -104,7 +105,8 @@ public static class ViewProjector
         {
             var revision=revisions.Single(x=>x.ProposalId==p.ProposalId&&x.RevisionNumber==p.CurrentRevisionNumber);var creator=revision.CreatedByTeamId;var responder=creator==p.SenderTeamId?p.ReceiverTeamId:p.SenderTeamId;var actions=new List<string>();
             if(p.Status is ProposalStatus.Pending or ProposalStatus.Countered){if(team.Id==creator)actions.Add("Cancel");if(team.Id==responder)actions.AddRange(["Accept","Counter","Reject"]);}
-            return new(p.ProposalId,p.InteractionTypeId,p.SenderTeamId,p.ReceiverTeamId,p.CurrentRevisionNumber,revision.TermsPayload.Clone(),p.Status,p.ValidUntilCheckpointId,actions,version);
+            var history=revisions.Where(x=>x.ProposalId==p.ProposalId).OrderBy(x=>x.RevisionNumber).Select(x=>new ProposalRevisionView(x.RevisionNumber,x.CreatedByTeamId,x.TermsPayload.Clone(),x.CreatedAtUtc)).ToList();
+            return new(p.ProposalId,p.InteractionTypeId,p.SenderTeamId,p.ReceiverTeamId,p.CurrentRevisionNumber,revision.TermsPayload.Clone(),p.Status,p.ValidUntilCheckpointId,actions,version,history);
         }
         var party=proposals.Where(x=>x.SenderTeamId==team.Id||x.ReceiverTeamId==team.Id).OrderBy(x=>x.ProposalId).ToList();
         var incoming=party.Where(p=>{var r=revisions.Single(x=>x.ProposalId==p.ProposalId&&x.RevisionNumber==p.CurrentRevisionNumber);return (r.CreatedByTeamId==p.SenderTeamId?p.ReceiverTeamId:p.SenderTeamId)==team.Id;}).Select(Item).ToList();

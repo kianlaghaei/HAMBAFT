@@ -13,6 +13,7 @@ using Microsoft.IdentityModel.Tokens;
 var builder=WebApplication.CreateBuilder(args);
 builder.Services.AddProblemDetails();builder.Services.AddOpenApi();builder.Services.AddSignalR();
 builder.Services.AddHambaftInfrastructure(builder.Configuration,builder.Environment.ContentRootPath);
+builder.Services.AddCors(options=>options.AddPolicy("DevelopmentSpa",policy=>policy.WithOrigins("http://localhost:5173","http://127.0.0.1:5173").AllowAnyHeader().AllowAnyMethod().AllowCredentials()));
 
 var jwt=JwtConfiguration.From(builder.Configuration);
 builder.Services.AddSingleton(jwt);
@@ -39,6 +40,8 @@ builder.Services.AddAuthorization(options=>
 var app=builder.Build();
 app.UseMiddleware<ProblemDetailsMiddleware>();
 app.Use(async(context,next)=>{var supplied=context.Request.Headers["X-Correlation-ID"].FirstOrDefault();context.TraceIdentifier=Guid.TryParse(supplied,out var id)?id.ToString("D"):Guid.NewGuid().ToString("D");context.Response.Headers["X-Correlation-ID"]=context.TraceIdentifier;await next();});
+if(app.Environment.IsDevelopment())app.UseCors("DevelopmentSpa");
+app.UseDefaultFiles();app.UseStaticFiles();
 app.UseAuthentication();app.UseAuthorization();
 if(app.Environment.IsDevelopment()){app.MapOpenApi();app.UseSwaggerUI(options=>options.SwaggerEndpoint("/openapi/v1.json","HAMBAFT API v1"));}
 
@@ -74,9 +77,11 @@ app.MapPost("/api/sessions",async(CreateSessionRequest request,SessionRuntime ru
     var id=Guid.NewGuid();var result=await runtime.ExecuteAsync(new CreateSession(id,request.StoryPackageId,request.StoryVersion,request.ContentHash,request.Seed,request.ExpectedVersion,Context(http),request.DifficultyId),ct);await Notify(hub,result,"Session",ct);return Results.Created($"/api/sessions/{id:D}",new CommandResponse(id,result.StateVersion,result.EventType,id));
 });
 app.MapGet("/api/story-packages",async(IStoryPackageCatalog catalog,CancellationToken ct)=>Results.Ok(await catalog.ListAsync(ct)));
-app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,string version,IStoryPackageCatalog catalog,CancellationToken ct)=>
+app.MapGet("/api/story-packages/{packageId}/{version}",async(string packageId,string version,IStoryPackageCatalog catalog,IStoryPackageLoader loader,CancellationToken ct)=>
 {
-    var package=(await catalog.ListAsync(ct)).SingleOrDefault(x=>x.Id==packageId&&x.Version==version); return package is null?Results.NotFound():Results.Ok(package);
+    var metadata=(await catalog.ListAsync(ct)).SingleOrDefault(x=>x.Id==packageId&&x.Version==version);
+    if(metadata is null)return Results.NotFound();
+    var package=await loader.LoadAsync(packageId,version,ct);return Results.Ok(ToClientPackage(package));
 });
 app.MapGet("/api/sessions/{sessionId:guid}",async(Guid sessionId,SessionRuntime runtime,CancellationToken ct)=>await runtime.GetSessionAsync(sessionId,ct) is { } view?Results.Ok(ToResponse(view)):Results.NotFound());
 app.MapGet("/api/sessions/{sessionId:guid}/admin",async(Guid sessionId,SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
@@ -109,6 +114,14 @@ app.MapPost("/api/sessions/{sessionId:guid}/pair",async(Guid sessionId,PairingRe
     return Results.Ok(tokens.IssueTeam(sessionId,team.Id));
 });
 
+app.MapPost("/api/pair",async(PairByCodeRequest request,ISessionStore store,IPairingCodeGenerator pairing,JwtTokenIssuer tokens,CancellationToken ct)=>
+{
+    if(string.IsNullOrWhiteSpace(request.PairingCode))return Results.Unauthorized();
+    var code=request.PairingCode.Trim().ToUpperInvariant();var matches=new List<PairingCandidate>();
+    foreach(var candidate in await store.ListPairingCandidatesAsync(ct))if(pairing.Verify(code,candidate.PairingCodeHash))matches.Add(candidate);
+    return matches.Count==1?Results.Ok(tokens.IssueTeam(matches[0].SessionId,matches[0].TeamId)):Results.Unauthorized();
+});
+
 app.MapGet("/api/story/experience",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
 {
     var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);
@@ -139,6 +152,7 @@ app.MapPost("/api/story/choices",async(SubmitStoryChoiceRequest request,SessionR
     var state=(await runtime.GetSessionAsync(sessionId,ct))!;var notification=new NarrativeNotification(sessionId,teamId,result.StateVersion,state.CurrentCheckpointId!,nameof(StoryChoiceSubmitted));
     await hub.Clients.Group(HubGroups.Team(teamId)).ChoiceRecorded(notification);
     await hub.Clients.Group(HubGroups.Admins(sessionId)).ChoiceRecorded(notification);
+    await hub.Clients.Group(HubGroups.Session(sessionId)).StateChanged(new(sessionId,result.StateVersion,"ChoiceRecorded","Session"));
     return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
 }).RequireAuthorization("Team");
 
@@ -242,10 +256,19 @@ if(app.Environment.IsDevelopment())app.MapPost("/internal/sessions/{sessionId:gu
     return Results.Ok(new CommandResponse(sessionId,result?.StateVersion??request.ExpectedVersion,result?.EventType??"NoChanges"));
 }).ExcludeFromDescription();
 
+if(app.Environment.IsDevelopment())
+{
+    app.MapPost("/internal/auth/admin",async(DevelopmentTokenRequest request,SessionRuntime runtime,JwtTokenIssuer tokens,CancellationToken ct)=>
+        await runtime.GetSessionAsync(request.SessionId,ct) is null?Results.NotFound():Results.Ok(tokens.IssueAdmin(request.SessionId)));
+    app.MapPost("/internal/auth/public-display",async(DevelopmentTokenRequest request,SessionRuntime runtime,JwtTokenIssuer tokens,CancellationToken ct)=>
+        await runtime.GetSessionAsync(request.SessionId,ct) is null?Results.NotFound():Results.Ok(tokens.IssuePublicDisplay(request.SessionId)));
+}
+
 app.MapHub<SessionHub>("/hubs/session");
 app.MapHealthChecks("/health");
 app.MapHealthChecks("/alive",new HealthCheckOptions{Predicate=_=>false});
 app.MapHealthChecks("/ready",new HealthCheckOptions{Predicate=check=>check.Tags.Contains("ready")});
+app.MapFallbackToFile("index.html");
 app.Run();
 
 static async Task<IResult> Transition(object command,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,CancellationToken ct)
@@ -258,5 +281,22 @@ static SessionResponse ToResponse(SessionStateView view)=>new(
     view.Teams.Select(x=>new TeamResponse(x.Id,x.SessionId,x.DisplayName,x.ControlledEntityId,x.JoinedAtUtc)).ToList(),
     view.Entities.Select(x=>new EntityResponse(x.Id,x.SessionId,x.DefinitionId,x.DisplayName,x.ControllerType.ToString(),x.ControlledByTeamId,x.BehaviorProfileId,x.Status.ToString())).ToList(),
     view.StateVersion);
+
+static StoryPackageClientResponse ToClientPackage(StoryPackage package)
+{
+    NarrativeDefinition? Text(string reference)
+    {
+        var locale=package.Manifest.DefaultLocale;
+        return package.Narrative.TryGetValue(locale,out var localized)&&localized.TryGetValue(reference,out var value)?value:null;
+    }
+    StoryPackageTermSchemaResponse Terms(InteractionTermSchemaDefinition schema)=>new(schema.Type.ToString(),schema.Name,schema.Required,schema.Minimum,schema.Maximum,schema.MaximumLength,(schema.Fields??[]).Select(Terms).ToList());
+    string Label(string reference,string fallback)=>Text(reference) is { } value?(value.ChoiceLabel??value.Title):fallback;
+    return new(package.Manifest.Id,package.Manifest.Version,package.Manifest.Title,package.Manifest.Description,package.Manifest.MinimumTeams,package.Manifest.MaximumTeams,package.Manifest.EstimatedDurationMinutes,package.Manifest.DefaultLocale,package.ContentHash,
+        package.Entities.Select(x=>new StoryPackageEntityResponse(x.Id,x.DisplayName,x.ControllerRequirement.ToString(),x.PublicTags)).ToList(),
+        package.Metrics.Select(x=>new StoryPackageMetricResponse(x.Key,x.Scope.ToString(),x.Minimum,x.Maximum,x.DefaultValue)).ToList(),
+        package.InteractionDefinitions.Select(x=>new StoryPackageInteractionResponse(x.Id,Label(x.DisplayNameRef,x.Id),Text(x.DescriptionRef)?.Title??x.Id,Terms(x.TermsSchema),x.DefaultValidity.Type.ToString(),x.DefaultValidity.CheckpointId,x.DefaultValidity.CheckpointCount,x.ExecutionMode.ToString(),x.AgreementVisibility.ToString())).ToList(),
+        package.DifficultyDefinitions.Select(x=>new StoryPackageDifficultyResponse(x.Id,Label(x.DisplayNameRef,x.Id))).ToList(),
+        package.BehaviorDefinitions.Profiles.Select(x=>new StoryPackageBehaviorProfileResponse(x.Id,Label(x.DisplayNameRef,x.Id),x.EligibleEntityDefinitions)).ToList());
+}
 
 public partial class Program;

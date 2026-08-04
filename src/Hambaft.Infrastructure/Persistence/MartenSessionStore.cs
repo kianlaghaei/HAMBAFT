@@ -37,6 +37,11 @@ public sealed class MartenSessionStore : ISessionStore
     }
 
     public Task<SessionStateView?> LoadSessionViewAsync(Guid id,CancellationToken ct)=>session.LoadAsync<SessionStateView>(id,ct);
+    public async Task<IReadOnlyList<PairingCandidate>> ListPairingCandidatesAsync(CancellationToken ct)
+    {
+        var sessions=await session.Query<SessionExperienceView>().ToListAsync(ct);
+        return sessions.SelectMany(x=>x.Teams.Select(team=>new PairingCandidate(x.Id,team.Id,team.PairingCodeHash))).ToList();
+    }
     public async Task<PublicWorldView?> LoadPublicViewAsync(Guid id,CancellationToken ct)
     {
         var view=await session.LoadAsync<PublicWorldView>(id,ct); if(view is null||packages is null||view.CurrentWorldNarrativeRef is null) return view;
