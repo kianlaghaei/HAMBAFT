@@ -21,6 +21,6 @@ dotnet run --project src/Hambaft.Api
 
 `ConnectionStrings__Hambaft` may replace the development user secret and must target `hambaft_dev`. Integration tests enforce database `hambaft_test` and schema `hambaft`; they reject other database names and SharedWorld.
 
-Development defaults the Story Package root to repository folder `stories`. Override it with `StoryPackages__Root` when necessary. Run `src/Hambaft.Api/Hambaft.Api.http`: copy the sample hash, pairing codes, scoped Team JWTs, deployment-provisioned Admin JWT, assignment IDs and returned state versions into subsequent requests. Never log or persist raw pairing codes or JWTs.
+Development defaults the Story Package root to repository folder `stories`. Override it with `StoryPackages__Root` when necessary. `src/Hambaft.Api/Hambaft.Api.http` lists both sample versions and walks the full 1.1.0 Proposal, counter, Agreement, expiration, Behavior and Consequence flow. Copy the 1.1.0 hash, pairing codes, scoped Team JWTs, deployment-provisioned Admin JWT, assignment/Proposal IDs and each returned state version into later requests. Never log or persist raw pairing codes, JWTs or Proposal terms.
 
 The `/internal/.../bootstrap` state endpoint remains Development-only. No unrestricted production endpoint mutates metrics.

@@ -1,12 +1,12 @@
 # HAMBAFT
 
-HAMBAFT is a generic multiplayer interactive-story backend on .NET 10. Phase 2 adds a deterministic, replayable authored-story runtime to the Phase 1 Session/Team/Entity foundation.
+HAMBAFT is a generic multiplayer authored-story backend on .NET 10. Phase 3 adds structured Team-to-Team proposals, immutable counter revisions, accepted Agreements, checkpoint expiration, Package-owned difficulty, deterministic behavior for uncontrolled Entities, and replayable scheduled consequences to the Phase 2 narrative runtime.
 
-The runtime loads versioned repository Story Packages, canonicalizes and hashes all package files, locks each Session to an exact ID/version/hash, evaluates typed conditions, assigns public and private Storylets, records authored Team choices, executes typed effects in stable order, and rebuilds Marten projections entirely from events. The included `sample-cargo-delay` package exercises the complete two-Team flow in Persian with RTL-compatible UTF-8 content.
+The runtime uses one optimistic-concurrency Marten stream per Session. Story content remains immutable repository data locked by exact Package ID, version and SHA-256 hash. Both `sample-cargo-delay/1.0.0` and `1.1.0` are installed simultaneously; an old Session is never hydrated from new content.
 
 ## Stack
 
-.NET 10, ASP.NET Core, PostgreSQL, Marten, SignalR, JWT bearer authentication, OpenAPI, xUnit and FluentAssertions. PostgreSQL runs as a local operating-system service; Docker is not used.
+.NET 10, ASP.NET Core, PostgreSQL, Marten, SignalR, JWT bearer authentication, OpenAPI, xUnit and FluentAssertions. PostgreSQL is a local operating-system service; Docker is not used.
 
 ## Run locally
 
@@ -19,6 +19,6 @@ dotnet test
 dotnet run --project src/Hambaft.Api
 ```
 
-Use `src/Hambaft.Api/Hambaft.Api.http` for the real two-Team smoke flow. Story Package details are documented in `docs/story-package-format.md`; runtime lifecycle and privacy boundaries are documented in `docs/story-runtime.md`.
+The Phase 3 REST walkthrough is in `src/Hambaft.Api/Hambaft.Api.http`. Format and runtime details are in `docs/story-package-format.md`, `docs/story-runtime.md`, `docs/interactions-runtime.md`, `docs/behavior-runtime.md`, and `docs/scheduled-consequences.md`.
 
-Not implemented: Ink, proposals, agreements, uncontrolled-entity Behavior Resolver, difficulty, scheduled consequences, entity endings, world endings, React, full Hezar Cheragh content, runtime generative AI, or a visual story editor.
+Deferred: Ink, Entity endings, World endings, React, full Hezar Cheragh content, runtime generative AI, and a visual story editor.

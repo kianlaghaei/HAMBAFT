@@ -1,23 +1,19 @@
 # Story Package format
 
-A Story Package is immutable, versioned repository content at `stories/{id}/{version}`. Phase 2 requires exactly these source files: `manifest.json`, `metrics.json`, `entities.json`, `storylets.json`, `effects.json`, and `narrative.json`. Extra files are also included in the content hash.
+A Package is immutable repository content at `stories/{id}/{version}`. Required files remain `manifest.json`, `metrics.json`, `entities.json`, `storylets.json`, `effects.json`, and `narrative.json`. Phase 3 adds optional `interactions.json`, `behaviors.json`, `consequences.json`, and `difficulties.json`; absence means an empty Phase 3 catalog and keeps 1.0 content valid.
 
-## Manifest
+## Phase 3 definitions
 
-Required fields are `id`, `version`, `title`, `description`, `minimumTeams`, `maximumTeams`, `entryCheckpointId`, `defaultLocale`, `supportedLocales`, `estimatedDurationMinutes`, and `requiredRuntimeVersion`. Phase 2 accepts package major version 1 and runtime version `2.0`. Manifest ID/version must match the directory names.
+- Interaction: stable ID and narrative refs; sender/receiver Team selectors; a recursively typed `Numeric`, `Boolean`, `ShortText`, or `Compound` term schema; offered/requested effect IDs; checkpoint validity; execution mode; Agreement visibility.
+- Validity: `ValidUntilCheckpoint` or positive `ValidForCheckpointCount`. Wall-clock expiry is unsupported.
+- Execution: `ImmediateOnAcceptance`, `ManualExecution`, or `ExecuteAtCheckpointResolution`.
+- Behavior catalog: profiles contain eligible Entity definitions, prioritized weighted rules, conditions, repeat policy and fallback Action. Actions contain typed effect IDs and optional authored public narrative.
+- Difficulty: Package IDs such as Calm, Standard, Hard and Relentless. Explicit modifiers adjust behavior rule weights, typed proposal minimum multipliers, resource thresholds or fallback preference.
+- Consequence: trigger, conditions, effect IDs, optional narrative, visibility and repeat policy. Triggers are `AfterCheckpointCount`, `AtCheckpoint`, `WhenAgreementExecuted`, and `WhenMemoryExistsAtResolution`.
+- Effects additionally support `ScheduleConsequence` and `CancelConsequence`.
 
-## Definitions
+Every reference is validated: effects, narrative, Entities, Actions, behavior profiles, metric scopes, consequence definitions, trigger checkpoints and positive weights/counts. Short text is persisted/displayed only and is never interpreted by AI.
 
-- Metric: `key`, `scope`, `minimum`, `maximum`, `defaultValue`. Scopes are `World`, `Team`, `Entity`, `Relationship`.
-- Entity: `id`, `displayName`, `controllerRequirement`, `publicTags`, `initialMetrics`. Requirements are `HumanTeam`, `AuthoredBehavior`, `System`, `Any`; Phase 2 does not decide for AuthoredBehavior.
-- Storylet: `id`, `checkpointId`, `scope`, explicit `targetSelector`, `narrativeRef`, `conditions`, `choices`, `priority`, positive `weight`, `repeatPolicy`, `requiredResponse`, optional `nextCheckpointId`.
-- Choice: `id`, `labelRef`, ordered `effectIds`, optional `nextStoryletHint`.
-- Narrative: locale → stable key → authored `title`, `paragraphs`, optional `choiceLabel`, optional `shortOutcome`, and string `presentationTags`.
+## Canonical hash and compatibility
 
-Selectors are only `World`, `AllTeams`, `TeamControllingEntityDefinition`, and `EntityDefinition`. Storylet scopes are `WorldPublic`, `TeamPrivate`, `EntityPrivate`, and `AdminOnly`. Repeat policies are `OncePerSession`, `OncePerCheckpoint`, and `Repeatable`.
-
-## Canonical hash
-
-Every file is sorted by normalized `/` relative path. JSON is parsed and re-emitted with object properties sorted ordinally and no formatting whitespace; arrays retain authored order. Non-JSON line endings normalize to LF. Lengths use fixed little-endian encoding and content is UTF-8. SHA-256 output is prefixed `sha256:`. Absolute paths, timestamps and generated hashes are never inputs and the hash is never written into source files.
-
-Validation reports file path, content ID when available, code and human-readable message. It checks duplicates, required fields, versions, Team range, checkpoints, metric ranges/scopes, entity/storylet/narrative/effect/choice references, selectors, condition/effect shape, private/public leaks, eligible required targets and the mandatory sample-flow exit.
+Every file, including optional files, participates in the canonical SHA-256 hash. Paths are ordinally sorted, JSON object properties are ordinally sorted, arrays retain authored order, and non-JSON line endings normalize to LF. Sessions lock exact ID/version/hash. `sample-cargo-delay` 1.0.0 and 1.1.0 have distinct hashes and remain independently loadable.

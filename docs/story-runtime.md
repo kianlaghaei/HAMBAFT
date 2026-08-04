@@ -1,31 +1,31 @@
 # Story runtime
 
-## Conditions
-
-Supported types are `MetricAbove`, `MetricAtLeast`, `MetricBelow`, `MetricAtMost`, `MetricEquals`, `MemoryExists`, `MemoryMissing`, `RelationshipAbove`, `RelationshipBelow`, `EntityControllerIs`, `EntityDefinitionIs`, `TeamControlsEntityDefinition`, `SessionStatusIs`, `CheckpointIs`, `ChoiceWasSubmitted`, `All`, `Any`, and `Not`.
-
-Every state target is explicit: `World`, `CurrentTeam`, `CurrentEntity`, `ExplicitEntityDefinition`, or `RelationshipBetweenCurrentAndTarget`. Evaluation is read-only and may return a trace containing type, resolved target, actual, expected and result. Private traces are not exposed through Team APIs.
-
-## Effects
-
-Supported types are `ChangeMetric`, `SetMetric`, `AddMemory`, `RemoveMemory`, `ChangeRelationship`, `AssignStorylet`, and `PublishWorldNarrative`. Effects produce `MetricChanged`, `MetricSet`, `StoryMemoryAdded`, `StoryMemoryRemoved`, `RelationshipChanged`, `StoryletAssigned`, and `WorldNarrativePublished`. Numeric results clamp to declared min/max. Effect IDs remain trace metadata; fact events remain authoritative.
+Phase 2 conditions and effects remain unchanged and generic. Phase 3 composes them into interactions, authored behavior and delayed consequences; it does not duplicate Storylet selection.
 
 ## Lifecycle
 
-1. `InitializeNarrative` loads exact package ID/version, compares SHA-256 lock, validates running state and Team/Entity requirements, installs package-owned initial metrics/relationships, assigns entry public/private Storylets and publishes the public entry.
-2. `SubmitStoryChoice` derives Session/Team from JWT claims, checks ownership, authored choice, duplicate/resolved state and expected stream version, then appends `StoryChoiceSubmitted`.
-3. `ResolveNarrativeCheckpoint` refuses missing required responses. It orders submissions by priority descending → Assignment ID → Team ID, executes each choice's effects in authored order, resolves prior assignments, advances the checkpoint, selects next Storylets and publishes the eligible public result in one optimistic Marten transaction.
+1. Create a Session locked to Package ID/version/hash, seed and Package-owned Difficulty.
+2. Add Teams and Entities, assign HumanTeam Entities, then start.
+3. Initialize the narrative and Package metrics/relationships; validate behavior profiles and difficulty.
+4. Authenticated Teams submit choices and negotiate structured Proposals.
+5. Admin resolves a checkpoint atomically using the documented Phase 3 pipeline.
 
-Selection filters checkpoint, scope, target, conditions and repeat policy; keeps maximum priority; sorts stable Storylet IDs; and applies deterministic weighted selection from package hash, Session seed, stream version and candidate set.
+## Deterministic checkpoint pipeline
+
+1. Validate all required Team responses.
+2. Expire due Proposals in stable Proposal ID order.
+3. Execute checkpoint-mode Agreements in stable Agreement ID order.
+4. Trigger due Scheduled Consequences in stable scheduled ID order.
+5. Resolve AuthoredBehavior Entities in `Entity Definition ID → Entity ID` order.
+6. Apply Team Choice effects in existing `priority desc → Assignment ID → Team ID → authored effect order` order.
+7. Evaluate the resulting public narrative.
+8. Select next Storylets.
+9. Mark previous Assignments resolved.
+10. Advance the checkpoint.
+11. Append every event in one optimistic Marten transaction.
+
+The implementation records the checkpoint transition before appending newly selected assignments, so steps 7–10 are represented by one `NarrativeCheckpointResolved` fact followed by deterministic assignment/publication facts in the same atomic batch. Any exception prevents the entire append.
 
 ## Privacy and replay
 
-Team experience hydration sees only assignments targeted to that Team or its controlled Entity, plus public/own-private memories and visible relationships. Public view contains only public narrative, World metrics, public memories/entities and relationships. SignalR sends only Session ID, optional Team ID, state version, checkpoint and event type; clients refetch REST.
-
-Aggregate and projection state rebuild solely from Marten events. Localized paragraphs are resolved from stable IDs after verifying the installed package hash. A mismatch raises a conflict instead of silently changing history.
-
-## Sample walkthrough
-
-At `response`, the public entry announces a delayed shared cargo. Supplier privately chooses disclosure or the original promise; Carrier privately chooses emergency capacity or normal operations. Disclosure plus emergency capacity yields `cargo-delay-coordinated-outcome`, World Pressure 48, Supplier Reliability 60, Carrier Capacity 55, private memories and directional Trust changes. The Session reaches stable checkpoint `outcome`; ending resolution is intentionally absent.
-
-Deferred: Ink, proposals, agreements, Behavior Resolver, difficulty, scheduled consequences, entity endings, world endings, React and full Hezar Cheragh content.
+Team claims determine Session and Team identity. Public views contain only public memories, narrative, Agreements and consequences. Team views contain only own private Storylets, party Proposals/Agreements and visible pending consequences. Terms never travel through SignalR or structured logs. Event replay and projection rebuild reproduce behavior Actions, expiration, Agreement status, consequence status and fingerprint.
