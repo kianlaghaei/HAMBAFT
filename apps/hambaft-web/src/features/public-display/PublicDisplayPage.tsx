@@ -8,6 +8,7 @@ import { usePackage, usePublicWorld } from '../../hooks/useServerQuery'
 import { ConnectionBadge, RealtimeBoundary } from '../../realtime/RealtimeBoundary'
 import { EndingView } from '../endings/EndingView'
 import { TermsView } from '../../components/TermsView'
+import { MarketScene } from '../visual-world/MarketScene'
 
 export function DisplayContent({ sessionId }: { sessionId: string }) {
   const world = usePublicWorld(sessionId)
@@ -16,6 +17,7 @@ export function DisplayContent({ sessionId }: { sessionId: string }) {
   if (world.isError || !world.data) return <ErrorState error={world.error} retry={() => void world.refetch()} />
   const data = world.data
   return <main className="display-page"><header className="display-header"><div><p className="brand">HAMBAFT <span>/ هزارچراغ</span></p><h1>{data.narrative?.title || checkpointLabel(data.currentCheckpointId)}</h1></div><ConnectionBadge /></header>
+    {data.storyPackageId === 'hezar-cheragh' && <MarketScene world={data} display />}
     <section className="display-narrative"><p className="eyebrow">{checkpointLabel(data.currentCheckpointId)}</p>{data.narrative?.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>) ?? <p>بازار هنوز منتظر آغاز روایت است.</p>}</section>
     <section className="display-market"><h2>حجره‌های بازار</h2><div className="market-grid">{data.entities.map((entity) => <article className="business-tile" key={entity.id}><div className="shop-mark">✦</div><h3>{entity.displayName}</h3><p>{controllerLabel(entity.controllerType)}</p><span>{statusLabel(entity.status)}</span></article>)}</div></section>
     {data.worldMetrics.length > 0 && <section className="public-metrics">{data.worldMetrics.map((metric) => <article key={metric.metricKey}><span>{metricLabel(metric.metricKey)}</span><strong>{metric.numericValue}</strong></article>)}</section>}

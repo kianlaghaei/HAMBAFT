@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import { HomePage } from '../routes/HomePage'
 import { NotFoundPage } from '../routes/NotFoundPage'
@@ -15,8 +16,18 @@ import { AdminLayout } from '../features/admin/AdminLayout'
 import { SetupPage } from '../features/admin/SetupPage'
 import { RuntimePage } from '../features/admin/RuntimePage'
 import { PublicDisplayPage } from '../features/public-display/PublicDisplayPage'
+import { useUiStore } from '../state/uiStore'
 
 export function App() {
+  const setReducedMotion = useUiStore((state) => state.setReducedMotion)
+  useEffect(() => {
+    if (!window.matchMedia) return
+    const media = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const sync = () => setReducedMotion(media.matches)
+    sync()
+    media.addEventListener('change', sync)
+    return () => media.removeEventListener('change', sync)
+  }, [setReducedMotion])
   return <Routes>
     <Route path="/" element={<HomePage />} />
     <Route path="/pair" element={<PairingPage />} />

@@ -12,7 +12,7 @@ export function AdminHomePage() {
   const setToken = useAuthStore((state) => state.setToken)
   const saveCodes = useUiStore((state) => state.saveSetupCodes)
   const packages = useQuery({ queryKey: queryKeys.packages, queryFn: api.packages })
-  const [selectedKey, setSelectedKey] = useState('hezar-cheragh@0.1.0')
+  const [selectedKey, setSelectedKey] = useState('hezar-cheragh@0.2.0')
   const [difficulty, setDifficulty] = useState('standard')
   const [teamCount, setTeamCount] = useState(2)
   const [names, setNames] = useState(['تیم سپیده', 'تیم راه‌نو', 'تیم روشن', 'تیم میزان'])

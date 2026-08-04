@@ -13,9 +13,11 @@ import { useTeamContext } from '../team-experience/teamContext'
 import { ProposalCard } from './ProposalCard'
 
 function validatorFor(schema: TermSchema): z.ZodType {
-  if (schema.type === 'Numeric') return z.number().min(schema.minimum ?? -Infinity).max(schema.maximum ?? Infinity)
+  if (['Numeric', 'NumericRange'].includes(schema.type)) return z.number().min(schema.minimum ?? -Infinity).max(schema.maximum ?? Infinity)
   if (schema.type === 'Boolean') return z.boolean()
-  if (schema.type === 'ShortText') return (schema.required ? z.string().min(1) : z.string()).max(schema.maximumLength ?? Infinity)
+  if (['ShortText', 'ShortDeclaration', 'SingleChoice', 'TargetSelection', 'DocumentSelection', 'EvidenceSelection'].includes(schema.type)) return (schema.required ? z.string().min(1) : z.string()).max(schema.maximumLength ?? Infinity)
+  if (['MultipleChoice', 'RankedChoice'].includes(schema.type)) return z.array(z.string())
+  if (schema.type === 'NumericAllocation') return z.record(z.string(), z.number())
   const fields: Record<string, z.ZodType> = {}
   schema.fields.forEach((field) => { const value = validatorFor(field); fields[field.name ?? 'value'] = field.required ? value : value.optional() })
   return z.object(fields)
