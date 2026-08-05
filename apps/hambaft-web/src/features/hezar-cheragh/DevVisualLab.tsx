@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useEffect, useState, useMemo } from 'react'
 import { HezarCheraghShell } from './HezarCheraghShell'
 import { devFixtures, type PanelFixture, type PanelMode } from './fixtures'
 import type { BazaarTimeMode } from './bazaarMapConfig'
@@ -93,6 +93,20 @@ export function DevVisualLab() {
   const setReducedMotion = useUiStore((state) => state.setReducedMotion)
   const setVisualMode = useUiStore((state) => state.setVisualMode)
   const world = useMemo(() => mockWorld(), [])
+
+  useEffect(() => {
+    const testWindow = window as Window & { render_game_to_text?: () => string; advanceTime?: (ms: number) => void }
+    testWindow.render_game_to_text = () => JSON.stringify({
+      coordinateSystem: 'semantic market percentages; origin top-right in RTL overlay, x grows leftward visually and y grows downward',
+      panelMode: activeMode,
+      fixture: activeFixtureKey,
+      time: timeMode,
+      layout: layoutMode,
+      visibleLocations: world.worldPresentation?.locations.map((location) => ({ id: location.id, name: location.displayName, x: location.x, y: location.y })) ?? [],
+    })
+    testWindow.advanceTime = () => undefined
+    return () => { delete testWindow.render_game_to_text; delete testWindow.advanceTime }
+  }, [activeFixtureKey, activeMode, layoutMode, timeMode, world])
 
   const fixture: PanelFixture = devFixtures[activeFixtureKey as keyof typeof devFixtures] ?? devFixtures.introduction
 

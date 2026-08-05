@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import { z } from 'zod'
@@ -12,6 +12,9 @@ import { TermsEditor, type TermDraft } from '../../components/TermsView'
 import { BazaarMapViewport } from './BazaarMapViewport'
 import type { SceneLocation } from '../visual-world/types'
 import { buildSceneDescriptor } from '../visual-world/sceneDirector'
+import { registerAssets } from './assetRegistry'
+import { devAssetManifest } from './devManifest'
+import { useUiStore } from '../../state/uiStore'
 
 type Storylet = TeamExperience['privateStorylets'][number]
 type UtilityPanel = 'messages' | 'pacts' | null
@@ -28,7 +31,15 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const [pactTargetTeamId, setPactTargetTeamId] = useState('')
   const [interactionId, setInteractionId] = useState('')
   const [terms, setTerms] = useState<TermDraft>({})
+  const [validForCheckpoints, setValidForCheckpoints] = useState(1)
+  const [panelMode, setPanelMode] = useState<'CurrentEvent' | 'BusinessActivity'>('CurrentEvent')
+  const [reactionIndex, setReactionIndex] = useState(-1)
+  const [sheetState, setSheetState] = useState<'collapsed' | 'half' | 'expanded'>('half')
   const [notice, setNotice] = useState('')
+  const seenReactionVersion = useUiStore((state) => state.seenReactionVersions[world.id])
+  const markReactionSeen = useUiStore((state) => state.markReactionSeen)
+
+  useEffect(() => registerAssets(devAssetManifest), [])
 
   const availableInteractions = useMemo(() => experience.availableInteractionTypes ?? [], [experience.availableInteractionTypes])
   const currentProgress = sceneProgress.key === sceneKey ? sceneProgress : { key: sceneKey, investigatedIds: [] }
@@ -43,11 +54,21 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const targetLocations = useMemo(() => descriptor.locations.filter((location) => Boolean(location.teamId && allowedTargetIds.has(location.teamId))), [allowedTargetIds, descriptor.locations])
   const pactTargetIds = useMemo(() => new Set(targetLocations.map((location) => location.id)), [targetLocations])
   const selectedLocation = descriptor.locations.find((location) => location.id === selectedLocationId)
+  const controlledLocation = descriptor.locations.find((location) => location.controlled)
   const changedLocationIds = useMemo(() => new Set(descriptor.reactions.flatMap((reaction) => reaction.locationIds)), [descriptor.reactions])
   const newInfoLocationIds = useMemo(() => new Set(descriptor.locations.filter((location) => location.availableActions.length > 0 && !investigatedIds.includes(location.id)).map((location) => location.id)), [descriptor.locations, investigatedIds])
   const mapTime = descriptor.time === 'dusk' ? 'dusk' : descriptor.time === 'night' ? 'night' : 'morning'
   const currentCheckpoint = experience.currentCheckpointId ?? world.currentCheckpointId ?? storylet?.checkpointId
+  const eventTitle = playerFacingStoryTitle(storylet?.title, currentCheckpoint, descriptor.atmosphereLabel)
   const hasInvestigation = investigatedIds.length > 0
+  const currentReaction = reactionIndex >= 0 ? descriptor.reactions[reactionIndex] : undefined
+  const reactionLocationId = currentReaction?.locationIds[0]
+  useEffect(() => {
+    if (seenReactionVersion === undefined) { markReactionSeen(world.id, descriptor.visualVersion); return }
+    if (descriptor.visualVersion <= seenReactionVersion || !descriptor.reactions.length) return
+    const timer = window.setTimeout(() => setReactionIndex(0), 0)
+    return () => window.clearTimeout(timer)
+  }, [descriptor.reactions.length, descriptor.visualVersion, markReactionSeen, seenReactionVersion, world.id])
   const choiceMutation = useMutation({
     mutationFn: ({ assignmentId, choiceId }: { assignmentId: string; choiceId: string }) => api.submitChoice(assignmentId, choiceId, experience.stateVersion, token),
     onSuccess: () => {
@@ -66,8 +87,8 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
         interactionTypeId: interaction.id,
         receiverTeamId: pactTargetTeamId,
         termsPayload: payload,
-        validityType: null,
-        validForCheckpointCount: null,
+        validityType: 'ValidForCheckpointCount',
+        validForCheckpointCount: validForCheckpoints,
         validUntilCheckpointId: null,
         expectedStateVersion: experience.stateVersion,
         commandId: crypto.randomUUID(),
@@ -93,6 +114,7 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
       }
       return
     }
+    setPanelMode('CurrentEvent')
     setProgressSelectedLocation(location.id)
   }
 
@@ -120,30 +142,35 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
         <p className="brand">HAMBAFT <span>/ هزارچراغ</span></p>
         <div><strong>{experience.controlledEntity?.displayName ?? experience.team.displayName}</strong><span className="hc-play-divider">|</span><span>{descriptor.atmosphereLabel}</span></div>
       </div>
-      <div className="hc-play-scene-title"><span className="hc-play-kicker">{checkpointLabel(currentCheckpoint)}</span><h1>{storylet.title}</h1></div>
+      <div className="hc-play-scene-title"><span className="hc-play-kicker">{checkpointLabel(currentCheckpoint)}</span><h1>{eventTitle}</h1></div>
       <div className="hc-play-header-actions">
         <span className={`hc-semantic-chip pressure-${descriptor.pressure}`}>{marketMood(descriptor.pressure)}</span>
         <button type="button" className={`hc-utility-button${utilityPanel === 'messages' ? ' is-active' : ''}`} aria-pressed={utilityPanel === 'messages'} onClick={() => setUtilityPanel((current) => current === 'messages' ? null : 'messages')}>پیام‌ها{experience.inbox?.length ? <b>{experience.inbox.length}</b> : null}</button>
         <button type="button" className={`hc-utility-button${utilityPanel === 'pacts' ? ' is-active' : ''}`} aria-pressed={utilityPanel === 'pacts'} onClick={() => setUtilityPanel((current) => current === 'pacts' ? null : 'pacts')}>پیمان‌ها{experience.agreements?.length ? <b>{experience.agreements.length}</b> : null}</button>
+        <Link className="hc-utility-button hc-menu-button" to="/team/status" aria-label="باز کردن فهرست حجره">☰</Link>
       </div>
     </header>
 
     {notice && <div className="hc-play-notice" role="status" aria-live="polite">{notice}</div>}
     <div className="hc-play-main">
+      <BusinessPanel experience={experience} descriptor={descriptor} onOpen={() => { setPanelMode('BusinessActivity'); if (controlledLocation) setProgressSelectedLocation(controlledLocation.id) }} />
       <section className="hc-play-map-column" aria-label="نقشه‌ی تعاملی بازار">
         <div className="hc-map-heading"><div><span className="eyebrow">جهانِ تصمیم</span><h2>بازار را از روی نشانه‌ها بخوانید</h2></div><span className={`hc-map-mode${pactMode ? ' is-pact' : ''}`}>{pactMode ? 'یک مقصد برای پیمان انتخاب کنید' : `${investigatedIds.length ? 'نشانه‌ها روی نقشه مانده‌اند' : 'نقطه‌ای را برای بررسی انتخاب کنید'}`}</span></div>
-        <div className="hc-play-map-canvas"><BazaarMapViewport descriptor={descriptor} timeMode={mapTime} selectedLocationId={selectedLocationId} pactTargetIds={pactTargetIds} changedLocationIds={changedLocationIds} newInfoLocationIds={newInfoLocationIds} onSelectLocation={handleLocationSelect} /></div>
+        <div className="hc-play-map-canvas"><BazaarMapViewport descriptor={descriptor} timeMode={mapTime} selectedLocationId={selectedLocationId} pactTargetIds={pactMode ? pactTargetIds : undefined} reactionFocusLocationId={reactionLocationId} changedLocationIds={changedLocationIds} newInfoLocationIds={newInfoLocationIds} onSelectLocation={handleLocationSelect} /></div>
         <div className="hc-map-legend" aria-label="راهنمای نقشه"><span><i className="legend-dot legend-dot--new" />نشانه‌ی تازه</span><span><i className="legend-dot legend-dot--pact" />مقصد پیمان</span><span><i className="legend-line" />رابطه و اثر پیمان</span></div>
       </section>
 
-      <aside className="hc-play-panel" aria-label="روایت و اقدام پرده">
+      <aside className={`hc-play-panel sheet-${sheetState}`} aria-label="روایت و اقدام پرده" data-mode={currentReaction ? 'WorldReaction' : pactMode ? 'PactTargetSelection' : selectedLocation && !hasInvestigation ? 'Investigation' : panelMode}>
+        <div className="hc-sheet-controls" role="group" aria-label="اندازه پنل بازی">{(['collapsed', 'half', 'expanded'] as const).map((state) => <button key={state} type="button" className={sheetState === state ? 'is-active' : ''} aria-pressed={sheetState === state} onClick={() => setSheetState(state)}>{state === 'collapsed' ? 'جمع' : state === 'half' ? 'نیمه' : 'باز'}</button>)}</div>
         <div className="hc-panel-scroll-safe">
-          <div className="hc-narrative-block"><div className="hc-narrative-meta"><span className="eyebrow">روایت جاری</span>{storylet.presentationTags.speaker && <span>{storylet.presentationTags.speaker}</span>}</div><h2>{storylet.title}</h2><div className="hc-narrative-copy">{storylet.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></div>
+          <div className="hc-narrative-block"><div className="hc-narrative-meta"><span className="eyebrow">روایت جاری</span>{storylet.presentationTags.speaker && <span>{storylet.presentationTags.speaker}</span>}</div><h2>{eventTitle}</h2><div className="hc-narrative-copy">{storylet.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></div>
           <div className="hc-objective-card"><span className="eyebrow">هدف این پرده</span><strong>{objectiveFor(currentCheckpoint, hasInvestigation, storylet.submitted)}</strong><div className="hc-step-row"><span className="is-done">خبر</span><span className={hasInvestigation ? 'is-done' : 'is-current'}>بررسی بازار</span><span className={storylet.submitted ? 'is-done' : hasInvestigation ? 'is-current' : ''}>انتخاب حجره</span><span>واکنش بازار</span></div></div>
-          <div className="hc-active-action"><div className="hc-action-heading"><div><span className="eyebrow">اقدام فعال</span><h2>{storylet.submitted ? 'تصمیم در بازار افتاد' : hasInvestigation ? 'حالا مسیر حجره را انتخاب کنید' : 'اول یک نشانه پیدا کنید'}</h2></div><span className="hc-action-count">{hasInvestigation ? 'دفتر روشن' : 'نقشه آماده است'}</span></div>
-            {selectedLocation && <LocationContext location={selectedLocation} investigated={investigatedIds.includes(selectedLocation.id)} onInvestigate={investigateSelected} canWrite={canWrite && !storylet.submitted} />}
-            {!selectedLocation && !storylet.submitted && <p className="hc-action-hint">از روی نقشه یکی از نقاط روشن را انتخاب کنید. هر بررسی، یک تکه از داستان «بار نرسید» را برای حجره‌تان روشن می‌کند.</p>}
-            {storylet.submitted ? <div className="hc-decision-result"><span className="hc-result-mark">✓</span><div><strong>{choiceLabel ?? 'تصمیم حجره ثبت شد'}</strong><p>بازار حالا پیامد این تصمیم را در خود نشان می‌دهد. برای ادامه‌ی پرده، به نشانه‌های پایین نقشه نگاه کنید.</p></div></div> : hasInvestigation && <ChoiceCards storylet={storylet} disabled={!canWrite || choiceMutation.isPending} onChoose={(choiceId) => choiceMutation.mutate({ assignmentId: storylet.assignmentId, choiceId })} />}
+          <div className="hc-active-action"><div className="hc-action-heading"><div><span className="eyebrow">اقدام فعال</span><h2>{currentReaction ? 'واکنش بازار را دنبال کنید' : panelMode === 'BusinessActivity' ? 'فعالیت امروز حجره' : storylet.submitted ? 'تصمیم در بازار افتاد' : hasInvestigation ? 'حالا مسیر حجره را انتخاب کنید' : 'اول یک نشانه پیدا کنید'}</h2></div><span className="hc-action-count">{currentReaction ? 'ردّ تصمیم' : hasInvestigation ? 'دفتر روشن' : 'نقشه آماده است'}</span></div>
+            {currentReaction && <WorldReactionStep reaction={currentReaction} index={reactionIndex} total={descriptor.reactions.length} onNext={() => { if (reactionIndex >= descriptor.reactions.length - 1) { markReactionSeen(world.id, descriptor.visualVersion); setReactionIndex(-1) } else setReactionIndex((current) => current + 1) }} onSkip={() => { markReactionSeen(world.id, descriptor.visualVersion); setReactionIndex(-1) }} />}
+            {!currentReaction && panelMode === 'BusinessActivity' && <BusinessActivity experience={experience} onBack={() => setPanelMode('CurrentEvent')} />}
+            {!currentReaction && panelMode !== 'BusinessActivity' && selectedLocation && <LocationContext location={selectedLocation} investigated={investigatedIds.includes(selectedLocation.id)} onInvestigate={investigateSelected} canWrite={canWrite && !storylet.submitted} />}
+            {!currentReaction && panelMode !== 'BusinessActivity' && !selectedLocation && !storylet.submitted && <p className="hc-action-hint">از روی نقشه یکی از نقاط روشن را انتخاب کنید. هر بررسی، یک تکه از داستان «بار نرسید» را برای حجره‌تان روشن می‌کند.</p>}
+            {!currentReaction && panelMode !== 'BusinessActivity' && (storylet.submitted ? <div className="hc-decision-result"><span className="hc-result-mark">✓</span><div><strong>{choiceLabel ?? 'تصمیم حجره ثبت شد'}</strong><p>بازار حالا پیامد این تصمیم را در خود نشان می‌دهد. برای ادامه‌ی پرده، به نشانه‌های پایین نقشه نگاه کنید.</p></div></div> : hasInvestigation && <ChoiceCards storylet={storylet} disabled={!canWrite || choiceMutation.isPending} onChoose={(choiceId) => choiceMutation.mutate({ assignmentId: storylet.assignmentId, choiceId })} />)}
             {choiceMutation.error && <p className="hc-form-error">{choiceMutation.error.message}</p>}
           </div>
         </div>
@@ -152,8 +179,42 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
 
     <SceneBottomStrip descriptor={descriptor} experience={experience} onPacts={openPactMode} />
     {utilityPanel === 'messages' && <MessagesDrawer experience={experience} world={world} onClose={() => setUtilityPanel(null)} />}
-    {utilityPanel === 'pacts' && <PactsDrawer experience={experience} packageData={packageQuery.data} targetLocations={targetLocations} selectedTeamId={pactTargetTeamId} interactionId={activeInteractionId} terms={terms} mutation={pactMutation} onClose={() => setUtilityPanel(null)} onPickOnMap={openPactMode} onTargetSelect={(location) => { setProgressSelectedLocation(location.id); setPactTargetTeamId(location.teamId ?? '') }} onInteractionChange={(id) => { setInteractionId(id); setTerms({}) }} onTermsChange={setTerms} />}
+    {utilityPanel === 'pacts' && <PactsDrawer experience={experience} packageData={packageQuery.data} targetLocations={targetLocations} selectedTeamId={pactTargetTeamId} interactionId={activeInteractionId} terms={terms} validForCheckpoints={validForCheckpoints} mutation={pactMutation} onClose={() => setUtilityPanel(null)} onPickOnMap={openPactMode} onTargetSelect={(location) => { setProgressSelectedLocation(location.id); setPactTargetTeamId(location.teamId ?? '') }} onInteractionChange={(id) => { setInteractionId(id); setTerms({}) }} onTermsChange={setTerms} onValidityChange={setValidForCheckpoints} />}
   </section>
+}
+
+function BusinessPanel({ experience, descriptor, onOpen }: { experience: TeamExperience; descriptor: ReturnType<typeof buildSceneDescriptor>; onOpen: () => void }) {
+  const business = experience.businessPresentation
+  const signals = business?.pulse.slice(0, 3) ?? descriptor.businessPulse.slice(0, 3)
+  return <aside className="hc-business-panel" aria-label="وضعیت کسب‌وکار شما">
+    <div className="hc-business-emblem" aria-hidden="true">{businessIcon(business?.entityDefinitionId ?? experience.controlledEntity?.definitionId)}</div>
+    <span className="eyebrow">کسب‌وکار شما</span>
+    <h2>{business?.displayName ?? experience.controlledEntity?.displayName ?? experience.team.displayName}</h2>
+    <strong className="hc-business-condition">{signals[0] ?? 'چراغ حجره روشن و آماده‌ی تصمیم است.'}</strong>
+    <ul>{signals.slice(1).map((signal) => <li key={signal}>{signal}</li>)}{signals.length < 2 && <li>خبرهای مهم حجره در همین‌جا می‌مانند.</li>}</ul>
+    <button type="button" className="button button--gold" onClick={onOpen}>ورود به فعالیت کسب‌وکار</button>
+    <details><summary>جزئیات بیشتر</summary><p>وضعیت کامل حجره بدون نمایش عددهای فنی از دفتر وضعیت در دسترس است.</p><Link to="/team/status">باز کردن دفتر وضعیت</Link></details>
+  </aside>
+}
+
+function BusinessActivity({ experience, onBack }: { experience: TeamExperience; onBack: () => void }) {
+  const pulse = experience.businessPresentation?.pulse ?? []
+  return <div className="hc-business-activity" data-testid="business-activity">
+    <p>{pulse[0] ?? 'حجره برای تصمیم امروز آماده است. نشانه‌های بازار را با وضعیت کسب‌وکار بسنجید.'}</p>
+    {pulse[1] && <small>{pulse[1]}</small>}
+    <div className="hc-activity-note"><span aria-hidden="true">✦</span><p><strong>اثر شناخته‌شده</strong> تصمیم نهایی تنها با انتخاب معتبر همین پرده در بازار ثبت می‌شود.</p></div>
+    <button type="button" className="button button--gold" onClick={onBack}>بازگشت به تصمیم پرده</button>
+  </div>
+}
+
+function WorldReactionStep({ reaction, index, total, onNext, onSkip }: { reaction: ReturnType<typeof buildSceneDescriptor>['reactions'][number]; index: number; total: number; onNext: () => void; onSkip: () => void }) {
+  const last = index >= total - 1
+  return <div className="hc-world-reaction" data-testid="world-reaction">
+    <span className="hc-reaction-seal" aria-hidden="true">✦</span>
+    <p>{reaction.outcomeLine}</p>
+    <small>نقشه روی مکان درگیر متمرکز شده و تغییر همان‌جا باقی می‌ماند.</small>
+    <div className="button-row"><button type="button" className="button button--gold" onClick={onNext}>{last ? 'ادامه روایت' : 'واکنش بعدی'}</button>{!last && <button type="button" className="button button--ghost" onClick={onSkip}>رد کردن واکنش‌ها</button>}</div>
+  </div>
 }
 
 function LocationContext({ location, investigated, onInvestigate, canWrite }: { location: SceneLocation; investigated: boolean; onInvestigate: () => void; canWrite: boolean }) {
@@ -177,10 +238,10 @@ function MessagesDrawer({ experience, world, onClose }: { experience: TeamExperi
   return <aside className="hc-utility-drawer" aria-label="پیام‌های بازار"><header><div><span className="eyebrow">ارتباط در دل بازار</span><h2>پیام‌های رسیده و فرستاده‌شده</h2></div><button type="button" className="panel-close" onClick={onClose} aria-label="بستن پیام‌ها">×</button></header>{proposals.length ? <div className="hc-drawer-list">{proposals.map((proposal) => <article className="hc-mini-letter" key={proposal.proposalId}><div><strong>{teamName(proposal.senderTeamId)} ← {teamName(proposal.receiverTeamId)}</strong><span>{proposalStatusLabel(proposal.status)}</span></div><p>نامه‌ی همکاری در مسیر حجره‌هاست.</p></article>)}</div> : <p className="hc-drawer-empty">هنوز نامه‌ای میان حجره‌ها رد و بدل نشده است.</p>}<Link className="button button--ghost" to="/team/messages">باز کردن دفتر کامل پیام‌ها</Link></aside>
 }
 
-function PactsDrawer({ experience, packageData, targetLocations, selectedTeamId, interactionId, terms, mutation, onClose, onPickOnMap, onTargetSelect, onInteractionChange, onTermsChange }: { experience: TeamExperience; packageData?: StoryPackage; targetLocations: SceneLocation[]; selectedTeamId: string; interactionId: string; terms: TermDraft; mutation: UseMutationResult<unknown, Error, void, unknown>; onClose: () => void; onPickOnMap: () => void; onTargetSelect: (location: SceneLocation) => void; onInteractionChange: (id: string) => void; onTermsChange: (terms: TermDraft) => void }) {
+function PactsDrawer({ experience, packageData, targetLocations, selectedTeamId, interactionId, terms, validForCheckpoints, mutation, onClose, onPickOnMap, onTargetSelect, onInteractionChange, onTermsChange, onValidityChange }: { experience: TeamExperience; packageData?: StoryPackage; targetLocations: SceneLocation[]; selectedTeamId: string; interactionId: string; terms: TermDraft; validForCheckpoints: number; mutation: UseMutationResult<unknown, Error, void, unknown>; onClose: () => void; onPickOnMap: () => void; onTargetSelect: (location: SceneLocation) => void; onInteractionChange: (id: string) => void; onTermsChange: (terms: TermDraft) => void; onValidityChange: (count: number) => void }) {
   const interaction = packageData?.interactions.find((item) => item.id === interactionId)
   const target = targetLocations.find((location) => location.teamId === selectedTeamId)
-  return <aside className="hc-utility-drawer hc-pacts-drawer" aria-label="پیمان‌های بازار"><header><div><span className="eyebrow">همکاری از روی نقشه</span><h2>{target ? `نامه برای ${target.name}` : 'پیمان‌های بازار'}</h2></div><button type="button" className="panel-close" onClick={onClose} aria-label="بستن پیمان‌ها">×</button></header>{!target ? <><p className="hc-drawer-intro">مقصد را از خود بازار انتخاب کنید؛ خط رابطه بعد از ارسال روی نقشه دیده می‌شود.</p><button type="button" className="button button--gold" onClick={onPickOnMap}>انتخاب مقصد روی نقشه</button><div className="hc-target-list">{targetLocations.map((location) => <button type="button" key={location.id} className="hc-target-row" onClick={() => onTargetSelect(location)}><strong>{location.name}</strong><span>{location.currentCondition}</span></button>)}</div></> : <><button type="button" className="hc-back-link" onClick={onPickOnMap}>← تغییر مقصد روی نقشه</button><div className="hc-pact-target"><span className="eyebrow">مقصد انتخاب‌شده</span><strong>{target.name}</strong><small>{target.currentCondition}</small></div>{experience.availableInteractionTypes && experience.availableInteractionTypes.length > 1 && <label className="hc-drawer-field"><span>نوع نامه</span><select value={interactionId} onChange={(event) => onInteractionChange(event.target.value)}>{experience.availableInteractionTypes.map((available) => <option key={available.interactionTypeId} value={available.interactionTypeId}>{packageData?.interactions.find((item) => item.id === available.interactionTypeId)?.displayName ?? available.interactionTypeId}</option>)}</select></label>}{interaction && <><p className="hc-drawer-intro">{interaction.description}</p><TermsEditor schema={interaction.termsSchema} value={terms} onChange={onTermsChange} /></>}<button type="button" className="button button--gold hc-send-pact" disabled={mutation.isPending || !interactionId} onClick={() => mutation.mutate(undefined)}>{mutation.isPending ? 'در حال فرستادن…' : 'فرستادن نامه‌ی پیمان'}</button>{mutation.isError && <p className="hc-form-error">{mutation.error instanceof Error ? mutation.error.message : 'ارسال پیشنهاد انجام نشد.'}</p>}</>}<Link className="button button--ghost hc-drawer-link" to="/team/agreements">دیدن دفتر پیمان‌ها</Link></aside>
+  return <aside className="hc-utility-drawer hc-pacts-drawer" aria-label="پیمان‌های بازار"><header><div><span className="eyebrow">همکاری از روی نقشه</span><h2>{target ? `نامه برای ${target.name}` : 'پیمان‌های بازار'}</h2></div><button type="button" className="panel-close" onClick={onClose} aria-label="بستن پیمان‌ها">×</button></header>{!target ? <><p className="hc-drawer-intro">مقصد را از خود بازار انتخاب کنید؛ خط رابطه بعد از پذیرش پیمان روی نقشه دیده می‌شود.</p><button type="button" className="button button--gold" onClick={onPickOnMap}>انتخاب مقصد روی نقشه</button><div className="hc-target-list">{targetLocations.map((location) => <button type="button" key={location.id} className="hc-target-row" onClick={() => onTargetSelect(location)}><strong>{location.name}</strong><span>{location.currentCondition}</span><small>{location.whyItMatters}</small></button>)}</div></> : <><button type="button" className="hc-back-link" onClick={onPickOnMap}>← تغییر مقصد روی نقشه</button><div className="hc-pact-target"><span className="eyebrow">مقصد انتخاب‌شده</span><strong>{target.name}</strong><small>{target.currentCondition}</small><p>{target.whyItMatters}</p></div>{experience.availableInteractionTypes && experience.availableInteractionTypes.length > 1 && <label className="hc-drawer-field"><span>نوع نامه</span><select value={interactionId} onChange={(event) => onInteractionChange(event.target.value)}>{experience.availableInteractionTypes.map((available) => <option key={available.interactionTypeId} value={available.interactionTypeId}>{packageData?.interactions.find((item) => item.id === available.interactionTypeId)?.displayName ?? 'همکاری بازار'}</option>)}</select></label>}{interaction && <div className="hc-proposal-letter"><span className="hc-letter-seal" aria-hidden="true">✦</span><p className="hc-drawer-intro">{interaction.description}</p><TermsEditor schema={interaction.termsSchema} value={terms} onChange={onTermsChange} /><label className="hc-drawer-field"><span>اعتبار نامه</span><select value={validForCheckpoints} onChange={(event) => onValidityChange(Number(event.target.value))}><option value={1}>تا پرده‌ی بعد</option><option value={2}>تا دو پرده‌ی بعد</option></select></label><small className="hc-known-consequence">اثر شناخته‌شده: پس از پذیرش، تعهد میان طرف‌ها ثبت می‌شود؛ نمایش عمومی تابع روایت و مجوز بازار است.</small></div>}<button type="button" className="button button--gold hc-send-pact" disabled={mutation.isPending || !interactionId} onClick={() => mutation.mutate(undefined)}>{mutation.isPending ? 'در حال مهر و ارسال…' : 'مهر و ارسال نامه'}</button>{mutation.isError && <p className="hc-form-error">{mutation.error instanceof Error ? mutation.error.message : 'ارسال پیشنهاد انجام نشد.'}</p>}</>}<Link className="button button--ghost hc-drawer-link" to="/team/agreements">دیدن دفتر پیمان‌ها</Link></aside>
 }
 
 function objectiveFor(checkpoint: string | null | undefined, investigated: boolean, submitted: boolean) {
@@ -191,7 +252,26 @@ function objectiveFor(checkpoint: string | null | undefined, investigated: boole
 }
 
 function marketMood(pressure: string) {
-  return ({ calm: 'بازار آرام است', uneasy: 'راه هنوز نامطمئن است', strained: 'جنب‌وجوش میدان کم شده', critical: 'خبر در بازار پیچیده است' } as Record<string, string>)[pressure] ?? 'بازار در حال تغییر است'
+  return ({ calm: 'اعتماد بازار برقرار است', uneasy: 'فشار بازار رو به افزایش است', strained: 'انسجام بازار شکننده است', critical: 'بازار در وضعیت بحرانی است' } as Record<string, string>)[pressure] ?? 'بازار در حال تغییر است'
+}
+
+function businessIcon(definitionId: string | undefined) {
+  if (definitionId?.includes('bakery')) return 'نان'
+  if (definitionId?.includes('logistics')) return 'بار'
+  if (definitionId?.includes('printing')) return 'چاپ'
+  if (definitionId?.includes('exchange')) return 'مهر'
+  return 'چراغ'
+}
+
+function playerFacingStoryTitle(title: string | undefined, checkpoint: string | null | undefined, atmosphere: string) {
+  if (title && !/[a-z][a-z0-9]+(?:-[a-z0-9]+)+/i.test(title)) return title
+  return ({
+    'morning-without-bell': 'خبر پنهانِ حجره',
+    'cargo-did-not-arrive': 'بار نرسید',
+    'avan-offer': 'نامه‌ای از آوان',
+    'market-gathering': 'گردهمایی بازار',
+    'slice-complete': 'چراغ‌های پس از تصمیم',
+  } as Record<string, string>)[checkpoint ?? ''] ?? atmosphere
 }
 
 function validatorFor(schema: TermSchema): z.ZodType {

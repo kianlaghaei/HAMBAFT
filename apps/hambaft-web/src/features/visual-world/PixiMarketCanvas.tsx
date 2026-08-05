@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react'
 import type { SceneDescriptor, SceneLocation } from './types'
 import { marketDiagnostics } from './diagnostics'
+import { AssetId, resolveAsset } from '../hezar-cheragh/assetRegistry'
 
 const colors = { ink: 0x26271f, wall: 0x5b4a36, roof: 0x8f653d, paper: 0xf4e3b8, gold: 0xd7b968, night: 0x18201f, sky: 0xbda56e, red: 0x8c3f32, green: 0x53664a }
 
@@ -9,7 +10,7 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
   useEffect(() => {
     let disposed = false
     let cleanup = () => undefined
-    void import('pixi.js').then(async ({ Application, Container, Graphics, Text }) => {
+    void import('pixi.js').then(async ({ Application, Assets, Container, Graphics, Sprite, Text }) => {
       if (!host.current || disposed) return
       const app = new Application()
       await app.init({ resizeTo: host.current, antialias: true, autoDensity: true, resolution: Math.min(window.devicePixelRatio || 1, 2), backgroundAlpha: 0 })
@@ -21,6 +22,7 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
       const background = layer('background architecture')
       const lighting = layer('lighting and time')
       const businesses = layer('business locations')
+      businesses.sortableChildren = true
       const population = layer('ambient population')
       const movement = layer('messengers and movement')
       const relationships = layer('relationships and agreements')
@@ -43,13 +45,45 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
       const scaleY = () => app.screen.height / 700
       const resize = () => { app.stage.scale.set(scaleX(), scaleY()) }
       resize(); app.renderer.on('resize', resize)
-      const drawBusiness = (location: SceneLocation) => {
-        const shop = new Container({ x: location.x, y: location.y })
-        const shape = new Graphics().poly([-75, -18, 0, -52, 75, -18, 75, 47, -75, 47]).fill(location.controlled ? colors.green : colors.roof).stroke({ color: location.controlled ? colors.gold : colors.paper, width: location.controlled ? 4 : 2 }).rect(-17, 15, 34, 32).fill(colors.ink)
-        const label = new Text({ text: location.name, style: { fill: colors.paper, fontFamily: 'Tahoma, sans-serif', fontSize: 17, fontWeight: '600', align: 'center' } }); label.anchor.set(.5, 0); label.y = 57
-        shop.addChild(shape, label); businesses.addChild(shop)
+      const assetForLocation = (location: SceneLocation) => {
+        if (location.id === 'market-entrance') return AssetId.locationGate
+        if (location.id === 'central-crossroads') return AssetId.locationChaharsoq
+        if (location.id === 'clock-courtyard') return AssetId.bazaarBase
+        if (location.id === 'haj-sadegh-office') return AssetId.locationHajSadeghOffice
+        if (location.id === 'caravanserai') return AssetId.locationCaravanserai
+        return ({ bakery: AssetId.businessBakery, logistics: AssetId.businessLogistics, printing: AssetId.businessPrinting, exchange: AssetId.businessExchange } as Record<string, string>)[location.businessKind]
       }
-      descriptor.locations.forEach(drawBusiness)
+      const drawBusiness = async (location: SceneLocation) => {
+        const shop = new Container({ x: location.x, y: location.y })
+        shop.zIndex = Math.round(location.y)
+        const assetId = assetForLocation(location)
+        const meta = assetId ? resolveAsset(assetId) : undefined
+        let hasSprite = false
+        if (meta?.src) {
+          try {
+            const texture = await Assets.load(meta.src)
+            if (disposed) return
+            const sprite = new Sprite(texture)
+            const targetWidth = location.id === 'central-crossroads' ? 330 : location.id === 'clock-courtyard' ? 360 : location.id === 'market-entrance' ? 230 : 205
+            sprite.anchor.set(.5, .78)
+            sprite.width = targetWidth
+            sprite.height = targetWidth * (meta.height / meta.width)
+            sprite.alpha = location.active ? 1 : .5
+            shop.addChild(sprite)
+            hasSprite = true
+          } catch {
+            hasSprite = false
+          }
+        }
+        if (!hasSprite) {
+          shop.addChild(new Graphics().poly([-75, -18, 0, -52, 75, -18, 75, 47, -75, 47]).fill(location.controlled ? colors.green : colors.roof).stroke({ color: location.controlled ? colors.gold : colors.paper, width: location.controlled ? 4 : 2 }).rect(-17, 15, 34, 32).fill(colors.ink))
+        }
+        if (location.controlled) shop.addChild(new Graphics().ellipse(0, 23, 92, 37).stroke({ color: colors.gold, width: 5, alpha: .9 }))
+        const label = new Text({ text: location.name, style: { fill: colors.paper, fontFamily: 'Tahoma, sans-serif', fontSize: 16, fontWeight: '600', align: 'center', stroke: { color: colors.ink, width: 5 } } }); label.anchor.set(.5, 0); label.y = 53
+        shop.addChild(label); businesses.addChild(shop)
+      }
+      await Promise.all(descriptor.locations.map(drawBusiness))
+      if (disposed) return
       descriptor.connections.forEach((connection) => {
         const from = descriptor.locations.find((value) => value.entityId === connection.fromEntityId); const to = descriptor.locations.find((value) => value.entityId === connection.toEntityId)
         if (!from || !to) return

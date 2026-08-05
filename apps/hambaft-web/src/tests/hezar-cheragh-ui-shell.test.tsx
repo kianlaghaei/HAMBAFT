@@ -13,6 +13,8 @@ import { buildSceneDescriptor } from '../features/visual-world/sceneDirector'
 import type { PublicWorld } from '../api/schemas'
 import type { SceneDescriptor } from '../features/visual-world/types'
 import { useUiStore } from '../state/uiStore'
+import { TeamGameplayScreen } from '../features/hezar-cheragh/TeamGameplayScreen'
+import { publicWorldFixture, teamExperienceFixture } from './fixtures'
 
 /* ── Helpers ── */
 
@@ -205,7 +207,8 @@ describe('Asset registry', () => {
     registerAssets(devAssetManifest)
     const meta = devAssetManifest['bazaar.base']
     expect(meta).toBeTruthy()
-    expect(meta?.alpha).toBe(false)
+    expect(meta?.alpha).toBe(true)
+    expect(meta?.src).toContain('/assets/hezar-cheragh/')
   })
 
   it('returns fallback for missing assets', () => {
@@ -367,5 +370,36 @@ describe('Tablet / compact layout', () => {
     const shell = screen.getByTestId('hezar-cheragh-shell')
     expect(shell.className).toContain('is-compact')
     expect(screen.getByTestId('gameplay-panel')).toBeTruthy()
+  })
+})
+
+describe('Production Team single-screen board', () => {
+  it('keeps semantic business, event, objective, active action and urgent utilities together', () => {
+    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+    expect(screen.getByTestId('team-gameplay-screen')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'نانوایی سپیده' })).toBeTruthy()
+    expect(screen.getByText('هدف این پرده')).toBeTruthy()
+    expect(screen.getByText('اقدام فعال')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /پیام‌ها/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /پیمان‌ها/ })).toBeTruthy()
+    expect(screen.queryByText('Pressure')).toBeNull()
+    expect(screen.queryByText('Market diagnostics')).toBeNull()
+  })
+
+  it('opens business activity without replacing Backend-authored choices', async () => {
+    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+    await userEvent.click(screen.getByRole('button', { name: 'ورود به فعالیت کسب‌وکار' }))
+    expect(screen.getByTestId('business-activity')).toBeTruthy()
+    expect(screen.getByText('فعالیت امروز حجره')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'بازگشت به تصمیم پرده' }))
+    expect(screen.getByText('اول یک نشانه پیدا کنید')).toBeTruthy()
+  })
+
+  it('enters spatial Pact target mode from the real Team board', async () => {
+    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+    await userEvent.click(screen.getByRole('button', { name: /پیمان‌ها/ }))
+    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مقصد روی نقشه' }))
+    expect(screen.getByText('یک مقصد برای پیمان انتخاب کنید')).toBeTruthy()
+    expect(screen.getByLabelText('روایت و اقدام پرده')).toHaveAttribute('data-mode', 'PactTargetSelection')
   })
 })
