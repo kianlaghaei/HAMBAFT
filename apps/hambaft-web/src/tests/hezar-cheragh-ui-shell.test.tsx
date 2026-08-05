@@ -405,7 +405,8 @@ describe('Production Team single-screen board', () => {
 
   it('selects a relevant marker and opens its investigation in the right panel', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    const marker = screen.getByRole('button', { name: 'نانوایی سپیده' })
+    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
+    const marker = screen.getByRole('button', { name: 'دفتر حاج صادق' })
     await userEvent.click(marker)
     expect(marker).toHaveAttribute('aria-pressed', 'true')
     expect(marker).toHaveClass('is-selected')
@@ -413,37 +414,69 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByText('مکان انتخاب‌شده')).toBeTruthy()
   })
 
-  it('keeps the guided story, business, map and urgent utilities together', () => {
+  it('shows three concise opening paragraphs, one objective and no empty utilities', () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
     expect(screen.getByTestId('team-gameplay-screen')).toBeTruthy()
     expect(screen.getByTestId('story-opening-card')).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: 'خبر پنهانِ حجره' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'نانوایی سپیده' })).toBeTruthy()
-    expect(screen.getByText(/پاکت بی‌نام را بررسی کنید/)).toBeTruthy()
-    expect(screen.getByRole('list', { name: 'مسیر این صحنه' })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /پیام‌ها/ })).toBeTruthy()
-    expect(screen.getByRole('button', { name: /پیمان‌ها/ })).toBeTruthy()
+    expect(screen.getByText('رحیم، شاگرد حجره')).toBeTruthy()
+    expect(screen.getByTestId('story-opening-card').querySelectorAll('.hc-story-opening__copy p')).toHaveLength(3)
+    expect(screen.getByText('دو مکان را بررسی کنید و مشخص کنید بارها چرا از مسیر اصلی خارج شده‌اند.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'فعالیت پس از دو بررسی (0/۲)' })).toBeDisabled()
+    expect(screen.queryByRole('button', { name: /پیام‌ها/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /پیمان‌ها/ })).toBeNull()
     expect(screen.queryByText('Pressure')).toBeNull()
     expect(screen.queryByText('Market diagnostics')).toBeNull()
   })
 
   it('presents investigation, evidence, business activity and the Backend-authored decision in order', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: 'دیدن نشانه روی نقشه' }))
+    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
+    expect(screen.getByTestId('investigation-prompt')).toHaveTextContent('0 از 2 بررسی انجام شده')
+
+    await userEvent.click(screen.getByRole('button', { name: 'دفتر حاج صادق' }))
     expect(screen.getByTestId('team-market-marker-haj-sadegh-office')).toHaveAttribute('aria-pressed', 'true')
     expect(screen.getByTestId('location-investigation-scene')).toBeTruthy()
 
-    await userEvent.click(screen.getByRole('button', { name: 'بررسی نشانه‌ها' }))
+    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
     expect(screen.getByTestId('evidence-reveal')).toBeTruthy()
-    expect(screen.getByText('چیزی که پیدا کردید')).toBeTruthy()
+    expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('سه ردیف پاک‌شده')
+    expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('منبع: تکه دفتر آورده‌شده توسط رحیم')
+    expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('اهمیت')
+    expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('ممکن است باز کند')
+    expect(screen.getByTestId('evidence-office-wrong-seal')).toHaveTextContent('نامطمئن')
+    expect(screen.getByTestId('evidence-office-noon-note')).toHaveTextContent('محتمل')
+    expect(screen.getByRole('button', { name: 'فعالیت پس از دو بررسی (1/۲)' })).toBeDisabled()
 
-    await userEvent.click(screen.getByRole('button', { name: 'بردن خبر به حجره' }))
+    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مکان دوم' }))
+    expect(screen.getByTestId('investigation-prompt')).toHaveTextContent('1 از 2 بررسی انجام شده')
+    await userEvent.click(screen.getByRole('button', { name: 'باربری راه‌نو' }))
+    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
+    expect(screen.getByTestId('evidence-logistics-double-receipt')).toHaveTextContent('دو رسید برای یک گاری')
+    expect(screen.getByTestId('evidence-logistics-held-cart')).toHaveTextContent('پیشنهاد همکاری برای بازگرداندن بار')
+    expect(screen.getByRole('button', { name: 'دروازه بازار' })).toHaveAttribute('aria-disabled', 'true')
+
+    await userEvent.click(screen.getByRole('button', { name: 'بردن نتیجه به حجره' }))
     expect(screen.getByTestId('story-business-action')).toBeTruthy()
     expect(screen.getByText('اثر روی کسب‌وکار شما')).toBeTruthy()
+    expect(screen.getByText('راه‌های بازشده با تحقیق شما')).toBeTruthy()
 
     await userEvent.click(screen.getByRole('button', { name: 'آماده‌کردن تصمیم نهایی' }))
     expect(screen.getByTestId('final-decision-summary')).toBeTruthy()
     expect(screen.getByRole('button', { name: /قیمت را نگه دار/ })).toBeTruthy()
+  })
+
+  it('reveals a complete three-card evidence bundle at the market gate', async () => {
+    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
+    await userEvent.click(screen.getByRole('button', { name: 'دروازه بازار' }))
+    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
+
+    expect(screen.getByTestId('evidence-gate-route-permit')).toHaveTextContent('قطعی')
+    expect(screen.getByTestId('evidence-gate-wheel-tracks')).toHaveTextContent('نامطمئن')
+    expect(screen.getByTestId('evidence-gate-open-window')).toHaveTextContent('محتمل')
+    expect(screen.getByTestId('evidence-reveal').querySelectorAll('.hc-evidence-card')).toHaveLength(3)
   })
 
   it('shows the market reaction and next-scene action for a submitted decision', async () => {

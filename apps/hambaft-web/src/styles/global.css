@@ -1217,10 +1217,6 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
 .hc-play-panel { min-width: 0; min-height: 0; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--paper); }
 .hc-play-panel > .hc-sheet-controls { display: none; }
 .hc-panel-scroll-safe { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: .9rem 1rem .75rem; overflow: hidden; }
-.hc-story-progress { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .28rem; flex: 0 0 auto; margin: 0 0 .65rem; padding: 0; list-style: none; color: #8a806b; font-size: .59rem; }
-.hc-story-progress li { min-width: 0; padding-top: .28rem; overflow: hidden; border-top: 2px solid #cfc5ac; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
-.hc-story-progress li.is-current { border-color: var(--gold); color: var(--brick); font-weight: 900; }
-.hc-story-progress li.is-done { border-color: #79926d; color: #53664a; }
 .hc-story-opening, .hc-investigation-scene, .hc-evidence-reveal, .hc-story-business, .hc-final-decision, .hc-story-reaction { animation: hc-story-enter .2s ease both; }
 .hc-story-opening, .hc-investigation-scene, .hc-evidence-reveal, .hc-story-business, .hc-story-reaction { display: flex; flex-direction: column; gap: .55rem; min-height: 0; padding: .75rem; overflow: auto; border: 1px solid rgba(166,123,45,.36); border-inline-start: 4px solid var(--gold); background: rgba(255,252,240,.72); }
 .hc-story-opening__mark { display: grid; place-items: center; width: 42px; height: 30px; border: 1px solid #af8a43; color: #795321; background: #efe0b9; box-shadow: 3px 4px 0 rgba(118,83,29,.12); font-size: .55rem; font-weight: 900; transform: rotate(-2deg); }
@@ -1241,16 +1237,24 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
 .hc-investigation-preview > span, .hc-business-impact > span { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border: 1px solid rgba(166,123,45,.55); border-radius: 50%; color: #7a4b32; background: #f1dfae; font-size: .5rem; font-weight: 900; }
 .hc-investigation-preview p, .hc-business-impact p { margin: 0; font-size: .68rem; line-height: 1.6; }
 .hc-evidence-reveal { gap: .45rem; }
-.hc-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; }
-.hc-evidence-card { display: flex; align-items: flex-start; gap: .45rem; min-width: 0; padding: .48rem; border: 1px solid #c5b58f; background: #fffaf0; box-shadow: 2px 3px 0 rgba(88,67,31,.08); }
-.hc-evidence-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
-.hc-evidence-card__object { display: grid; place-items: center; width: 31px; height: 25px; flex: 0 0 31px; border: 1px solid #aa8240; color: #765024; background: #ebd8a7; font-size: .48rem; font-weight: 900; transform: rotate(-2deg); }
-.hc-evidence-card.kind-seal .hc-evidence-card__object { width: 27px; height: 27px; flex-basis: 27px; border-radius: 50%; color: #fff0cb; background: #8a4437; transform: none; }
-.hc-evidence-card strong { display: block; color: var(--olive); font-size: .68rem; }
-.hc-evidence-card p { display: -webkit-box; margin: .14rem 0 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #625946; font-size: .62rem; line-height: 1.52; }
-.hc-clue-message { position: relative; margin: 0; padding: .45rem .7rem .45rem 1.6rem; border: 0; border-inline-start: 3px solid var(--brick); color: #584b3d; background: rgba(140,63,50,.07); }
-.hc-clue-message > span { position: absolute; inset-block-start: -.12rem; inset-inline-start: .38rem; color: rgba(140,63,50,.35); font-size: 2rem; }
-.hc-clue-message p { margin: 0; font-size: .67rem; line-height: 1.6; }
+.hc-evidence-grid { display: grid; gap: .4rem; }
+.hc-evidence-card { min-width: 0; padding: .48rem .55rem; border: 1px solid #c5b58f; border-inline-start-width: 3px; background: #fffaf0; box-shadow: 2px 3px 0 rgba(88,67,31,.08); }
+.hc-evidence-card.certainty-confirmed { border-inline-start-color: #58734f; }
+.hc-evidence-card.certainty-probable { border-inline-start-color: #b1842f; }
+.hc-evidence-card.certainty-uncertain { border-inline-start-color: #8a4437; }
+.hc-evidence-card header { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.hc-evidence-card header strong { color: var(--olive); font-size: .68rem; }
+.hc-evidence-card header span { flex: 0 0 auto; color: var(--brick); font-size: .53rem; font-weight: 900; }
+.hc-evidence-card > small { display: block; margin-top: .08rem; color: #88765a; font-size: .53rem; }
+.hc-evidence-card > p { margin: .18rem 0; color: #554c3e; font-size: .62rem; line-height: 1.52; }
+.hc-evidence-card dl { display: grid; gap: .12rem; margin: 0; padding-top: .2rem; border-top: 1px solid rgba(166,123,45,.18); }
+.hc-evidence-card dl > div { display: grid; grid-template-columns: 4.7rem minmax(0, 1fr); gap: .3rem; }
+.hc-evidence-card dt { color: var(--brick); font-size: .53rem; font-weight: 900; }
+.hc-evidence-card dd { margin: 0; color: #625946; font-size: .56rem; line-height: 1.45; }
+.hc-investigation-result { display: grid; gap: .1rem; padding: .42rem .55rem; border-inline-start: 3px solid #708865; background: rgba(112,136,101,.09); color: #58644f; font-size: .61rem; line-height: 1.5; }
+.hc-unlocked-actions { padding: .45rem .55rem; border-inline-start: 3px solid var(--gold); background: rgba(215,185,104,.11); }
+.hc-unlocked-actions strong { color: var(--olive); font-size: .65rem; }
+.hc-unlocked-actions ul, .hc-final-decision dd ul { margin: .2rem 0 0; padding-inline-start: 1rem; color: #625946; font-size: .6rem; line-height: 1.55; }
 .hc-business-token, .hc-decision-document { display: grid; place-items: center; width: 40px; height: 32px; flex: 0 0 40px; border: 1px solid #ad8240; color: #6d491e; background: #ead39b; font-size: .52rem; font-weight: 900; }
 .hc-context-letter { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .15rem .6rem; padding: .55rem .65rem; border: 1px solid #b79b63; background: linear-gradient(135deg, #fffaf0, #eee0bd); }
 .hc-context-letter__seal { position: absolute; inset-block-start: -.35rem; inset-inline-start: .55rem; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #ffeac0; background: var(--brick); }
