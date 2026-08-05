@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { GameplayPanel } from '../features/hezar-cheragh/GameplayPanel'
 import { BazaarMapViewport } from '../features/hezar-cheragh/BazaarMapViewport'
@@ -22,7 +22,7 @@ function wrapper({ children }: { children: React.ReactNode }) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return (
     <QueryClientProvider client={qc}>
-      <MemoryRouter>{children}</MemoryRouter>
+      <MemoryRouter initialEntries={['/team']}>{children}</MemoryRouter>
     </QueryClientProvider>
   )
 }
@@ -374,6 +374,14 @@ describe('Tablet / compact layout', () => {
 })
 
 describe('Production Team single-screen board', () => {
+  it('renders the empty stage at /team without legacy map nodes', () => {
+    render(<Routes><Route path="/team" element={<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />} /></Routes>, { wrapper })
+    expect(screen.getByTestId('empty-market-stage')).toBeTruthy()
+    expect(screen.queryByTestId('bazaar-map-viewport')).toBeNull()
+    expect(screen.queryByTestId('pixi-market')).toBeNull()
+    expect(screen.queryByRole('heading', { name: 'بازار را از روی نشانه‌ها بخوانید' })).toBeNull()
+  })
+
   it('keeps semantic business, event, objective, active action and urgent utilities together', () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
     expect(screen.getByTestId('team-gameplay-screen')).toBeTruthy()
@@ -395,11 +403,4 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByText('اول یک نشانه پیدا کنید')).toBeTruthy()
   })
 
-  it('enters spatial Pact target mode from the real Team board', async () => {
-    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: /پیمان‌ها/ }))
-    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مقصد روی نقشه' }))
-    expect(screen.getByText('یک مقصد برای پیمان انتخاب کنید')).toBeTruthy()
-    expect(screen.getByLabelText('روایت و اقدام پرده')).toHaveAttribute('data-mode', 'PactTargetSelection')
-  })
 })
