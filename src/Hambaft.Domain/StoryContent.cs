@@ -240,7 +240,8 @@ public sealed record StoryPackage(
     InkPackageDefinition? Ink = null,
     IReadOnlyList<EntityEndingDefinition>? EntityEndings = null,
     IReadOnlyList<WorldEndingDefinition>? WorldEndings = null,
-    bool ResolveUncontrolledEntityEndings = false)
+    bool ResolveUncontrolledEntityEndings = false,
+    PresentationCatalogDefinition? Presentation = null)
 {
     public IReadOnlyList<InteractionTypeDefinition> InteractionDefinitions => Interactions ?? [];
     public BehaviorCatalogDefinition BehaviorDefinitions => Behaviors ?? new([], []);
@@ -249,6 +250,7 @@ public sealed record StoryPackage(
     public InkPackageDefinition InkDefinition => Ink ?? new([],[],["scene","sound","music","camera","animation","portrait","mood","speaker","effect","narrative_ref","visibility"]);
     public IReadOnlyList<EntityEndingDefinition> EntityEndingDefinitions => EntityEndings ?? [];
     public IReadOnlyList<WorldEndingDefinition> WorldEndingDefinitions => WorldEndings ?? [];
+    public PresentationCatalogDefinition PresentationDefinition => Presentation ?? PresentationCatalogDefinition.Empty;
 }
 
 public sealed record StoryPackageValidationError(string FilePath, string? ContentId, string ErrorCode, string Message);

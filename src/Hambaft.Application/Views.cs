@@ -3,13 +3,22 @@ using System.Text.Json;
 
 namespace Hambaft.Application;
 
-public sealed record NarrativeChoiceView(string Id,string Label,string? ShortOutcome);
+public sealed record ChoicePresentationView(string Renderer,string ShortTitle,string Action,string ImmediateImplication,string? KnownCost,string? KnownRisk,bool UnknownConsequence,string? RelatedLocationId,string? RelatedCharacterId,string? RelatedEntityDefinitionId,string? EvidenceKind);
+public sealed record NarrativeChoiceView(string Id,string Label,string? ShortOutcome,ChoicePresentationView? Presentation=null);
 public sealed record NarrativeContentView(string StoryletId,string NarrativeRef,string Title,IReadOnlyList<string> Paragraphs,IReadOnlyDictionary<string,string> PresentationTags);
 public sealed record TeamStoryletView(Guid AssignmentId,string StoryletId,string CheckpointId,string Title,IReadOnlyList<string> Paragraphs,IReadOnlyDictionary<string,string> PresentationTags,IReadOnlyList<NarrativeChoiceView> Choices,bool RequiredResponse,bool Submitted,string? SubmittedChoiceId);
 public sealed record EndingPresentationView(Guid EndingResultId,EndingScope Scope,Guid ScopeId,string EndingDefinitionId,string Title,IReadOnlyList<string> Paragraphs,IReadOnlyDictionary<string,string> PresentationTags,IReadOnlyList<EndingEvidence> Evidence,string ContentHash,long ResolvedAtStreamVersion);
 public sealed record SessionMetadataView(Guid SessionId,SessionStatus Status,string StoryPackageId,string StoryVersion,string ContentHash,string DifficultyId,string? CurrentCheckpointId);
 public sealed record EndingEligibilityDiagnostic(EndingScope Scope,Guid ScopeId,string EndingDefinitionId,bool Eligible,int Priority);
-public sealed record AdminSessionView(Guid Id,IReadOnlyList<Guid> TeamsAwaitingResponse,IReadOnlyList<string> AssignedStoryletIds,string? Checkpoint,IReadOnlyList<Proposal> OpenProposals,IReadOnlyList<Agreement> ActiveAgreements,IReadOnlyList<ScheduledConsequence> PendingConsequences,IReadOnlyList<AuthoredBehaviorSelection> UncontrolledBehaviorSelections,IReadOnlyList<EndingEligibilityDiagnostic> EndingEligibilityDiagnostics,string PackageVersion,string ContentHash,long StreamVersion);
+public sealed record SemanticStateView(string Key,string BandId,string Label,string Description,IReadOnlyList<string> VisualTags,string Trend="steady");
+public sealed record LocationPresentationStateView(string Id,string DisplayName,string ShortIdentity,string WhyItMatters,string CurrentCondition,string WhoIsHere,string RecentChange,IReadOnlyList<string> AvailableActions,IReadOnlyList<string> PresentationTags,decimal X,decimal Y,Guid? EntityId,string? EntityDefinitionId);
+public sealed record CharacterPresentationStateView(string Id,string DisplayName,string LocationId,string WhatIsKnown,string LastSeen,string Attitude,string RecentStatement,string? PossibleInteraction,IReadOnlyList<string> PresentationTags);
+public sealed record AmbientPresentationStateView(string Id,string Description,string LocationId);
+public sealed record ReactionPresentationStateView(string OutcomeLine,IReadOnlyList<string> LocationIds,IReadOnlyList<string> VisualTags);
+public sealed record BusinessPresentationStateView(Guid EntityId,string EntityDefinitionId,string DisplayName,IReadOnlyList<string> Pulse,IReadOnlyList<string> VisualTags);
+public sealed record RelationshipPresentationStateView(Guid SourceEntityId,Guid TargetEntityId,string RelationshipKey,string BandId,string Label,string Description,IReadOnlyList<string> VisualTags);
+public sealed record WorldPresentationStateView(string SceneId,string TimeOfDay,string TimeLabel,string AtmosphereLabel,string PublicEvent,string CourtyardActivity,string Soundscape,bool AvanVisible,IReadOnlyList<string> VisualTags,IReadOnlyList<string> Pulse,IReadOnlyList<SemanticStateView> SemanticMetrics,IReadOnlyList<LocationPresentationStateView> Locations,IReadOnlyList<BusinessPresentationStateView> Businesses,IReadOnlyList<CharacterPresentationStateView> Characters,IReadOnlyList<AmbientPresentationStateView> AmbientEvents,IReadOnlyList<ReactionPresentationStateView> Reactions);
+public sealed record AdminSessionView(Guid Id,IReadOnlyList<Guid> TeamsAwaitingResponse,IReadOnlyList<string> AssignedStoryletIds,string? Checkpoint,IReadOnlyList<Proposal> OpenProposals,IReadOnlyList<Agreement> ActiveAgreements,IReadOnlyList<ScheduledConsequence> PendingConsequences,IReadOnlyList<AuthoredBehaviorSelection> UncontrolledBehaviorSelections,IReadOnlyList<EndingEligibilityDiagnostic> EndingEligibilityDiagnostics,string PackageVersion,string ContentHash,long StreamVersion,IReadOnlyList<Metric>? TechnicalMetrics=null,WorldPresentationStateView? MarketPreview=null);
 
 public sealed record SessionStateView(
     Guid Id,string StoryPackageId,string StoryVersion,string ContentHash,int Seed,SessionStatus Status,
@@ -34,7 +43,7 @@ public sealed record TeamExperienceView(
     Guid Id,Guid SessionId,Team Team,WorldEntity? ControlledEntity,IReadOnlyList<Metric> VisibleMetrics,
     IReadOnlyList<StoryMemory> VisibleMemories,IReadOnlyList<Relationship> VisibleRelationships,long StateVersion,
     string? CurrentCheckpointId,IReadOnlyList<TeamStoryletView> PrivateStorylets,
-    IReadOnlyList<ProposalItemView>? Inbox=null,IReadOnlyList<ProposalItemView>? Outbox=null,IReadOnlyList<AgreementView>? Agreements=null,IReadOnlyList<AvailableInteractionView>? AvailableInteractionTypes=null,IReadOnlyList<ScheduledConsequenceView>? PendingConsequences=null,EndingPresentationView? EntityEnding=null,EndingPresentationView? WorldEnding=null,SessionMetadataView? SessionMetadata=null)
+    IReadOnlyList<ProposalItemView>? Inbox=null,IReadOnlyList<ProposalItemView>? Outbox=null,IReadOnlyList<AgreementView>? Agreements=null,IReadOnlyList<AvailableInteractionView>? AvailableInteractionTypes=null,IReadOnlyList<ScheduledConsequenceView>? PendingConsequences=null,EndingPresentationView? EntityEnding=null,EndingPresentationView? WorldEnding=null,SessionMetadataView? SessionMetadata=null,WorldPresentationStateView? WorldPresentation=null,BusinessPresentationStateView? BusinessPresentation=null,IReadOnlyList<RelationshipPresentationStateView>? RelationshipPresentation=null)
 {
     public IReadOnlyList<AgreementView> ActiveAgreements => (Agreements??[]).Where(x=>x.Status==AgreementStatus.Active).ToList();
 }
@@ -43,7 +52,7 @@ public sealed record PublicWorldView(
     Guid Id,SessionStatus Status,IReadOnlyList<WorldEntity> Entities,IReadOnlyList<Metric> WorldMetrics,
     IReadOnlyList<StoryMemory> PublicMemories,IReadOnlyList<Relationship> PublicRelationships,long StateVersion,
     string StoryPackageId,string StoryVersion,string ContentHash,string? CurrentCheckpointId,string? CurrentWorldStoryletId,string? CurrentWorldNarrativeRef,NarrativeContentView? Narrative,
-    IReadOnlyList<AgreementView>? PublicAgreements=null,IReadOnlyList<ScheduledConsequenceView>? PublicConsequences=null,EndingPresentationView? WorldEnding=null,IReadOnlyList<EndingPresentationView>? PublicEntityEndingSummaries=null,string DifficultyId="standard");
+    IReadOnlyList<AgreementView>? PublicAgreements=null,IReadOnlyList<ScheduledConsequenceView>? PublicConsequences=null,EndingPresentationView? WorldEnding=null,IReadOnlyList<EndingPresentationView>? PublicEntityEndingSummaries=null,string DifficultyId="standard",WorldPresentationStateView? WorldPresentation=null);
 
 public sealed record EntityStateView(Guid Id,Guid SessionId,ControllerType ControllerType,Guid? ControlledByTeamId,EntityStatus Status,IReadOnlyList<Metric> Metrics,IReadOnlyList<StoryMemory> VisibleMemories,long StateVersion);
 
@@ -59,7 +68,7 @@ public sealed record EndingEvidenceView(Guid Id,IReadOnlyList<EndingResult> Enti
 public static class ViewProjector
 {
     public static SessionStateView Session(StorySession s)=>new(s.Id,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.Seed,s.Status,s.CreatedAtUtc,s.StartedAtUtc,s.CompletedAtUtc,s.Teams.ToList(),s.Entities.ToList(),s.StateVersion,s.CurrentCheckpointId,s.NarrativeInitialized,s.StoryletAssignments.ToList(),s.SubmittedChoices.ToList(),s.DifficultyId,s.CheckpointResolutionNumber,s.Proposals.ToList(),s.ProposalRevisions.ToList(),s.Agreements.ToList(),s.ScheduledConsequences.ToList(),s.AuthoredBehaviorSelections.ToList(),s.EndingResults.ToList());
-    public static PublicWorldView Public(StorySession s)=>new(s.Id,s.Status,s.Entities.ToList(),s.Metrics.Where(x=>x.Scope==MetricScope.World).ToList(),s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public).ToList(),s.Relationships.ToList(),s.StateVersion,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.CurrentCheckpointId,s.CurrentWorldStoryletId,s.CurrentWorldNarrativeRef,null,s.Agreements.Where(x=>x.Visibility==AgreementVisibility.Public).Select(ToAgreementView).ToList(),s.ScheduledConsequences.Where(x=>x.Visibility==ConsequenceVisibility.Public).Select(ToConsequenceView).ToList(),DifficultyId:s.DifficultyId);
+    public static PublicWorldView Public(StorySession s)=>new(s.Id,s.Status,s.Entities.ToList(),s.Metrics.Where(x=>x.Scope==MetricScope.World).ToList(),s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public).ToList(),[],s.StateVersion,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.CurrentCheckpointId,s.CurrentWorldStoryletId,s.CurrentWorldNarrativeRef,null,s.Agreements.Where(x=>x.Visibility==AgreementVisibility.Public).Select(ToAgreementView).ToList(),s.ScheduledConsequences.Where(x=>x.Visibility==ConsequenceVisibility.Public).Select(ToConsequenceView).ToList(),DifficultyId:s.DifficultyId);
     public static TeamExperienceView Team(StorySession s,Team team,StoryPackage? package=null,string? locale=null)
     {
         var entity=s.Entities.SingleOrDefault(x=>x.Id==team.ControlledEntityId);
@@ -67,7 +76,8 @@ public static class ViewProjector
         var memories=s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public||x.Visibility==MemoryVisibility.TeamPrivate&&x.Scope==MemoryScope.Team&&x.ScopeId==team.Id||entity is not null&&x.Visibility==MemoryVisibility.EntityPrivate&&x.Scope==MemoryScope.Entity&&x.ScopeId==entity.Id).ToList();
         var relationships=entity is null?[]:s.Relationships.Where(x=>x.SourceEntityId==entity.Id||x.TargetEntityId==entity.Id).ToList();
         var phase3=Phase3(team,s.Proposals,s.ProposalRevisions,s.Agreements,s.ScheduledConsequences,s.StateVersion,package,s.Teams,s.Entities);
-        return new(team.Id,s.Id,team,entity,metrics,memories,relationships,s.StateVersion,s.CurrentCheckpointId,package is null?[]:PrivateStorylets(s.StoryletAssignments,s.SubmittedChoices,team,entity,package,locale),phase3.Incoming,phase3.Outgoing,phase3.Agreements,phase3.Interactions,phase3.Consequences,SessionMetadata:new(s.Id,s.Status,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.DifficultyId,s.CurrentCheckpointId));
+        var semantic=package is null||package.PresentationDefinition.MetricBands.Count==0?null:SemanticPresentation.Project(package,s.Id,s.CurrentCheckpointId,s.Entities,metrics,relationships,true);
+        return new(team.Id,s.Id,team,entity,semantic is null?metrics:[],memories,semantic is null?relationships:[],s.StateVersion,s.CurrentCheckpointId,package is null?[]:PrivateStorylets(s.StoryletAssignments,s.SubmittedChoices,team,entity,package,locale),phase3.Incoming,phase3.Outgoing,phase3.Agreements,phase3.Interactions,phase3.Consequences,SessionMetadata:new(s.Id,s.Status,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.DifficultyId,s.CurrentCheckpointId),WorldPresentation:semantic?.World,BusinessPresentation:semantic?.Business,RelationshipPresentation:semantic?.Relationships);
     }
     public static EntityStateView Entity(StorySession s,WorldEntity entity)=>new(entity.Id,s.Id,entity.ControllerType,entity.ControlledByTeamId,entity.Status,s.Metrics.Where(x=>x.Scope==MetricScope.Entity&&x.ScopeId==entity.Id).ToList(),s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public||x.Visibility==MemoryVisibility.EntityPrivate&&x.Scope==MemoryScope.Entity&&x.ScopeId==entity.Id).ToList(),s.StateVersion);
     public static TeamExperienceView Team(SessionExperienceView s,Team team,StoryPackage? package=null,string? locale=null)
@@ -77,17 +87,23 @@ public static class ViewProjector
         var memories=s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public||x.Visibility==MemoryVisibility.TeamPrivate&&x.Scope==MemoryScope.Team&&x.ScopeId==team.Id||entity is not null&&x.Visibility==MemoryVisibility.EntityPrivate&&x.Scope==MemoryScope.Entity&&x.ScopeId==entity.Id).ToList();
         var relationships=entity is null?[]:s.Relationships.Where(x=>x.SourceEntityId==entity.Id||x.TargetEntityId==entity.Id).ToList();
         var phase3=Phase3(team,s.Proposals??[],s.ProposalRevisions??[],s.Agreements??[],s.ScheduledConsequences??[],s.StateVersion,package,s.Teams,s.Entities);
-        return new(team.Id,s.Id,team,entity,metrics,memories,relationships,s.StateVersion,s.CurrentCheckpointId,package is null?[]:PrivateStorylets(s.StoryletAssignments,s.SubmittedChoices,team,entity,package,locale),phase3.Incoming,phase3.Outgoing,phase3.Agreements,phase3.Interactions,phase3.Consequences,SessionMetadata:new(s.Id,s.Status,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.DifficultyId,s.CurrentCheckpointId));
+        var semantic=package is null||package.PresentationDefinition.MetricBands.Count==0?null:SemanticPresentation.Project(package,s.Id,s.CurrentCheckpointId,s.Entities,metrics,relationships,true);
+        return new(team.Id,s.Id,team,entity,semantic is null?metrics:[],memories,semantic is null?relationships:[],s.StateVersion,s.CurrentCheckpointId,package is null?[]:PrivateStorylets(s.StoryletAssignments,s.SubmittedChoices,team,entity,package,locale),phase3.Incoming,phase3.Outgoing,phase3.Agreements,phase3.Interactions,phase3.Consequences,SessionMetadata:new(s.Id,s.Status,s.StoryPackageId,s.StoryVersion,s.ContentHash,s.DifficultyId,s.CurrentCheckpointId),WorldPresentation:semantic?.World,BusinessPresentation:semantic?.Business,RelationshipPresentation:semantic?.Relationships);
     }
     public static EntityStateView Entity(SessionExperienceView s,WorldEntity entity)=>new(entity.Id,s.Id,entity.ControllerType,entity.ControlledByTeamId,entity.Status,s.Metrics.Where(x=>x.Scope==MetricScope.Entity&&x.ScopeId==entity.Id).ToList(),s.Memories.Where(x=>x.Visibility==MemoryVisibility.Public||x.Visibility==MemoryVisibility.EntityPrivate&&x.Scope==MemoryScope.Entity&&x.ScopeId==entity.Id).ToList(),s.StateVersion);
-    public static PublicWorldView Hydrate(PublicWorldView view,StoryPackage package,string? locale=null)=>view with { Narrative=view.CurrentWorldStoryletId is null||view.CurrentWorldNarrativeRef is null?null:Content(package,view.CurrentWorldStoryletId,view.CurrentWorldNarrativeRef,locale) };
+    public static PublicWorldView Hydrate(PublicWorldView view,StoryPackage package,string? locale=null)
+    {
+        if(package.PresentationDefinition.MetricBands.Count==0)return view with { Narrative=view.CurrentWorldStoryletId is null||view.CurrentWorldNarrativeRef is null?null:Content(package,view.CurrentWorldStoryletId,view.CurrentWorldNarrativeRef,locale) };
+        var semantic=SemanticPresentation.Project(package,view.Id,view.CurrentCheckpointId,view.Entities,view.WorldMetrics,[],false);
+        return view with { WorldMetrics=[],PublicRelationships=[],Narrative=view.CurrentWorldStoryletId is null||view.CurrentWorldNarrativeRef is null?null:Content(package,view.CurrentWorldStoryletId,view.CurrentWorldNarrativeRef,locale),WorldPresentation=semantic.World };
+    }
 
     private static IReadOnlyList<TeamStoryletView> PrivateStorylets(IReadOnlyList<StoryletAssignment> assignments,IReadOnlyList<SubmittedStoryChoice> submissions,Team team,WorldEntity? entity,StoryPackage package,string? locale)
         =>assignments.Where(a=>(a.Status is StoryletAssignmentStatus.Assigned or StoryletAssignmentStatus.Responded)&&(a.TargetTeamId==team.Id||entity is not null&&a.Scope==StoryletScope.EntityPrivate&&a.TargetEntityId==entity.Id))
             .OrderBy(a=>a.AssignmentId).Select(a=>
             {
                 var storylet=package.Storylets.Single(s=>s.Id==a.StoryletId); var narrative=Localized(package,storylet.NarrativeRef,locale); var submitted=submissions.SingleOrDefault(s=>s.AssignmentId==a.AssignmentId);
-                return new TeamStoryletView(a.AssignmentId,a.StoryletId,a.CheckpointId,narrative.Title,narrative.Paragraphs,narrative.PresentationTags,storylet.Choices.Select(c=>{var label=Localized(package,c.LabelRef,locale);return new NarrativeChoiceView(c.Id,label.ChoiceLabel??label.Title,label.ShortOutcome);}).ToList(),a.RequiredResponse,submitted is not null,submitted?.ChoiceId);
+                return new TeamStoryletView(a.AssignmentId,a.StoryletId,a.CheckpointId,narrative.Title,narrative.Paragraphs,narrative.PresentationTags,storylet.Choices.Select(c=>{var label=Localized(package,c.LabelRef,locale);var authored=package.PresentationDefinition.Choices.SingleOrDefault(x=>x.ChoiceId==c.Id);return new NarrativeChoiceView(c.Id,label.ChoiceLabel??label.Title,label.ShortOutcome,authored is null?null:new(authored.Renderer,authored.ShortTitle,authored.Action,authored.ImmediateImplication,authored.KnownCost,authored.KnownRisk,authored.UnknownConsequence,authored.RelatedLocationId,authored.RelatedCharacterId,authored.RelatedEntityDefinitionId,authored.EvidenceKind));}).ToList(),a.RequiredResponse,submitted is not null,submitted?.ChoiceId);
             }).ToList();
     private static NarrativeContentView Content(StoryPackage package,string storyletId,string narrativeRef,string? locale)
     { var n=Localized(package,narrativeRef,locale); return new(storyletId,narrativeRef,n.Title,n.Paragraphs,n.PresentationTags); }

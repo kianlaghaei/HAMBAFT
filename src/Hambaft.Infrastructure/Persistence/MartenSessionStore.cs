@@ -44,7 +44,7 @@ public sealed class MartenSessionStore : ISessionStore
     }
     public async Task<PublicWorldView?> LoadPublicViewAsync(Guid id,CancellationToken ct)
     {
-        var view=await session.LoadAsync<PublicWorldView>(id,ct); if(view is null||packages is null||view.CurrentWorldNarrativeRef is null) return view;
+        var view=await session.LoadAsync<PublicWorldView>(id,ct); if(view is null||packages is null) return view;
         var package=await packages.LoadAsync(view.StoryPackageId,view.StoryVersion,ct); EnsureHash(view.ContentHash,package.ContentHash);
         var hydrated=ViewProjector.Hydrate(view,package);
         if(ink is not null&&view.CurrentWorldNarrativeRef is { } narrative&&package.InkDefinition.References.Any(x=>x.Id==narrative))
@@ -85,7 +85,7 @@ public sealed class MartenSessionStore : ISessionStore
                 if(package.InkDefinition.References.Any(x=>x.Id==choice.LabelRef))
                 {
                     var label=await Render(package,choice.LabelRef,definition.Scope,experience,team,entity,null,ct);
-                    choices.Add(new(choice.Id,string.Join(" ",label.Paragraphs),null));
+                    choices.Add(new(choice.Id,string.Join(" ",label.Paragraphs),null,item.Choices.SingleOrDefault(x=>x.Id==choice.Id)?.Presentation));
                 }
                 else choices.Add(item.Choices.Single(x=>x.Id==choice.Id));
             }
