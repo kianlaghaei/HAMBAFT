@@ -5,10 +5,14 @@ import { queryKeys } from '../../api/queryKeys'
 import { useAuthStore } from '../../auth/authStore'
 import { EmptyState, ErrorState } from '../../components/States'
 import { useTeamContext } from '../team-experience/teamContext'
+import { usePublicWorld } from '../../hooks/useServerQuery'
+import { TeamGameplayScreen } from '../hezar-cheragh/TeamGameplayScreen'
 import { ChoiceList } from '../decisions/ChoiceList'
 
 export function StoryPage() {
   const { experience, canWrite } = useTeamContext()
+  const hasGameplayProjection = Boolean(experience.worldPresentation)
+  const world = usePublicWorld(hasGameplayProjection ? experience.sessionId : undefined)
   const token = useAuthStore((state) => state.team?.accessToken ?? '')
   const client = useQueryClient()
   const mutation = useMutation({
@@ -16,6 +20,11 @@ export function StoryPage() {
     onSuccess: () => void client.invalidateQueries({ queryKey: queryKeys.teamExperience }),
     onError: (error) => { if (error instanceof ApiError && error.isConflict) void client.invalidateQueries({ queryKey: queryKeys.teamExperience }) },
   })
+  if (experience.sessionMetadata?.storyPackageId === 'hezar-cheragh' && hasGameplayProjection) {
+    if (world.isLoading) return <div className="hc-play-loading" role="status">نقشه‌ی بازار در حال روشن‌شدن است…</div>
+    if (world.isError || !world.data) return <ErrorState error={world.error} retry={() => void world.refetch()} />
+    return <TeamGameplayScreen experience={experience} world={world.data} canWrite={canWrite} />
+  }
   if (!experience.privateStorylets.length) return <EmptyState title={String(experience.sessionMetadata?.status) === 'Completed' ? 'روایت این جلسه به پایان رسیده است' : 'در انتظار فصل بعد'}>وقتی بازار برای حجره شما خبری داشته باشد، این صفحه تازه می‌شود.</EmptyState>
   return <div className="narrative-stack">{experience.privateStorylets.map((storylet) => <motion.article className="story-sheet" key={storylet.assignmentId} initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
     <div className="story-tags">{storylet.presentationTags.speaker && <span>{storylet.presentationTags.speaker}</span>}{storylet.presentationTags.mood && <span>{storylet.presentationTags.mood}</span>}</div>
