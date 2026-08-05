@@ -16,7 +16,7 @@ export function DisplayContent({ sessionId }: { sessionId: string }) {
   if (world.isLoading) return <LoadingState label="بازار در حال روشن‌شدن است…" />
   if (world.isError || !world.data) return <ErrorState error={world.error} retry={() => void world.refetch()} />
   const data = world.data
-  const publicEntityEndings = (data.publicEntityEndingSummaries ?? []).filter((ending) => ending.title.trim() || ending.paragraphs.length > 0 || ending.evidence.length > 0)
+  const publicEntityEndings = (data.publicEntityEndingSummaries ?? []).filter((ending) => ending.title.trim() || ending.paragraphs.some((paragraph) => paragraph.trim()) || ending.evidence.length > 0)
   return <main className="display-page"><header className="display-header"><div><p className="brand">HAMBAFT <span>/ هزارچراغ</span></p><h1>{data.narrative?.title || checkpointLabel(data.currentCheckpointId)}</h1></div><ConnectionBadge /></header>
     {data.storyPackageId === 'hezar-cheragh' && <MarketScene world={data} display />}
     <section className="display-narrative"><p className="eyebrow">{checkpointLabel(data.currentCheckpointId)}</p>{data.narrative?.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>) ?? <p>بازار هنوز منتظر آغاز روایت است.</p>}</section>
