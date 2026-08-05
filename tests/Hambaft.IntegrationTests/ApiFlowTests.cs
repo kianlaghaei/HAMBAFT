@@ -6,12 +6,57 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Hambaft.Domain;
+using Npgsql;
 
 namespace Hambaft.IntegrationTests;
 
 [Collection("postgres")]
 public sealed class ApiFlowTests(PostgresFixture fixture)
 {
+    [Fact]
+    public void Api_factory_rejects_non_test_database_targets()
+    {
+        FluentActions.Invoking(()=>new HambaftApiFactory("Host=localhost;Database=hambaft_dev;Username=test;Password=test"))
+            .Should().Throw<InvalidOperationException>();
+    }
+
+    [PostgresFact]
+    public async Task Api_factory_uses_test_database_for_both_connection_keys()
+    {
+        await using var factory=new HambaftApiFactory(fixture.ConnectionString);
+        var configuration=factory.Services.GetRequiredService<IConfiguration>();
+
+        new NpgsqlConnectionStringBuilder(configuration.GetConnectionString("Hambaft")).Database.Should().Be("hambaft_test");
+        new NpgsqlConnectionStringBuilder(configuration.GetConnectionString("HambaftTest")).Database.Should().Be("hambaft_test");
+    }
+
+    [PostgresFact]
+    public async Task Public_endpoint_is_available_immediately_after_session_creation()
+    {
+        await using var factory=new HambaftApiFactory(fixture.ConnectionString);
+        using var client=factory.CreateClient();
+        var packages=await Body(await client.GetAsync("/api/story-packages"));
+        var package=packages.EnumerateArray().Single(x=>x.GetProperty("id").GetString()=="sample-cargo-delay"&&x.GetProperty("version").GetString()=="1.0.0");
+        var created=await Body(await client.PostAsJsonAsync("/api/sessions",new
+        {
+            storyPackageId="sample-cargo-delay",
+            storyVersion="1.0.0",
+            contentHash=package.GetProperty("contentHash").GetString(),
+            seed=42,
+            expectedVersion=0
+        }));
+        var sessionId=created.GetProperty("sessionId").GetGuid();
+
+        var response=await client.GetAsync($"/api/sessions/{sessionId:D}/public");
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+        var publicView=await Body(response);
+        publicView.GetProperty("id").GetGuid().Should().Be(sessionId);
+        publicView.GetProperty("status").GetInt32().Should().Be((int)SessionStatus.Created);
+        publicView.GetProperty("stateVersion").GetInt64().Should().Be(1);
+    }
+
     [PostgresFact]
     public async Task Rest_pairing_and_authorized_signalr_smoke_flow_completes()
     {
@@ -99,17 +144,37 @@ public sealed class ApiFlowTests(PostgresFixture fixture)
     }
 }
 
-public sealed class HambaftApiFactory(string connectionString) : WebApplicationFactory<Program>
+public sealed class HambaftApiFactory : WebApplicationFactory<Program>
 {
+    private readonly string connectionString;
+
+    public HambaftApiFactory(string connectionString)
+    {
+        this.connectionString=Validate(connectionString);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Development");
-        builder.ConfigureAppConfiguration((_,configuration)=>configuration.AddInMemoryCollection(new Dictionary<string,string?>
+        builder.UseSetting("ConnectionStrings:Hambaft",connectionString);
+        builder.UseSetting("ConnectionStrings:HambaftTest",connectionString);
+        builder.ConfigureAppConfiguration((_,configuration)=>
         {
-            ["ConnectionStrings:Hambaft"]=connectionString,
-            ["Jwt:SigningKey"]="integration-test-signing-key-32-bytes-minimum",
-            ["Jwt:Issuer"]="Hambaft.IntegrationTests",
-            ["Jwt:Audience"]="Hambaft.TestClients"
-        }));
+            configuration.Sources.Clear();
+            configuration.AddInMemoryCollection(new Dictionary<string,string?>
+            {
+                ["ConnectionStrings:Hambaft"]=connectionString,
+                ["ConnectionStrings:HambaftTest"]=connectionString,
+                ["Jwt:SigningKey"]="integration-test-signing-key-32-bytes-minimum",
+                ["Jwt:Issuer"]="Hambaft.IntegrationTests",
+                ["Jwt:Audience"]="Hambaft.TestClients"
+            });
+        });
+    }
+
+    private static string Validate(string connectionString)
+    {
+        DatabaseSafety.ValidateTestConnection(connectionString);
+        return connectionString;
     }
 }

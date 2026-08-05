@@ -1,5 +1,6 @@
 using Hambaft.Infrastructure;
 using Marten;
+using Microsoft.Extensions.Configuration;
 using Npgsql;
 
 namespace Hambaft.IntegrationTests;
@@ -8,7 +9,7 @@ public sealed class PostgresFactAttribute : FactAttribute
 {
     public PostgresFactAttribute()
     {
-        if(string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("ConnectionStrings__HambaftTest")))Skip="Requires local PostgreSQL database hambaft_test and ConnectionStrings__HambaftTest.";
+        if(string.IsNullOrWhiteSpace(TestDatabaseConfiguration.GetTestConnectionString()))Skip="Requires local PostgreSQL database hambaft_test and ConnectionStrings__HambaftTest.";
     }
 }
 
@@ -17,7 +18,7 @@ public sealed class PostgresCollection : ICollectionFixture<PostgresFixture>;
 
 public sealed class PostgresFixture : IAsyncLifetime
 {
-    public string ConnectionString { get; }=Environment.GetEnvironmentVariable("ConnectionStrings__HambaftTest")??string.Empty;
+    public string ConnectionString { get; }=TestDatabaseConfiguration.GetTestConnectionString()??string.Empty;
     public IDocumentStore? Store { get; private set; }
     public async Task InitializeAsync()
     {
@@ -38,5 +39,14 @@ public static class DatabaseSafety
         var builder=new NpgsqlConnectionStringBuilder(connectionString);
         if(!string.Equals(builder.Database,"hambaft_test",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Integration tests may target only database hambaft_test.");
         if(connectionString.Contains("sharedworld",StringComparison.OrdinalIgnoreCase))throw new InvalidOperationException("Integration tests must never target SharedWorld.");
+    }
+}
+
+internal static class TestDatabaseConfiguration
+{
+    public static string? GetTestConnectionString()
+    {
+        var configuration=new ConfigurationBuilder().AddEnvironmentVariables().Build();
+        return configuration.GetConnectionString("HambaftTest");
     }
 }
