@@ -1,4 +1,12 @@
 import { expect, test, type Page } from '@playwright/test'
+import { mkdirSync } from 'node:fs'
+import { fileURLToPath } from 'node:url'
+
+const finalScreenshotDir = fileURLToPath(new URL('../../../artifacts/visual-review/sprint24-final/', import.meta.url))
+
+async function capture(page: Page, name: string) {
+  await page.screenshot({ path: `${finalScreenshotDir}/${name}`, fullPage: true })
+}
 
 async function submitCurrentChoice(page: Page) {
   await page.reload()
@@ -14,7 +22,9 @@ async function expectNoHorizontalOverflow(page: Page) {
 }
 
 test('real two-Team Hezar Cheragh playable slice preserves privacy through World Ending', async ({ browser, page: admin }) => {
+  mkdirSync(finalScreenshotDir, { recursive: true })
   await admin.goto('/admin')
+  await capture(admin, '01-admin-session-setup.png')
   await expect(admin.getByRole('heading', { name: 'راه‌اندازی جلسه هزارچراغ' })).toBeVisible()
   await admin.getByRole('button', { name: 'ساخت و پیکربندی جلسه' }).click()
   await expect(admin.getByRole('heading', { name: 'برگه کدهای جفت‌شدن' })).toBeVisible({ timeout: 30_000 })
@@ -39,6 +49,7 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
   await expect(teamA).toHaveURL(/\/team\/story/); await expect(teamB).toHaveURL(/\/team\/story/)
   await expect(teamA.getByRole('dialog', { name: 'معرفی کوتاه بازار' })).toBeVisible()
   await expect(teamA.getByRole('dialog', { name: 'معرفی کوتاه بازار' })).toContainText('ورودی بازار')
+  await capture(teamA, '02-team-market-introduction.png')
   await teamA.getByRole('button', { name: 'رد کردن معرفی' }).click()
   await teamB.getByRole('button', { name: 'رد کردن معرفی' }).click()
   await display.goto(`/display/${sessionId}`)
@@ -54,6 +65,14 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
   await expect(display.getByText(/Pressure\s*[:=]?\s*\d+/i)).toHaveCount(0)
   await expectNoHorizontalOverflow(teamA)
   await expectNoHorizontalOverflow(display)
+  await capture(display, '11-public-display.png')
+  await capture(teamA, '03-team-main-gameplay.png')
+
+  await teamA.locator('.location-list summary').click()
+  await teamA.locator('.location-list li button').first().click()
+  await expect(teamA.locator('.location-context')).toBeVisible()
+  await capture(teamA, '04-location-context.png')
+  await teamA.locator('.context-close').click()
 
   const privateA = await teamA.locator('.narrative-copy').innerText()
   const privateB = await teamB.locator('.narrative-copy').innerText()
@@ -61,12 +80,14 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
   await expect(teamB.getByText(privateA, { exact: true })).toHaveCount(0)
   await expect(display.getByText(privateA, { exact: true })).toHaveCount(0)
 
+  await capture(teamA, '05-business-choice.png')
   await submitCurrentChoice(teamA)
   await submitCurrentChoice(teamB)
 
   await teamA.reload()
   await teamA.getByRole('link', { name: 'پیام‌ها' }).click()
   await expect(teamA.getByRole('heading', { name: 'نامه تازه', exact: true })).toBeVisible()
+  await capture(teamA, '06-pact-target-selection.png')
   await teamA.getByLabel('نوع تعامل').selectOption('emergency-supply')
   const mapTarget = teamA.getByRole('radio').first()
   await expect(mapTarget).toBeVisible()
@@ -78,14 +99,17 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
 
   await teamB.getByRole('link', { name: 'پیام‌ها' }).click()
   await expect(teamB.getByRole('button', { name: 'پیشنهاد متقابل' })).toBeVisible()
+  await capture(teamB, '07-proposal-letter.png')
   await teamB.getByRole('button', { name: 'پیشنهاد متقابل' }).click()
   await teamB.getByLabel('مقدار').fill('12')
+  await capture(teamB, '08-counterproposal.png')
   await teamB.getByRole('button', { name: 'ارسال بازنگری تازه' }).click()
 
   await teamA.reload()
   teamA.once('dialog', (dialog) => dialog.accept())
   await teamA.getByRole('button', { name: 'پذیرش' }).click()
   await expect(teamA.getByText('پذیرفته‌شده').first()).toBeVisible()
+  await capture(teamA, '09-active-agreement.png')
 
   for (let checkpoint = 0; checkpoint < 4; checkpoint += 1) {
     if (checkpoint > 0) {
@@ -101,6 +125,7 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
     await expect(admin.locator('.runtime-stats article').last().locator('strong')).not.toHaveText(oldVersion ?? '', { timeout: 20_000 })
     await teamA.goto('/team/story')
     await expect(teamA.getByText('چه چیزی عوض شد؟')).toBeVisible({ timeout: 20_000 })
+    if (checkpoint === 0) await capture(teamA, '10-world-reaction.png')
     await teamA.getByRole('button', { name: 'ادامه روایت' }).click()
   }
 
@@ -116,19 +141,28 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
   await display.reload()
   await expect(display.getByText('سرانجام بازار')).toBeVisible({ timeout: 20_000 })
   await expect(display.getByText(privateA, { exact: true })).toHaveCount(0)
+  await capture(display, '13-world-ending.png')
 
   await teamA.reload()
   await expect(teamA.getByText('سرانجام حجره')).toBeVisible()
+  await capture(teamA, '12-entity-ending.png')
   await expect(teamA.locator('.market-scene-frame')).toHaveAttribute('data-scene-id', /market-night|slice-complete/)
+  let experienceReads = 0
+  teamA.on('request', (request) => {
+    if (request.method() === 'GET' && request.url().includes('/api/story/experience')) experienceReads += 1
+  })
+  const readsBeforeReconnect = experienceReads
   await contextA.setOffline(true)
   await expect(teamA.getByText(/ارتباط قطع است|در حال اتصال مجدد/)).toBeVisible({ timeout: 20_000 })
   await contextA.setOffline(false)
   await expect(teamA.getByText('متصل')).toBeVisible({ timeout: 30_000 })
+  await expect.poll(() => experienceReads, { timeout: 20_000 }).toBeGreaterThan(readsBeforeReconnect)
 
   await teamA.setViewportSize({ width: 820, height: 1180 })
   await teamA.goto('/team/ending')
   await expect(teamA.locator('.market-scene-frame')).toBeVisible()
   await expectNoHorizontalOverflow(teamA)
+  await capture(teamA, '14-tablet-layout.png')
   await teamA.emulateMedia({ reducedMotion: 'reduce' })
   await teamA.reload()
   await expect(teamA.locator('.visual-reduced .fallback-market')).toBeVisible()
@@ -136,6 +170,7 @@ test('real two-Team Hezar Cheragh playable slice preserves privacy through World
   await teamA.locator('.scene-controls select').selectOption('fallback')
   await expect(teamA.locator('.visual-fallback .fallback-market')).toBeVisible()
   await expectNoHorizontalOverflow(teamA)
+  await capture(teamA, '15-fallback.png')
   await expectNoHorizontalOverflow(admin)
   await expectNoHorizontalOverflow(display)
 

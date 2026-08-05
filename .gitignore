@@ -12,3 +12,5 @@ apps/hambaft-web/coverage/
 apps/hambaft-web/playwright-report/
 apps/hambaft-web/test-results/
 src/Hambaft.Api/wwwroot/
+artifacts/visual-review/sprint24-final/
+artifacts/visual-review/HAMBAFT-sprint24-final.zip

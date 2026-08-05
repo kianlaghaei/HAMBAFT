@@ -223,7 +223,7 @@ function BusinessActivityView({ fixture, onConfirm }: { fixture: BusinessActivit
         <ActivityPlaceholder kind={fixture.kind} />
       </div>
       <p className="activity-implication">{fixture.implication}</p>
-      {fixture.canConfirm && onConfirm && (
+      {fixture.canConfirm && (
         <button type="button" className="button button--gold panel-primary-action" onClick={onConfirm}>
           تأیید
         </button>
@@ -309,9 +309,9 @@ function ProposalLetterView({
         </div>
       </div>
       <div className="button-row">
-        {onAccept && <button type="button" className="button button--gold" onClick={onAccept}>پذیرش</button>}
-        {onCounter && <button type="button" className="button" onClick={onCounter}>پیشنهاد متقابل</button>}
-        {onReject && <button type="button" className="button button--ghost" onClick={onReject}>رد</button>}
+        <button type="button" className="button button--gold" onClick={onAccept}>پذیرش</button>
+        <button type="button" className="button" onClick={onCounter}>پیشنهاد متقابل</button>
+        <button type="button" className="button button--ghost" onClick={onReject}>رد</button>
       </div>
     </div>
   )
@@ -362,9 +362,9 @@ function CounterproposalView({
         </div>
       </div>
       <div className="button-row">
-        {onAccept && <button type="button" className="button button--gold" onClick={onAccept}>پذیرش</button>}
-        {onCounter && <button type="button" className="button" onClick={onCounter}>ویرایش بیشتر</button>}
-        {onReject && <button type="button" className="button button--ghost" onClick={onReject}>رد</button>}
+        <button type="button" className="button button--gold" onClick={onAccept}>پذیرش</button>
+        <button type="button" className="button" onClick={onCounter}>ویرایش بیشتر</button>
+        <button type="button" className="button button--ghost" onClick={onReject}>رد</button>
       </div>
     </div>
   )
@@ -373,7 +373,6 @@ function CounterproposalView({
 function CompositeCommitmentView({ fixture }: { fixture: { mode: 'CompositeCommitment'; agreements: Array<{ title: string; parties: string[]; description: string }> } }) {
   return (
     <div className="panel-mode composite-commitment">
-      <h2 className="panel-event-title">پیمان‌های فعال</h2>
       {fixture.agreements.map((agreement, i) => (
         <div key={i} className="commitment-card">
           <h3>{agreement.title}</h3>
@@ -393,7 +392,6 @@ function WaitingView({ fixture }: { fixture: { mode: 'WaitingForOtherTeams'; mes
         <span className="waiting-dot" />
         <span className="waiting-dot" />
       </div>
-      <h2 className="panel-event-title">در انتظار</h2>
       <p className="panel-narrative">{fixture.message}</p>
     </div>
   )
@@ -417,20 +415,17 @@ function WorldReactionView({
 
   return (
     <div className="panel-mode world-reaction">
-      <h2 className="panel-event-title">واکنش بازار</h2>
       <p className="reaction-progress">{currentIndex + 1} از {total}</p>
       <div className="reaction-card">
         <span className="reaction-location">{reaction.locationName}</span>
         <p className="reaction-outcome">{reaction.outcomeLine}</p>
       </div>
       <div className="reaction-actions">
-        {onNext && currentIndex < total - 1 && (
+        {currentIndex < total - 1 && (
           <button type="button" className="button" onClick={onNext}>بعدی</button>
         )}
-        {onSkip && (
-          <button type="button" className="button button--ghost" onClick={onSkip}>رد کردن</button>
-        )}
-        {onNext && currentIndex === total - 1 && (
+        <button type="button" className="button button--ghost" onClick={onSkip}>رد کردن</button>
+        {currentIndex === total - 1 && (
           <button type="button" className="button button--gold" onClick={onNext}>ادامه روایت</button>
         )}
       </div>
