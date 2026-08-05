@@ -14,6 +14,7 @@ import type { PublicWorld } from '../api/schemas'
 import type { SceneDescriptor } from '../features/visual-world/types'
 import { useUiStore } from '../state/uiStore'
 import { TeamGameplayScreen } from '../features/hezar-cheragh/TeamGameplayScreen'
+import { TeamMarketMarkers } from '../features/hezar-cheragh/TeamMarketMarkers'
 import { publicWorldFixture, teamExperienceFixture } from './fixtures'
 
 /* ── Helpers ── */
@@ -378,9 +379,35 @@ describe('Production Team single-screen board', () => {
     render(<Routes><Route path="/team" element={<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />} /></Routes>, { wrapper })
     expect(screen.getByTestId('empty-market-stage')).toBeTruthy()
     expect(screen.getByTestId('team-market-map-image')).toHaveAttribute('src', '/assets/hezar-cheragh/team-market-map.webp')
+    expect(screen.getAllByTestId(/^team-market-marker-/)).toHaveLength(6)
+    expect(screen.getByTestId('team-market-marker-bakery-sepideh')).toHaveClass('is-owned')
+    expect(screen.getByTestId('team-market-marker-haj-sadegh-office')).toHaveClass('is-action', 'is-urgent')
     expect(screen.queryByTestId('bazaar-map-viewport')).toBeNull()
     expect(screen.queryByTestId('pixi-market')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'بازار را از روی نشانه‌ها بخوانید' })).toBeNull()
+  })
+
+  it('renders exactly six accessible percentage-positioned Team market markers', () => {
+    render(<TeamMarketMarkers ownedLocationId="bakery-sepideh" activeLocationId="bakery-sepideh" urgentLocationIds={['bakery-sepideh']} disabledLocationIds={['exchange-mizan']} />)
+
+    const markers = screen.getAllByRole('button')
+    expect(markers).toHaveLength(6)
+    expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveClass('is-owned')
+    expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveClass('is-urgent')
+    expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveAttribute('aria-current', 'location')
+    expect(screen.getByRole('button', { name: 'صرافی میزان' })).toHaveAttribute('aria-disabled', 'true')
+    expect(screen.getByTestId('team-market-marker-bakery-sepideh')).toHaveStyle({ left: '27%', top: '28%' })
+    expect(screen.getByText('دفتر حاج صادق')).toHaveClass('team-market-marker__label')
+  })
+
+  it('selects a marker and shows its existing location context in the right panel', async () => {
+    const { container } = render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+    const marker = screen.getByRole('button', { name: 'نانوایی سپیده' })
+    await userEvent.click(marker)
+    expect(marker).toHaveAttribute('aria-pressed', 'true')
+    expect(marker).toHaveClass('is-selected')
+    expect(container.querySelector('.hc-location-context')).toBeTruthy()
   })
 
   it('keeps semantic business, event, objective, active action and urgent utilities together', () => {

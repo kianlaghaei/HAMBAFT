@@ -52,6 +52,18 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const eventTitle = playerFacingStoryTitle(storylet?.title, currentCheckpoint, descriptor.atmosphereLabel)
   const hasInvestigation = investigatedIds.length > 0
   const currentReaction = reactionIndex >= 0 ? descriptor.reactions[reactionIndex] : undefined
+  const activeMarkerLocationId = currentReaction?.locationIds[0]
+    ?? descriptor.locations.find((location) => location.state === 'action-available')?.id
+    ?? (currentCheckpoint === 'morning-without-bell' ? 'haj-sadegh-office' : undefined)
+  const urgentMarkerLocationIds = currentReaction?.locationIds ?? []
+  const disabledMarkerLocationIds = descriptor.locations.filter((location) => !location.active).map((location) => location.id)
+  const handleMarkerSelect = (locationId?: string) => {
+    if (locationId && descriptor.locations.some((location) => location.id === locationId)) {
+      setProgressSelectedLocation(locationId)
+      return
+    }
+    if (!locationId) setSceneProgress((current) => ({ ...current, key: sceneKey, selectedLocationId: undefined }))
+  }
   useEffect(() => {
     if (seenReactionVersion === undefined) { markReactionSeen(world.id, descriptor.visualVersion); return }
     if (descriptor.visualVersion <= seenReactionVersion || !descriptor.reactions.length) return
@@ -122,7 +134,7 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
     <div className="hc-play-main">
       <BusinessPanel experience={experience} descriptor={descriptor} onOpen={() => { setPanelMode('BusinessActivity'); if (controlledLocation) setProgressSelectedLocation(controlledLocation.id) }} />
       <div className="hc-play-stage-column">
-        <div className="hc-play-stage-surface"><EmptyMarketStage /></div>
+        <div className="hc-play-stage-surface"><EmptyMarketStage ownedLocationId={controlledLocation?.id} activeLocationId={activeMarkerLocationId} selectedLocationId={selectedLocationId} urgentLocationIds={urgentMarkerLocationIds} disabledLocationIds={disabledMarkerLocationIds} onSelectLocation={handleMarkerSelect} /></div>
       </div>
 
       <aside className={`hc-play-panel sheet-${sheetState}`} aria-label="روایت و اقدام پرده" data-mode={currentReaction ? 'WorldReaction' : selectedLocation && !hasInvestigation ? 'Investigation' : panelMode}>
