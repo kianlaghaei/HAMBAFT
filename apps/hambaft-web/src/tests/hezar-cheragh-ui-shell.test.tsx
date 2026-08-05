@@ -398,6 +398,8 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveAttribute('aria-current', 'location')
     expect(screen.getByRole('button', { name: 'صرافی میزان' })).toHaveAttribute('aria-disabled', 'true')
     expect(screen.getByTestId('team-market-marker-bakery-sepideh')).toHaveStyle({ left: '27%', top: '28%' })
+    expect(screen.getByTestId('team-market-marker-logistics-rah-no')).toHaveStyle({ left: '25%', top: '57%' })
+    expect(screen.getByTestId('team-market-marker-printing-roshan')).toHaveStyle({ left: '74%', top: '29%' })
     expect(screen.getByText('دفتر حاج صادق')).toHaveClass('team-market-marker__label')
   })
 

@@ -10,8 +10,8 @@ type TeamMarketMarkerDefinition = {
 export const TEAM_MARKET_MARKERS: TeamMarketMarkerDefinition[] = [
   { id: 'haj-sadegh-office', label: 'دفتر حاج صادق', x: 50, y: 15 },
   { id: 'bakery-sepideh', label: 'نانوایی سپیده', x: 27, y: 28 },
-  { id: 'logistics-rah-no', label: 'باربری راه‌نو', x: 74, y: 29 },
-  { id: 'printing-roshan', label: 'چاپخانه روشن', x: 25, y: 57 },
+  { id: 'logistics-rah-no', label: 'باربری راه‌نو', x: 25, y: 57 },
+  { id: 'printing-roshan', label: 'چاپخانه روشن', x: 74, y: 29 },
   { id: 'exchange-mizan', label: 'صرافی میزان', x: 75, y: 57 },
   { id: 'market-entrance', label: 'دروازه بازار', x: 50, y: 78 },
 ]
