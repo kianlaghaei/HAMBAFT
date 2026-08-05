@@ -377,6 +377,7 @@ describe('Production Team single-screen board', () => {
   it('renders the empty stage at /team without legacy map nodes', () => {
     render(<Routes><Route path="/team" element={<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />} /></Routes>, { wrapper })
     expect(screen.getByTestId('empty-market-stage')).toBeTruthy()
+    expect(screen.getByTestId('team-market-map-image')).toHaveAttribute('src', '/assets/hezar-cheragh/team-market-map.webp')
     expect(screen.queryByTestId('bazaar-map-viewport')).toBeNull()
     expect(screen.queryByTestId('pixi-market')).toBeNull()
     expect(screen.queryByRole('heading', { name: 'بازار را از روی نشانه‌ها بخوانید' })).toBeNull()
