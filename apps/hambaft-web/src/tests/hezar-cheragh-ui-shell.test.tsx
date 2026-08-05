@@ -403,34 +403,64 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByText('دفتر حاج صادق')).toHaveClass('team-market-marker__label')
   })
 
-  it('selects a marker and shows its existing location context in the right panel', async () => {
-    const { container } = render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
+  it('selects a relevant marker and opens its investigation in the right panel', async () => {
+    render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
     const marker = screen.getByRole('button', { name: 'نانوایی سپیده' })
     await userEvent.click(marker)
     expect(marker).toHaveAttribute('aria-pressed', 'true')
     expect(marker).toHaveClass('is-selected')
-    expect(container.querySelector('.hc-location-context')).toBeTruthy()
+    expect(screen.getByTestId('location-investigation-scene')).toBeTruthy()
+    expect(screen.getByText('مکان انتخاب‌شده')).toBeTruthy()
   })
 
-  it('keeps semantic business, event, objective, active action and urgent utilities together', () => {
+  it('keeps the guided story, business, map and urgent utilities together', () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
     expect(screen.getByTestId('team-gameplay-screen')).toBeTruthy()
+    expect(screen.getByTestId('story-opening-card')).toBeTruthy()
+    expect(screen.getByRole('heading', { level: 1, name: 'خبر پنهانِ حجره' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'نانوایی سپیده' })).toBeTruthy()
-    expect(screen.getByText('هدف این پرده')).toBeTruthy()
-    expect(screen.getByText('اقدام فعال')).toBeTruthy()
+    expect(screen.getByText(/پاکت بی‌نام را بررسی کنید/)).toBeTruthy()
+    expect(screen.getByRole('list', { name: 'مسیر این صحنه' })).toBeTruthy()
     expect(screen.getByRole('button', { name: /پیام‌ها/ })).toBeTruthy()
     expect(screen.getByRole('button', { name: /پیمان‌ها/ })).toBeTruthy()
     expect(screen.queryByText('Pressure')).toBeNull()
     expect(screen.queryByText('Market diagnostics')).toBeNull()
   })
 
-  it('opens business activity without replacing Backend-authored choices', async () => {
+  it('presents investigation, evidence, business activity and the Backend-authored decision in order', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: 'ورود به فعالیت کسب‌وکار' }))
-    expect(screen.getByTestId('business-activity')).toBeTruthy()
-    expect(screen.getByText('فعالیت امروز حجره')).toBeTruthy()
-    await userEvent.click(screen.getByRole('button', { name: 'بازگشت به تصمیم پرده' }))
-    expect(screen.getByText('اول یک نشانه پیدا کنید')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'دیدن نشانه روی نقشه' }))
+    expect(screen.getByTestId('team-market-marker-haj-sadegh-office')).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByTestId('location-investigation-scene')).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: 'بررسی نشانه‌ها' }))
+    expect(screen.getByTestId('evidence-reveal')).toBeTruthy()
+    expect(screen.getByText('چیزی که پیدا کردید')).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: 'بردن خبر به حجره' }))
+    expect(screen.getByTestId('story-business-action')).toBeTruthy()
+    expect(screen.getByText('اثر روی کسب‌وکار شما')).toBeTruthy()
+
+    await userEvent.click(screen.getByRole('button', { name: 'آماده‌کردن تصمیم نهایی' }))
+    expect(screen.getByTestId('final-decision-summary')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /قیمت را نگه دار/ })).toBeTruthy()
+  })
+
+  it('shows the market reaction and next-scene action for a submitted decision', async () => {
+    const submittedExperience = {
+      ...teamExperienceFixture,
+      privateStorylets: teamExperienceFixture.privateStorylets.map((storylet) => ({
+        ...storylet,
+        submitted: true,
+        submittedChoiceId: 'keep-price',
+      })),
+    }
+    render(<TeamGameplayScreen experience={submittedExperience} world={publicWorldFixture} canWrite />, { wrapper })
+
+    expect(screen.getByTestId('story-market-reaction')).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'قیمت را نگه دار' })).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'ادامه به صحنه بعد' }))
+    expect(screen.getByRole('status')).toHaveTextContent('در حال دریافت ادامه روایت بازار')
   })
 
 })

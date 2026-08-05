@@ -1217,6 +1217,58 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
 .hc-play-panel { min-width: 0; min-height: 0; overflow: hidden; border-inline-start: 1px solid var(--line); background: var(--paper); }
 .hc-play-panel > .hc-sheet-controls { display: none; }
 .hc-panel-scroll-safe { display: flex; flex-direction: column; height: 100%; min-height: 0; padding: .9rem 1rem .75rem; overflow: hidden; }
+.hc-story-progress { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .28rem; flex: 0 0 auto; margin: 0 0 .65rem; padding: 0; list-style: none; color: #8a806b; font-size: .59rem; }
+.hc-story-progress li { min-width: 0; padding-top: .28rem; overflow: hidden; border-top: 2px solid #cfc5ac; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+.hc-story-progress li.is-current { border-color: var(--gold); color: var(--brick); font-weight: 900; }
+.hc-story-progress li.is-done { border-color: #79926d; color: #53664a; }
+.hc-story-opening, .hc-investigation-scene, .hc-evidence-reveal, .hc-story-business, .hc-final-decision, .hc-story-reaction { animation: hc-story-enter .2s ease both; }
+.hc-story-opening, .hc-investigation-scene, .hc-evidence-reveal, .hc-story-business, .hc-story-reaction { display: flex; flex-direction: column; gap: .55rem; min-height: 0; padding: .75rem; overflow: auto; border: 1px solid rgba(166,123,45,.36); border-inline-start: 4px solid var(--gold); background: rgba(255,252,240,.72); }
+.hc-story-opening__mark { display: grid; place-items: center; width: 42px; height: 30px; border: 1px solid #af8a43; color: #795321; background: #efe0b9; box-shadow: 3px 4px 0 rgba(118,83,29,.12); font-size: .55rem; font-weight: 900; transform: rotate(-2deg); }
+.hc-story-opening__heading { position: relative; }
+.hc-story-opening__heading small { position: absolute; inset-block-start: 0; inset-inline-end: 0; color: var(--brick); font-size: .63rem; }
+.hc-story-opening h2, .hc-investigation-scene h3, .hc-evidence-reveal h3, .hc-story-business h3, .hc-final-decision h3, .hc-story-reaction h3 { margin: .12rem 0 0; color: var(--olive); font-size: .96rem; line-height: 1.45; }
+.hc-story-opening__copy { display: grid; gap: .3rem; font-size: .75rem; line-height: 1.75; }
+.hc-story-opening__copy p, .hc-investigation-scene > p, .hc-story-business > p, .hc-story-reaction > p { margin: 0; }
+.hc-story-instruction { display: flex; align-items: center; gap: .5rem; padding: .48rem .55rem; border: 1px solid rgba(166,123,45,.3); background: rgba(215,185,104,.12); }
+.hc-story-instruction > span { display: grid; place-items: center; width: 23px; height: 23px; flex: 0 0 23px; border-radius: 50%; color: #fff8dd; background: var(--brick); font-size: .65rem; font-weight: 900; }
+.hc-story-instruction p { margin: 0; color: #554c3e; font-size: .69rem; line-height: 1.55; }
+.hc-story-opening > .button, .hc-investigation-scene > .button, .hc-evidence-reveal > .button, .hc-story-business > .button, .hc-story-reaction > .button { width: 100%; min-height: 35px; margin-top: auto; padding: .4rem .65rem; font-size: .7rem; }
+.hc-investigation-scene__heading, .hc-story-business__heading, .hc-final-decision__heading { display: flex; align-items: center; gap: .55rem; }
+.hc-location-pin { width: 28px; height: 28px; flex: 0 0 28px; transform: rotate(45deg); border: 2px solid var(--gold); border-radius: 7px 50% 50% 50%; background: #fff4d2; box-shadow: 0 0 0 3px rgba(215,185,104,.15); }
+.hc-investigation-scene__heading small { display: block; margin-top: .08rem; color: #6b604f; font-size: .63rem; }
+.hc-investigation-scene > p { color: #554c3e; font-size: .75rem; line-height: 1.75; }
+.hc-investigation-preview, .hc-business-impact { display: flex; align-items: flex-start; gap: .5rem; padding: .5rem .55rem; border-block: 1px solid rgba(166,123,45,.22); color: #625946; }
+.hc-investigation-preview > span, .hc-business-impact > span { display: grid; place-items: center; width: 28px; height: 28px; flex: 0 0 28px; border: 1px solid rgba(166,123,45,.55); border-radius: 50%; color: #7a4b32; background: #f1dfae; font-size: .5rem; font-weight: 900; }
+.hc-investigation-preview p, .hc-business-impact p { margin: 0; font-size: .68rem; line-height: 1.6; }
+.hc-evidence-reveal { gap: .45rem; }
+.hc-evidence-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; }
+.hc-evidence-card { display: flex; align-items: flex-start; gap: .45rem; min-width: 0; padding: .48rem; border: 1px solid #c5b58f; background: #fffaf0; box-shadow: 2px 3px 0 rgba(88,67,31,.08); }
+.hc-evidence-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.hc-evidence-card__object { display: grid; place-items: center; width: 31px; height: 25px; flex: 0 0 31px; border: 1px solid #aa8240; color: #765024; background: #ebd8a7; font-size: .48rem; font-weight: 900; transform: rotate(-2deg); }
+.hc-evidence-card.kind-seal .hc-evidence-card__object { width: 27px; height: 27px; flex-basis: 27px; border-radius: 50%; color: #fff0cb; background: #8a4437; transform: none; }
+.hc-evidence-card strong { display: block; color: var(--olive); font-size: .68rem; }
+.hc-evidence-card p { display: -webkit-box; margin: .14rem 0 0; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 3; color: #625946; font-size: .62rem; line-height: 1.52; }
+.hc-clue-message { position: relative; margin: 0; padding: .45rem .7rem .45rem 1.6rem; border: 0; border-inline-start: 3px solid var(--brick); color: #584b3d; background: rgba(140,63,50,.07); }
+.hc-clue-message > span { position: absolute; inset-block-start: -.12rem; inset-inline-start: .38rem; color: rgba(140,63,50,.35); font-size: 2rem; }
+.hc-clue-message p { margin: 0; font-size: .67rem; line-height: 1.6; }
+.hc-business-token, .hc-decision-document { display: grid; place-items: center; width: 40px; height: 32px; flex: 0 0 40px; border: 1px solid #ad8240; color: #6d491e; background: #ead39b; font-size: .52rem; font-weight: 900; }
+.hc-context-letter { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: .15rem .6rem; padding: .55rem .65rem; border: 1px solid #b79b63; background: linear-gradient(135deg, #fffaf0, #eee0bd); }
+.hc-context-letter__seal { position: absolute; inset-block-start: -.35rem; inset-inline-start: .55rem; display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; color: #ffeac0; background: var(--brick); }
+.hc-context-letter strong { color: var(--olive); font-size: .67rem; }
+.hc-context-letter p { margin: .12rem 0 0; color: #665a45; font-size: .6rem; line-height: 1.45; }
+.hc-context-letter .hc-inline-action { align-self: center; font-size: .62rem; white-space: nowrap; }
+.hc-final-decision { display: grid; gap: .45rem; flex: 0 0 auto; margin-bottom: .45rem; padding: .6rem .7rem; border: 1px solid rgba(166,123,45,.4); background: rgba(255,252,240,.75); }
+.hc-final-decision dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .4rem; margin: 0; }
+.hc-final-decision dl > div { padding: .38rem .45rem; border-block-start: 1px solid rgba(166,123,45,.25); }
+.hc-final-decision dt { color: var(--brick); font-size: .58rem; font-weight: 900; }
+.hc-final-decision dd { margin: .12rem 0 0; color: #5f5647; font-size: .62rem; line-height: 1.5; }
+.hc-final-decision__prompt { margin: 0; color: #5c5243; font-size: .63rem; line-height: 1.5; }
+.hc-story-reaction { align-content: start; }
+.hc-story-reaction .hc-reaction-seal { flex: 0 0 auto; }
+.hc-story-reaction > p { padding: .55rem 0; border-block: 1px solid rgba(166,123,45,.22); color: #554c3e; font-size: .74rem; line-height: 1.7; }
+.hc-story-reaction > small { color: #6b604f; font-size: .64rem; line-height: 1.5; }
+@keyframes hc-story-enter { from { opacity: 0; transform: translateY(4px); } }
+@media (prefers-reduced-motion: reduce) { .hc-story-opening, .hc-investigation-scene, .hc-evidence-reveal, .hc-story-business, .hc-final-decision, .hc-story-reaction { animation: none; } }
 .hc-narrative-block { flex: 0 0 auto; min-height: 0; padding-bottom: .6rem; border-bottom: 1px solid var(--line); }
 .hc-narrative-meta { display: flex; align-items: baseline; justify-content: space-between; gap: .6rem; color: var(--brick); font-size: .7rem; }
 .hc-narrative-block h2 { margin: .2rem 0 .35rem; color: var(--olive); font-size: clamp(1rem, 1.7vw, 1.32rem); }

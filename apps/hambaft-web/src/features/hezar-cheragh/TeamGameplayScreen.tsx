@@ -9,6 +9,8 @@ import { usePackage } from '../../hooks/useServerQuery'
 import { agreementStatusLabel, checkpointLabel, proposalStatusLabel } from '../../design-system/presentation'
 import { TermsEditor, type TermDraft } from '../../components/TermsView'
 import { EmptyMarketStage } from './EmptyMarketStage'
+import { TEAM_MARKET_MARKERS } from './TeamMarketMarkers'
+import { BusinessActionCard, DecisionSummary, EvidenceReveal, LocationInvestigationCard, MarketReactionCard, StoryOpeningCard, StoryProgress, type TeamEvidenceCard, type TeamStoryPhase } from './TeamStoryPresentation'
 import type { SceneLocation } from '../visual-world/types'
 import { buildSceneDescriptor } from '../visual-world/sceneDirector'
 import { useUiStore } from '../../state/uiStore'
@@ -28,7 +30,8 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const [interactionId, setInteractionId] = useState('')
   const [terms, setTerms] = useState<TermDraft>({})
   const [validForCheckpoints, setValidForCheckpoints] = useState(1)
-  const [panelMode, setPanelMode] = useState<'CurrentEvent' | 'BusinessActivity'>('CurrentEvent')
+  const [storyPhase, setStoryPhase] = useState<TeamStoryPhase>(storylet?.submitted ? 'reaction' : 'opening')
+  const [chosenChoiceId, setChosenChoiceId] = useState<string>()
   const [reactionIndex, setReactionIndex] = useState(-1)
   const [sheetState, setSheetState] = useState<'collapsed' | 'half' | 'expanded'>('half')
   const [notice, setNotice] = useState('')
@@ -46,24 +49,47 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const interaction = packageQuery.data?.interactions.find((item) => item.id === activeInteractionId)
   const allowedTargetIds = useMemo(() => new Set(availableInteractions.flatMap((item) => item.allowedTargetTeamIds).filter((id) => id !== experience.team.id)), [availableInteractions, experience.team.id])
   const targetLocations = useMemo(() => descriptor.locations.filter((location) => Boolean(location.teamId && allowedTargetIds.has(location.teamId))), [allowedTargetIds, descriptor.locations])
-  const selectedLocation = descriptor.locations.find((location) => location.id === selectedLocationId)
   const controlledLocation = descriptor.locations.find((location) => location.controlled)
+  const selectedLocation = descriptor.locations.find((location) => location.id === selectedLocationId) ?? presentationLocationFor(selectedLocationId)
   const currentCheckpoint = experience.currentCheckpointId ?? world.currentCheckpointId ?? storylet?.checkpointId
   const eventTitle = playerFacingStoryTitle(storylet?.title, currentCheckpoint, descriptor.atmosphereLabel)
-  const hasInvestigation = investigatedIds.length > 0
   const currentReaction = reactionIndex >= 0 ? descriptor.reactions[reactionIndex] : undefined
   const activeMarkerLocationId = currentReaction?.locationIds[0]
-    ?? descriptor.locations.find((location) => location.state === 'action-available')?.id
+    ?? (storyPhase === 'business' || storyPhase === 'decision' || storyPhase === 'reaction' ? controlledLocation?.id : undefined)
     ?? (currentCheckpoint === 'morning-without-bell' ? 'haj-sadegh-office' : undefined)
   const urgentMarkerLocationIds = currentReaction?.locationIds ?? []
-  const disabledMarkerLocationIds = descriptor.locations.filter((location) => !location.active).map((location) => location.id)
+  const relevantMarkerIds = new Set(['haj-sadegh-office', 'market-entrance', controlledLocation?.id].filter((id): id is string => Boolean(id)))
+  const inactiveLocationIds = new Set(descriptor.locations.filter((location) => !location.active).map((location) => location.id))
+  const disabledMarkerLocationIds = TEAM_MARKET_MARKERS.filter((marker) => !relevantMarkerIds.has(marker.id) || inactiveLocationIds.has(marker.id)).map((marker) => marker.id)
   const handleMarkerSelect = (locationId?: string) => {
-    if (locationId && descriptor.locations.some((location) => location.id === locationId)) {
+    if (locationId && relevantMarkerIds.has(locationId)) {
       setProgressSelectedLocation(locationId)
+      setStoryPhase(investigatedIds.includes(locationId) ? 'evidence' : 'investigation')
       return
     }
-    if (!locationId) setSceneProgress((current) => ({ ...current, key: sceneKey, selectedLocationId: undefined }))
+    if (!locationId) {
+      setSceneProgress((current) => ({ ...current, key: sceneKey, selectedLocationId: undefined }))
+      setStoryPhase('opening')
+    }
   }
+  const openingParagraphs = [...new Set([...(world.narrative?.paragraphs ?? []), ...(storylet?.paragraphs ?? [])])].slice(0, 3)
+  const evidence = evidenceFor(selectedLocation, storylet)
+  const businessName = experience.businessPresentation?.displayName ?? experience.controlledEntity?.displayName ?? experience.team.displayName
+  const businessSummary = experience.businessPresentation?.pulse[0] ?? storylet?.paragraphs.at(-1) ?? 'این خبر روی تصمیم امروز حجره شما اثر مستقیم دارد.'
+  const businessMeaning = storylet?.paragraphs.at(-1) ?? experience.businessPresentation?.pulse[0] ?? 'باید میان حفظ اختیار حجره و شریک‌کردن بازار در این خبر تصمیم بگیرید.'
+  const selectedChoiceId = chosenChoiceId ?? storylet?.submittedChoiceId ?? undefined
+  const selectedChoice = selectedChoiceId ? storylet?.choices.find((choice) => choice.id === selectedChoiceId) : undefined
+  const choiceLabel = selectedChoice?.presentation?.shortTitle ?? selectedChoice?.label ?? 'تصمیم حجره ثبت شد'
+  const reactionText = descriptor.reactions[0]?.outcomeLine ?? descriptor.pulse[0] ?? 'خبر تصمیم شما در بازار پیچیده است؛ نتیجه کامل با ادامه این پرده روشن می‌شود.'
+  const continueToNextScene = () => {
+    setNotice('در حال دریافت ادامه روایت بازار…')
+    void client.invalidateQueries({ queryKey: queryKeys.teamExperience })
+    void client.invalidateQueries({ queryKey: queryKeys.publicWorld(experience.sessionId) })
+  }
+  useEffect(() => {
+    setStoryPhase(storylet?.submitted ? 'reaction' : 'opening')
+    setChosenChoiceId(undefined)
+  }, [sceneKey])
   useEffect(() => {
     if (seenReactionVersion === undefined) { markReactionSeen(world.id, descriptor.visualVersion); return }
     if (descriptor.visualVersion <= seenReactionVersion || !descriptor.reactions.length) return
@@ -74,6 +100,7 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
     mutationFn: ({ assignmentId, choiceId }: { assignmentId: string; choiceId: string }) => api.submitChoice(assignmentId, choiceId, experience.stateVersion, token),
     onSuccess: () => {
       setNotice('تصمیم حجره ثبت شد؛ حالا واکنش بازار را ببینید.')
+      setStoryPhase('reaction')
       void client.invalidateQueries({ queryKey: queryKeys.teamExperience })
       void client.invalidateQueries({ queryKey: queryKeys.publicWorld(experience.sessionId) })
     },
@@ -107,10 +134,9 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
   const investigateSelected = () => {
     if (!selectedLocation || investigatedIds.includes(selectedLocation.id)) return
     addInvestigatedLocation(selectedLocation.id)
+    setStoryPhase('evidence')
     setNotice(`نشانه‌ی ${selectedLocation.name} در دفتر حجره ثبت شد.`)
   }
-
-  const choiceLabel = storylet?.submittedChoiceId ? storylet.choices.find((choice) => choice.id === storylet.submittedChoiceId)?.presentation?.shortTitle ?? storylet.choices.find((choice) => choice.id === storylet.submittedChoiceId)?.label : undefined
 
   if (!storylet) {
     return <section className="hc-play-screen hc-play-screen--empty" dir="rtl"><div className="hc-empty-card"><span className="eyebrow">{checkpointLabel(currentCheckpoint)}</span><h1>{experience.entityEnding ? experience.entityEnding.title : 'بازار در سکوتِ بین دو پرده'}</h1><p>{experience.entityEnding?.paragraphs[0] ?? 'پرده‌ی بعدی هنوز برای این حجره باز نشده است.'}</p><p className="form-help">وضعیت حجره در همین صفحه نگه داشته می‌شود.</p></div></section>
@@ -132,22 +158,23 @@ export function TeamGameplayScreen({ experience, world, canWrite }: { experience
 
     {notice && <div className="hc-play-notice" role="status" aria-live="polite">{notice}</div>}
     <div className="hc-play-main">
-      <BusinessPanel experience={experience} descriptor={descriptor} onOpen={() => { setPanelMode('BusinessActivity'); if (controlledLocation) setProgressSelectedLocation(controlledLocation.id) }} />
+      <BusinessPanel experience={experience} descriptor={descriptor} onOpen={() => { setStoryPhase('business'); if (controlledLocation) setProgressSelectedLocation(controlledLocation.id) }} />
       <div className="hc-play-stage-column">
         <div className="hc-play-stage-surface"><EmptyMarketStage ownedLocationId={controlledLocation?.id} activeLocationId={activeMarkerLocationId} selectedLocationId={selectedLocationId} urgentLocationIds={urgentMarkerLocationIds} disabledLocationIds={disabledMarkerLocationIds} onSelectLocation={handleMarkerSelect} /></div>
       </div>
 
-      <aside className={`hc-play-panel sheet-${sheetState}`} aria-label="روایت و اقدام پرده" data-mode={currentReaction ? 'WorldReaction' : selectedLocation && !hasInvestigation ? 'Investigation' : panelMode}>
+      <aside className={`hc-play-panel sheet-${sheetState}`} aria-label="روایت و اقدام پرده" data-mode={currentReaction ? 'WorldReaction' : storyPhase}>
         <div className="hc-sheet-controls" role="group" aria-label="اندازه پنل بازی">{(['collapsed', 'half', 'expanded'] as const).map((state) => <button key={state} type="button" className={sheetState === state ? 'is-active' : ''} aria-pressed={sheetState === state} onClick={() => setSheetState(state)}>{state === 'collapsed' ? 'جمع' : state === 'half' ? 'نیمه' : 'باز'}</button>)}</div>
         <div className="hc-panel-scroll-safe">
-          <div className="hc-narrative-block"><div className="hc-narrative-meta"><span className="eyebrow">روایت جاری</span>{storylet.presentationTags.speaker && <span>{storylet.presentationTags.speaker}</span>}</div><h2>{eventTitle}</h2><div className="hc-narrative-copy">{storylet.paragraphs.map((paragraph) => <p key={paragraph}>{paragraph}</p>)}</div></div>
-          <div className="hc-objective-card"><span className="eyebrow">هدف این پرده</span><strong>{objectiveFor(currentCheckpoint, hasInvestigation, storylet.submitted)}</strong><div className="hc-step-row"><span className="is-done">خبر</span><span className={hasInvestigation ? 'is-done' : 'is-current'}>بررسی بازار</span><span className={storylet.submitted ? 'is-done' : hasInvestigation ? 'is-current' : ''}>انتخاب حجره</span><span>واکنش بازار</span></div></div>
-          <div className="hc-active-action"><div className="hc-action-heading"><div><span className="eyebrow">اقدام فعال</span><h2>{currentReaction ? 'واکنش بازار را دنبال کنید' : panelMode === 'BusinessActivity' ? 'فعالیت امروز حجره' : storylet.submitted ? 'تصمیم در بازار افتاد' : hasInvestigation ? 'حالا مسیر حجره را انتخاب کنید' : 'اول یک نشانه پیدا کنید'}</h2></div><span className="hc-action-count">{currentReaction ? 'ردّ تصمیم' : hasInvestigation ? 'دفتر روشن' : 'سطح آماده است'}</span></div>
+          <StoryProgress phase={currentReaction ? 'reaction' : storyPhase} />
+          <div className="hc-active-action">
             {currentReaction && <WorldReactionStep reaction={currentReaction} index={reactionIndex} total={descriptor.reactions.length} onNext={() => { if (reactionIndex >= descriptor.reactions.length - 1) { markReactionSeen(world.id, descriptor.visualVersion); setReactionIndex(-1) } else setReactionIndex((current) => current + 1) }} onSkip={() => { markReactionSeen(world.id, descriptor.visualVersion); setReactionIndex(-1) }} />}
-            {!currentReaction && panelMode === 'BusinessActivity' && <BusinessActivity experience={experience} onBack={() => setPanelMode('CurrentEvent')} />}
-            {!currentReaction && panelMode !== 'BusinessActivity' && selectedLocation && <LocationContext location={selectedLocation} investigated={investigatedIds.includes(selectedLocation.id)} onInvestigate={investigateSelected} canWrite={canWrite && !storylet.submitted} />}
-            {!currentReaction && panelMode !== 'BusinessActivity' && !selectedLocation && !storylet.submitted && <p className="hc-action-hint">سطح بازار برای بازطراحی خالی نگه داشته شده است؛ هر بررسی، یک تکه از داستان «بار نرسید» را برای حجره‌تان روشن می‌کند.</p>}
-            {!currentReaction && panelMode !== 'BusinessActivity' && (storylet.submitted ? <div className="hc-decision-result"><span className="hc-result-mark">✓</span><div><strong>{choiceLabel ?? 'تصمیم حجره ثبت شد'}</strong><p>بازار حالا پیامد این تصمیم را در خود نشان می‌دهد. برای ادامه‌ی پرده، به نشانه‌های تازه‌ی روایت توجه کنید.</p></div></div> : hasInvestigation && <ChoiceCards storylet={storylet} disabled={!canWrite || choiceMutation.isPending} onChoose={(choiceId) => choiceMutation.mutate({ assignmentId: storylet.assignmentId, choiceId })} />)}
+            {!currentReaction && storyPhase === 'opening' && <StoryOpeningCard title={eventTitle} speaker={storylet.presentationTags.speaker} paragraphs={openingParagraphs} instruction="روی نشان «دفتر حاج صادق» بزنید و پاکت بی‌نام را بررسی کنید." onContinue={() => { setProgressSelectedLocation('haj-sadegh-office'); setStoryPhase(investigatedIds.includes('haj-sadegh-office') ? 'evidence' : 'investigation') }} />}
+            {!currentReaction && storyPhase === 'investigation' && selectedLocation && <LocationInvestigationCard title={selectedLocation.name} identity={selectedLocation.shortIdentity} narrative={locationNarrativeFor(selectedLocation, storylet)} actionLabel={investigatedIds.includes(selectedLocation.id) ? 'نشانه ثبت شده است' : 'بررسی نشانه‌ها'} onInvestigate={investigateSelected} />}
+            {!currentReaction && storyPhase === 'evidence' && <EvidenceReveal evidence={evidence} message={evidenceMessageFor(selectedLocation)} onContinue={() => { setStoryPhase('business'); if (controlledLocation) setProgressSelectedLocation(controlledLocation.id) }} />}
+            {!currentReaction && storyPhase === 'business' && <BusinessActionCard businessName={businessName} summary={businessSummary} implication={businessMeaning} canOfferPact={availableInteractions.length > 0 && targetLocations.length > 0} onOpenPact={() => setUtilityPanel('pacts')} onContinue={() => setStoryPhase('decision')} />}
+            {!currentReaction && storyPhase === 'decision' && <><DecisionSummary finding={storylet.paragraphs[1] ?? evidence[0]?.body ?? 'بخشی از دفتر حاج صادق به حجره شما رسیده است.'} businessMeaning={businessMeaning} /><ChoiceCards storylet={storylet} disabled={!canWrite || choiceMutation.isPending} onChoose={(choiceId) => { setChosenChoiceId(choiceId); choiceMutation.mutate({ assignmentId: storylet.assignmentId, choiceId }) }} /></>}
+            {!currentReaction && storyPhase === 'reaction' && <MarketReactionCard choiceLabel={choiceLabel} reaction={reactionText} waiting={!descriptor.reactions.length} onContinue={continueToNextScene} />}
             {choiceMutation.error && <p className="hc-form-error">{choiceMutation.error.message}</p>}
           </div>
         </div>
@@ -174,16 +201,6 @@ function BusinessPanel({ experience, descriptor, onOpen }: { experience: TeamExp
   </aside>
 }
 
-function BusinessActivity({ experience, onBack }: { experience: TeamExperience; onBack: () => void }) {
-  const pulse = experience.businessPresentation?.pulse ?? []
-  return <div className="hc-business-activity" data-testid="business-activity">
-    <p>{pulse[0] ?? 'حجره برای تصمیم امروز آماده است. نشانه‌های بازار را با وضعیت کسب‌وکار بسنجید.'}</p>
-    {pulse[1] && <small>{pulse[1]}</small>}
-    <div className="hc-activity-note"><span aria-hidden="true">✦</span><p><strong>اثر شناخته‌شده</strong> تصمیم نهایی تنها با انتخاب معتبر همین پرده در بازار ثبت می‌شود.</p></div>
-    <button type="button" className="button button--gold" onClick={onBack}>بازگشت به تصمیم پرده</button>
-  </div>
-}
-
 function WorldReactionStep({ reaction, index, total, onNext, onSkip }: { reaction: ReturnType<typeof buildSceneDescriptor>['reactions'][number]; index: number; total: number; onNext: () => void; onSkip: () => void }) {
   const last = index >= total - 1
   return <div className="hc-world-reaction" data-testid="world-reaction">
@@ -192,10 +209,6 @@ function WorldReactionStep({ reaction, index, total, onNext, onSkip }: { reactio
     <small>روایت روی مکان درگیر متمرکز شده و تغییر همان‌جا باقی می‌ماند.</small>
     <div className="button-row"><button type="button" className="button button--gold" onClick={onNext}>{last ? 'ادامه روایت' : 'واکنش بعدی'}</button>{!last && <button type="button" className="button button--ghost" onClick={onSkip}>رد کردن واکنش‌ها</button>}</div>
   </div>
-}
-
-function LocationContext({ location, investigated, onInvestigate, canWrite }: { location: SceneLocation; investigated: boolean; onInvestigate: () => void; canWrite: boolean }) {
-  return <div className="hc-location-context"><div><span className="eyebrow">نقطه‌ی انتخاب‌شده</span><h3>{location.name}</h3></div><p>{location.currentCondition}</p>{location.recentChange && <small>{location.recentChange}</small>}{location.availableActions.length > 0 && <span className="hc-location-action">{location.availableActions[0]}</span>}<button type="button" className={`button ${investigated ? 'button--ghost' : 'button--gold'}`} disabled={investigated || !canWrite} onClick={onInvestigate}>{investigated ? 'نشانه ثبت شد' : 'بررسی این نقطه'}</button></div>
 }
 
 function ChoiceCards({ storylet, disabled, onChoose }: { storylet: Storylet; disabled: boolean; onChoose: (choiceId: string) => void }) {
@@ -221,11 +234,40 @@ function PactsDrawer({ experience, packageData, targetLocations, selectedTeamId,
   return <aside className="hc-utility-drawer hc-pacts-drawer" aria-label="پیمان‌های بازار"><header><div><span className="eyebrow">همکاری میان حجره‌ها</span><h2>{target ? `نامه برای ${target.name}` : 'پیمان‌های بازار'}</h2></div><button type="button" className="panel-close" onClick={onClose} aria-label="بستن پیمان‌ها">×</button></header>{!target ? <><p className="hc-drawer-intro">مقصد را از فهرست حجره‌های بازار انتخاب کنید؛ پس از انتخاب، نامه‌ی همکاری آماده می‌شود.</p><div className="hc-target-list">{targetLocations.map((location) => <button type="button" key={location.id} className="hc-target-row" onClick={() => onTargetSelect(location)}><strong>{location.name}</strong><span>{location.currentCondition}</span><small>{location.whyItMatters}</small></button>)}</div></> : <><div className="hc-pact-target"><span className="eyebrow">مقصد انتخاب‌شده</span><strong>{target.name}</strong><small>{target.currentCondition}</small><p>{target.whyItMatters}</p></div>{experience.availableInteractionTypes && experience.availableInteractionTypes.length > 1 && <label className="hc-drawer-field"><span>نوع نامه</span><select value={interactionId} onChange={(event) => onInteractionChange(event.target.value)}>{experience.availableInteractionTypes.map((available) => <option key={available.interactionTypeId} value={available.interactionTypeId}>{packageData?.interactions.find((item) => item.id === available.interactionTypeId)?.displayName ?? 'همکاری بازار'}</option>)}</select></label>}{interaction && <div className="hc-proposal-letter"><span className="hc-letter-seal" aria-hidden="true">✦</span><p className="hc-drawer-intro">{interaction.description}</p><TermsEditor schema={interaction.termsSchema} value={terms} onChange={onTermsChange} /><label className="hc-drawer-field"><span>اعتبار نامه</span><select value={validForCheckpoints} onChange={(event) => onValidityChange(Number(event.target.value))}><option value={1}>تا پرده‌ی بعد</option><option value={2}>تا دو پرده‌ی بعد</option></select></label><small className="hc-known-consequence">اثر شناخته‌شده: پس از پذیرش، تعهد میان طرف‌ها ثبت می‌شود؛ نمایش عمومی تابع روایت و مجوز بازار است.</small></div>}<button type="button" className="button button--gold hc-send-pact" disabled={mutation.isPending || !interactionId} onClick={() => mutation.mutate(undefined)}>{mutation.isPending ? 'در حال مهر و ارسال…' : 'مهر و ارسال نامه'}</button>{mutation.isError && <p className="hc-form-error">{mutation.error instanceof Error ? mutation.error.message : 'ارسال پیشنهاد انجام نشد.'}</p>}</>}</aside>
 }
 
-function objectiveFor(checkpoint: string | null | undefined, investigated: boolean, submitted: boolean) {
-  if (submitted) return 'واکنش بازار را از روی تغییر چراغ‌ها و پیام‌های تازه دنبال کنید.'
-  if (checkpoint === 'cargo-did-not-arrive') return investigated ? 'از نشانه‌های بار نرسیده استفاده کنید و مسیر حجره را ثبت کنید.' : 'پیش از انتخاب، یک تا سه نشانه از مسیر بار و حجره‌های درگیر پیدا کنید.'
-  if (checkpoint === 'avan-offer') return investigated ? 'پیشنهاد آوان را با وضعیت حجره‌ی خود بسنجید.' : 'نقاط درگیر پیشنهاد آوان را در روایت دنبال کنید.'
-  return investigated ? 'با دانستن حال بازار، تصمیم حجره را ثبت کنید.' : 'یک نشانه از بازار پیدا کنید و بعد تصمیم بگیرید.'
+function presentationLocationFor(locationId: string | undefined): SceneLocation | undefined {
+  if (locationId === 'haj-sadegh-office') return {
+    id: locationId, name: 'دفتر حاج صادق', shortIdentity: 'دفتر بسته‌ی بازار', whyItMatters: 'غیبت حاج صادق و پاکت‌های بی‌نام از همین‌جا آغاز شده است.', currentCondition: 'در قفل است و چراغ هنوز روشن نشده.', whoIsHere: 'هیچ‌کس', recentChange: 'رد یک یادداشت مدادی و پاکتی بی‌نام روی میز مانده است.', availableActions: ['بررسی پاکت و میز'], presentationTags: ['office-closed'], state: 'action-available', businessKind: 'business', controlled: false, active: true, x: 500, y: 105,
+  }
+  if (locationId === 'market-entrance') return {
+    id: locationId, name: 'دروازه بازار', shortIdentity: 'راه ورود بار و خبر', whyItMatters: 'نبود گاری آرد از این نقطه دیده شده است.', currentCondition: 'دروازه باز است، اما بار همیشگی صبح نرسیده.', whoIsHere: 'نگهبان بازار', recentChange: 'زنگ آغاز روز به صدا درنیامده است.', availableActions: ['پرس‌وجو از نگهبان'], presentationTags: ['entry'], state: 'quiet', businessKind: 'business', controlled: false, active: true, x: 500, y: 720,
+  }
+  return undefined
+}
+
+function locationNarrativeFor(location: SceneLocation, storylet: Storylet) {
+  if (location.id === 'haj-sadegh-office') return 'درِ دفتر باز نمی‌شود. از پشت شیشه، پاکتی بی‌نام و جای استکان دیشب دیده می‌شود؛ انگار صاحب دفتر با عجله رفته است.'
+  if (location.id === 'market-entrance') return 'نگهبان می‌گوید صبح شروع شده، اما نه زنگ بازار را شنیده و نه گاری آردی را دیده است. این سکوت برای حجره شما عادی نیست.'
+  if (location.controlled) return storylet.paragraphs[0] ?? `${location.name} منتظر خبری است که تصمیم امروز را روشن کند.`
+  return location.currentCondition || location.shortIdentity
+}
+
+function evidenceFor(location: SceneLocation | undefined, storylet: Storylet | undefined): TeamEvidenceCard[] {
+  const fragment = storylet?.paragraphs[1] ?? 'بخشی از دفتر حاج صادق به حجره شما رسیده و بعضی حساب‌های قدیمی را روشن می‌کند.'
+  const businessImpact = storylet?.paragraphs[2] ?? 'این خبر می‌تواند تصمیم امروز حجره را عوض کند.'
+  if (location?.id === 'market-entrance') return [
+    { kind: 'seal', title: 'زنگ خاموش', body: 'نگهبان تأیید می‌کند زنگ آغاز بازار امروز به صدا درنیامده است.' },
+    { kind: 'document', title: 'ورود ثبت‌نشده', body: 'نام گاری همیشگی آرد در دفتر ورود صبح دیده نمی‌شود.' },
+  ]
+  return [
+    { kind: 'letter', title: 'پاکت بی‌نام', body: fragment },
+    { kind: 'document', title: 'تکه دفتر', body: businessImpact },
+    { kind: 'seal', title: 'رد حاج صادق', body: 'کنار نوشته‌ها یک جمله با مداد مانده است: «هر بدهی، عدد نیست.»' },
+  ]
+}
+
+function evidenceMessageFor(location: SceneLocation | undefined) {
+  if (location?.id === 'market-entrance') return 'بار نرسیده، اما کسی هنوز بسته‌شدن راه را رسمی اعلام نکرده است.'
+  return 'هر بدهی، عدد نیست. بعضی حساب‌ها با اعتماد، نان یا یک قول قدیمی بسته شده‌اند.'
 }
 
 function marketMood(pressure: string) {
@@ -241,14 +283,16 @@ function businessIcon(definitionId: string | undefined) {
 }
 
 function playerFacingStoryTitle(title: string | undefined, checkpoint: string | null | undefined, atmosphere: string) {
-  if (title && !/[a-z][a-z0-9]+(?:-[a-z0-9]+)+/i.test(title)) return title
-  return ({
+  const checkpointTitle = ({
     'morning-without-bell': 'خبر پنهانِ حجره',
     'cargo-did-not-arrive': 'بار نرسید',
     'avan-offer': 'نامه‌ای از آوان',
     'market-gathering': 'گردهمایی بازار',
     'slice-complete': 'چراغ‌های پس از تصمیم',
-  } as Record<string, string>)[checkpoint ?? ''] ?? atmosphere
+  } as Record<string, string>)[checkpoint ?? '']
+  if (checkpointTitle) return checkpointTitle
+  if (title && !/[a-z][a-z0-9]+(?:-[a-z0-9]+)+/i.test(title)) return title
+  return atmosphere
 }
 
 function validatorFor(schema: TermSchema): z.ZodType {
