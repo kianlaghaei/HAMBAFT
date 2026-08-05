@@ -9,11 +9,17 @@ type UiState = {
   visualMode: VisualMode
   audioEnabled: boolean
   setupCodes: Record<string, SetupCode[]>
+  inspectedLocations: Record<string, number>
+  completedIntroductions: Record<string, boolean>
+  seenReactionVersions: Record<string, number>
   setTeamTab: (tab: string) => void
   setReducedMotion: (value: boolean) => void
   setVisualMode: (value: VisualMode) => void
   setAudioEnabled: (value: boolean) => void
   saveSetupCodes: (sessionId: string, codes: SetupCode[]) => void
+  inspectLocation: (sessionId: string, locationId: string, version: number) => void
+  completeIntroduction: (sessionId: string) => void
+  markReactionSeen: (sessionId: string, version: number) => void
 }
 
 export const useUiStore = create<UiState>()(persist((set) => ({
@@ -22,9 +28,15 @@ export const useUiStore = create<UiState>()(persist((set) => ({
   visualMode: 'high',
   audioEnabled: false,
   setupCodes: {},
+  inspectedLocations: {},
+  completedIntroductions: {},
+  seenReactionVersions: {},
   setTeamTab: (selectedTeamTab) => set({ selectedTeamTab }),
   setReducedMotion: (reducedMotion) => set({ reducedMotion }),
   setVisualMode: (visualMode) => set({ visualMode }),
   setAudioEnabled: (audioEnabled) => set({ audioEnabled }),
   saveSetupCodes: (sessionId, codes) => set((state) => ({ setupCodes: { ...state.setupCodes, [sessionId]: codes } })),
+  inspectLocation: (sessionId, locationId, version) => set((state) => ({ inspectedLocations: { ...state.inspectedLocations, [`${sessionId}:${locationId}`]: version } })),
+  completeIntroduction: (sessionId) => set((state) => ({ completedIntroductions: { ...state.completedIntroductions, [sessionId]: true } })),
+  markReactionSeen: (sessionId, version) => set((state) => ({ seenReactionVersions: { ...state.seenReactionVersions, [sessionId]: version } })),
 }), { name: 'hambaft-ui', storage: createJSONStorage(() => sessionStorage) }))

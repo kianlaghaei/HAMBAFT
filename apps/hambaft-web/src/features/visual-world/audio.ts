@@ -4,7 +4,7 @@ class GeneratedMarketAudio {
   private context: AudioContext | null = null
   private nodes: AudioNode[] = []
 
-  async start(sound: MarketSound = 'ambient-market') {
+  async start(sound: string = 'ambient-market') {
     this.stop()
     const AudioContextType = window.AudioContext ?? (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
     if (!AudioContextType) return
@@ -20,7 +20,7 @@ class GeneratedMarketAudio {
       'ambient-market': [82, 123], 'distant-carts': [55, 72], 'paper-and-seal': [180, 240], 'soft-crowd-tension': [67, 101],
       'rain-or-water': [110, 165], 'warehouse-warning': [73, 146], 'ending-ambience': [65, 98],
     }
-    ;[base.frequency.value, upper.frequency.value] = frequencies[sound]
+    ;[base.frequency.value, upper.frequency.value] = frequencies[sound as MarketSound] ?? frequencies['ambient-market']
     base.type = 'sine'; upper.type = 'triangle'
     const upperGain = context.createGain(); upperGain.gain.value = .18
     base.connect(master); upper.connect(upperGain); upperGain.connect(master)

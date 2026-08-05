@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { z } from 'zod'
 import { api } from '../../api/client'
 import { queryKeys } from '../../api/queryKeys'
-import type { Proposal, TermSchema } from '../../api/schemas'
+import type { Proposal, PublicWorld, TermSchema } from '../../api/schemas'
 import { useAuthStore } from '../../auth/authStore'
 import { EmptyState, ErrorState, Section } from '../../components/States'
 import { TermsEditor, type TermDraft } from '../../components/TermsView'
@@ -30,6 +30,12 @@ function materializeTerms(schema: TermSchema, draft: TermDraft): TermDraft {
   return result
 }
 
+type TargetLocation = NonNullable<PublicWorld['worldPresentation']>['locations'][number] & { teamId: string }
+
+export function ProposalTargetMap({ locations, selectedTeamId, onSelect }: { locations: TargetLocation[]; selectedTeamId: string; onSelect: (teamId: string) => void }) {
+  return <fieldset className="proposal-target-map"><legend>گیرنده را روی بازار انتخاب کنید</legend><div className="target-map" role="radiogroup" aria-label="کسب‌وکارهای مجاز برای دریافت پیشنهاد">{locations.map((location) => <button type="button" role="radio" aria-checked={selectedTeamId === location.teamId} className={selectedTeamId === location.teamId ? 'is-selected' : ''} style={{ insetInlineStart: `${location.x}%`, top: `${location.y}%` }} onClick={() => onSelect(location.teamId)} key={location.id}><strong>{location.displayName}</strong><span>{location.currentCondition}</span></button>)}</div></fieldset>
+}
+
 export function MessagesPage() {
   const { experience, canWrite } = useTeamContext()
   const token = useAuthStore((state) => state.team?.accessToken ?? '')
@@ -45,6 +51,10 @@ export function MessagesPage() {
   const [countering, setCountering] = useState<Proposal | null>(null)
   const selected = pkg.data?.interactions.find((item) => item.id === interactionId)
   const targetName = useMemo(() => (teamId: string) => world.data?.entities.find((entity) => entity.controlledByTeamId === teamId)?.displayName ?? 'حجره دیگر', [world.data])
+  const targetLocations = useMemo(() => (world.data?.worldPresentation?.locations ?? []).flatMap((location) => {
+    const entity = world.data?.entities.find((item) => item.id === location.entityId)
+    return entity?.controlledByTeamId && selectedAvailability?.allowedTargetTeamIds.includes(entity.controlledByTeamId) ? [{ ...location, teamId: entity.controlledByTeamId }] : []
+  }), [selectedAvailability?.allowedTargetTeamIds, world.data])
   const mutation = useMutation({
     mutationFn: async (input: { kind: string; proposal?: Proposal }) => {
       if (input.kind === 'Send') {
@@ -74,7 +84,11 @@ export function MessagesPage() {
   }
   return <div className="content-grid messages-layout">
     <Section title={countering ? 'پیشنهاد متقابل' : 'نامه تازه'} eyebrow="مذاکره ساختاریافته"><form onSubmit={submit}>
-      {!countering && <><label className="field"><span>نوع تعامل</span><select value={interactionId} onChange={(event) => { const id = event.target.value; setInteractionId(id); const next = available.find((item) => item.interactionTypeId === id); setReceiver(next?.allowedTargetTeamIds[0] ?? ''); setTerms({}) }}>{available.map((item) => <option key={item.interactionTypeId} value={item.interactionTypeId}>{pkg.data?.interactions.find((definition) => definition.id === item.interactionTypeId)?.displayName ?? item.interactionTypeId}</option>)}</select></label><label className="field"><span>گیرنده</span><select value={receiver} onChange={(event) => setReceiver(event.target.value)}>{selectedAvailability?.allowedTargetTeamIds.map((id) => <option value={id} key={id}>{targetName(id)}</option>)}</select></label></>}
+      {!countering && <><label className="field"><span>نوع تعامل</span><select value={interactionId} onChange={(event) => { const id = event.target.value; setInteractionId(id); const next = available.find((item) => item.interactionTypeId === id); setReceiver(next?.allowedTargetTeamIds[0] ?? ''); setTerms({}) }}>{available.map((item) => <option key={item.interactionTypeId} value={item.interactionTypeId}>{pkg.data?.interactions.find((definition) => definition.id === item.interactionTypeId)?.displayName ?? item.interactionTypeId}</option>)}</select></label>
+        {targetLocations.length > 0 && <ProposalTargetMap locations={targetLocations} selectedTeamId={receiver} onSelect={setReceiver} />}
+        <label className="field"><span>فهرست دسترس‌پذیر گیرنده</span><select value={receiver} onChange={(event) => setReceiver(event.target.value)}>{selectedAvailability?.allowedTargetTeamIds.map((id) => <option value={id} key={id}>{targetName(id)}</option>)}</select></label>
+        {targetLocations.find((location) => location.teamId === receiver) && <aside className="target-context"><strong>{targetLocations.find((location) => location.teamId === receiver)?.displayName}</strong><p>{targetLocations.find((location) => location.teamId === receiver)?.whyItMatters}</p><p>{targetLocations.find((location) => location.teamId === receiver)?.currentCondition}</p></aside>}
+      </>}
       {selected && <><p className="form-help">{selected.description}</p><TermsEditor schema={selected.termsSchema} value={terms} onChange={setTerms} /></>}
       <div className="button-row"><button className="button" disabled={!canWrite || connection !== 'connected' || mutation.isPending || (!countering && (!interactionId || !receiver))}>{mutation.isPending ? 'در حال ثبت…' : countering ? 'ارسال بازنگری تازه' : 'ارسال پیشنهاد'}</button>{countering && <button type="button" className="button button--ghost" onClick={() => { setCountering(null); setTerms({}) }}>انصراف</button>}</div>
       {mutation.isError && mutation.error.message !== 'CANCELLED' && <ErrorState error={mutation.error} />}

@@ -1,46 +1,23 @@
 import type { Agreement, Proposal, PublicWorld, TeamExperience } from '../../api/schemas'
-import type { ProposalVisualState, SceneConnection, SceneDescriptor, SceneEvent, SceneLocation, ScenePoint, SceneTime } from './types'
+import type { ProposalVisualState, SceneConnection, SceneDescriptor, SceneEvent, SceneLocation, SceneTime } from './types'
 
-const positions: Record<string, ScenePoint> = {
-  'bakery-sepideh': { x: 220, y: 220 },
-  'logistics-rah-no': { x: 775, y: 235 },
-  'printing-roshan': { x: 235, y: 515 },
-  'exchange-mizan': { x: 760, y: 510 },
+const legacyPositions: Record<string, { x: number; y: number }> = {
+  'bakery-sepideh': { x: 220, y: 220 }, 'logistics-rah-no': { x: 775, y: 235 }, 'printing-roshan': { x: 235, y: 515 }, 'exchange-mizan': { x: 760, y: 510 },
 }
-
 const businessKinds: Record<string, SceneLocation['businessKind']> = {
-  'bakery-sepideh': 'bakery',
-  'logistics-rah-no': 'logistics',
-  'printing-roshan': 'printing',
-  'exchange-mizan': 'exchange',
+  'bakery-sepideh': 'bakery', 'logistics-rah-no': 'logistics', 'printing-roshan': 'printing', 'exchange-mizan': 'exchange',
 }
-
-const checkpointScenes: Record<string, { time: SceneTime; events: SceneEvent[]; atmosphere: string[] }> = {
-  'morning-without-bell': { time: 'morning', events: ['market-morning', 'missing-bell', 'ledger-discovery'], atmosphere: ['quiet', 'uncertain'] },
-  'cargo-did-not-arrive': { time: 'noon', events: ['northern-road-closure', 'cargo-shortage', 'rumour-spread'], atmosphere: ['shortage', 'rumour'] },
-  'shipment-missing': { time: 'noon', events: ['northern-road-closure', 'cargo-shortage', 'rumour-spread'], atmosphere: ['shortage', 'rumour'] },
-  'avan-offer': { time: 'dusk', events: ['avan-arrival'], atmosphere: ['pressure', 'watchful'] },
-  'market-gathering': { time: 'night', events: ['night-pressure', 'courtyard-gathering'], atmosphere: ['pressure', 'crowded'] },
-  'slice-complete': { time: 'night', events: ['courtyard-gathering'], atmosphere: ['resolved'] },
+const checkpointEvents: Record<string, SceneEvent[]> = {
+  'morning-without-bell': ['market-morning', 'missing-bell', 'ledger-discovery'],
+  'cargo-did-not-arrive': ['northern-road-closure', 'cargo-shortage', 'rumour-spread'],
+  'avan-offer': ['avan-arrival'], 'market-gathering': ['courtyard-gathering'], 'slice-complete': ['night-pressure'],
 }
-
-const knownEvents = new Set<SceneEvent>([
-  'market-morning', 'missing-bell', 'ledger-discovery', 'northern-road-closure', 'cargo-shortage', 'rumour-spread',
-  'avan-arrival', 'night-pressure', 'courtyard-gathering', 'entity-ending', 'world-ending',
-])
-
-const statusNumber: Record<string, string> = { '0': 'sent', '1': 'countered', '2': 'accepted', '3': 'rejected', '4': 'expired', '5': 'rejected', '6': 'executed', '7': 'failed' }
-const statusName: Record<string, ProposalVisualState> = {
-  Pending: 'sent', Sent: 'sent', Countered: 'countered', Accepted: 'accepted', Rejected: 'rejected', Expired: 'expired', Cancelled: 'rejected', Executed: 'executed', Failed: 'failed',
-}
+const knownEvents = new Set<SceneEvent>(['market-morning', 'missing-bell', 'ledger-discovery', 'northern-road-closure', 'cargo-shortage', 'rumour-spread', 'avan-arrival', 'night-pressure', 'courtyard-gathering', 'entity-ending', 'world-ending'])
 
 export function proposalVisualState(status: string | number): ProposalVisualState {
-  const key = String(status)
-  return statusName[key] ?? (statusNumber[key] as ProposalVisualState | undefined) ?? 'sent'
-}
-
-function enumName(value: string | number, names: Record<string, string>) {
-  return names[String(value)] ?? String(value)
+  const names: Record<string, ProposalVisualState> = { Pending: 'sent', Countered: 'countered', Accepted: 'accepted', Rejected: 'rejected', Expired: 'expired', Executed: 'executed', Failed: 'failed', Cancelled: 'rejected' }
+  const numbers: Record<string, ProposalVisualState> = { '0': 'sent', '1': 'countered', '2': 'accepted', '3': 'rejected', '4': 'rejected', '5': 'expired', '6': 'executed', '7': 'failed' }
+  return names[String(status)] ?? numbers[String(status)] ?? 'sent'
 }
 
 function values(tags: Record<string, string> | undefined, key: string) {
@@ -53,84 +30,68 @@ function tagsFrom(world: PublicWorld, team?: TeamExperience) {
   return team ? { ...publicTags, ...privateTags } : publicTags
 }
 
-function entityForTeam(world: PublicWorld, teamId: string) {
-  return world.entities.find((entity) => entity.controlledByTeamId === teamId)?.id
-}
+function entityForTeam(world: PublicWorld, teamId: string) { return world.entities.find((entity) => entity.controlledByTeamId === teamId)?.id }
 
 function agreementConnection(world: PublicWorld, agreement: Agreement): SceneConnection | null {
   const [first, second] = agreement.parties.map((teamId) => entityForTeam(world, teamId))
   if (!first || !second) return null
-  const status = enumName(agreement.status, { '0': 'active', '1': 'executed', '2': 'failed', '3': 'failed', Active: 'active', Executed: 'executed', Failed: 'failed', Cancelled: 'failed' }) as 'active' | 'executed' | 'failed'
-  return { id: `agreement:${agreement.agreementId}`, fromEntityId: first, toEntityId: second, kind: 'agreement', strength: status === 'failed' ? 20 : 100, damaged: status === 'failed', status }
+  const statusName = String(agreement.status)
+  const status = ['Executed', '1'].includes(statusName) ? 'executed' : ['Failed', 'Cancelled', '2', '3'].includes(statusName) ? 'failed' : 'active'
+  return { id: `agreement:${agreement.agreementId}`, fromEntityId: first, toEntityId: second, kind: 'agreement', label: 'تعهد فعال', damaged: status === 'failed', status }
 }
 
-function visibleRelationshipConnections(world: PublicWorld, team?: TeamExperience): SceneConnection[] {
-  const source = team?.visibleRelationships ?? world.publicRelationships
-  const permitted = new Set(['Trust', 'Obligation', 'DebtExposure', 'DebtObligation'])
-  return source.filter((relationship) => permitted.has(relationship.relationshipKey)).map((relationship) => {
-    const kind = relationship.relationshipKey === 'Trust' ? 'trust' : relationship.relationshipKey === 'Obligation' ? 'obligation' : 'debt'
-    return {
-      id: `relationship:${relationship.sourceEntityId}:${relationship.targetEntityId}:${relationship.relationshipKey}`,
-      fromEntityId: relationship.sourceEntityId,
-      toEntityId: relationship.targetEntityId,
-      kind,
-      strength: Math.max(0, Math.min(100, relationship.numericValue)),
-      damaged: relationship.numericValue < 35,
-    }
-  })
+function relationshipConnections(team?: TeamExperience): SceneConnection[] {
+  return (team?.relationshipPresentation ?? []).map((relationship) => ({
+    id: `relationship:${relationship.sourceEntityId}:${relationship.targetEntityId}:${relationship.relationshipKey}`,
+    fromEntityId: relationship.sourceEntityId, toEntityId: relationship.targetEntityId,
+    kind: relationship.relationshipKey === 'Trust' ? 'trust' : relationship.relationshipKey === 'Obligation' ? 'obligation' : 'debt',
+    label: relationship.label,
+    damaged: relationship.visualTags.some((tag) => tag.includes('broken') || tag.includes('damaged') || tag.includes('faded')),
+  }))
 }
 
 function proposalMessengers(world: PublicWorld, proposals: Proposal[]) {
   return proposals.flatMap((proposal) => {
-    const from = entityForTeam(world, proposal.senderTeamId)
-    const to = entityForTeam(world, proposal.receiverTeamId)
+    const from = entityForTeam(world, proposal.senderTeamId); const to = entityForTeam(world, proposal.receiverTeamId)
     return from && to ? [{ id: proposal.proposalId, fromEntityId: from, toEntityId: to, state: proposalVisualState(proposal.status), revision: proposal.currentRevisionNumber }] : []
   })
 }
 
+function semanticLocations(world: PublicWorld, team?: TeamExperience): SceneLocation[] {
+  const presentation = team?.worldPresentation ?? world.worldPresentation
+  if (!presentation) return world.entities.map((entity, index) => {
+    const fallback = Object.values(legacyPositions)[index] ?? { x: 500, y: 360 }
+    return { id: entity.definitionId, entityId: entity.id, teamId: entity.controlledByTeamId ?? undefined, name: entity.displayName, shortIdentity: 'یکی از حجره‌های بازار', whyItMatters: '', currentCondition: 'وضعیت عمومی حجره قابل مشاهده است.', whoIsHere: '', recentChange: '', availableActions: [], presentationTags: [], state: 'quiet', businessKind: businessKinds[entity.definitionId] ?? 'business', ...(legacyPositions[entity.definitionId] ?? fallback), controlled: entity.id === team?.controlledEntity?.id, active: !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)) }
+  })
+  const inboxTargets = new Set((team?.inbox ?? []).map((proposal) => entityForTeam(world, proposal.senderTeamId)))
+  const agreementEntities = new Set((team?.agreements ?? []).flatMap((agreement) => agreement.parties.map((id) => entityForTeam(world, id))))
+  const changed = new Set(presentation.reactions.flatMap((reaction) => reaction.locationIds))
+  return presentation.locations.map((location) => {
+    const entity = location.entityId ? world.entities.find((item) => item.id === location.entityId) : undefined
+    const state: SceneLocation['state'] = world.worldEnding ? 'ending-relevant' : location.entityId && inboxTargets.has(location.entityId) ? 'proposal-received' : location.entityId && agreementEntities.has(location.entityId) ? 'agreement-active' : changed.has(location.id) ? 'changed-since-last-visit' : location.availableActions.length ? 'action-available' : location.presentationTags.includes('public-gathering') ? 'public-event' : 'quiet'
+    return { id: location.id, entityId: location.entityId ?? undefined, teamId: entity?.controlledByTeamId ?? undefined, name: location.displayName, shortIdentity: location.shortIdentity, whyItMatters: location.whyItMatters, currentCondition: location.currentCondition, whoIsHere: location.whoIsHere, recentChange: location.recentChange, availableActions: location.availableActions, presentationTags: location.presentationTags, state, businessKind: businessKinds[location.entityDefinitionId ?? ''] ?? 'business', x: location.x * 10, y: location.y * 7, controlled: entity?.id === team?.controlledEntity?.id, active: entity ? !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)) : true }
+  })
+}
+
+function sceneTime(value: string | undefined): SceneTime {
+  if (value === 'noon') return 'near-noon'
+  return ['before-open', 'morning', 'near-noon', 'afternoon', 'dusk', 'night'].includes(value ?? '') ? value as SceneTime : 'morning'
+}
+
 export function buildSceneDescriptor(world: PublicWorld, team?: TeamExperience): SceneDescriptor {
   const checkpoint = team?.currentCheckpointId ?? world.currentCheckpointId ?? 'waiting'
-  const authored = checkpointScenes[checkpoint] ?? { time: 'morning' as const, events: ['market-morning'] as SceneEvent[], atmosphere: ['waiting'] }
+  const presentation = team?.worldPresentation ?? world.worldPresentation
   const tags = tagsFrom(world, team)
-  const taggedTime = values(tags, 'time')[0] as SceneTime | undefined
   const taggedEvents = [...values(tags, 'scene'), ...values(tags, 'event')].filter((event): event is SceneEvent => knownEvents.has(event as SceneEvent))
-  const atmosphere = [...new Set([...authored.atmosphere, ...values(tags, 'atmosphere'), ...values(tags, 'mood')])]
   const ending = world.worldEnding ? 'world' : team?.entityEnding ? 'entity' : 'none'
-  const endingEvent: SceneEvent[] = ending === 'world' ? ['world-ending'] : ending === 'entity' ? ['entity-ending'] : []
-  const events = [...new Set([...authored.events, ...taggedEvents, ...endingEvent])]
-  const locations = world.entities.map((entity, index): SceneLocation => {
-    const fallback = [{ x: 220, y: 220 }, { x: 775, y: 235 }, { x: 235, y: 515 }, { x: 760, y: 510 }][index] ?? { x: 500, y: 360 }
-    return {
-      id: entity.definitionId,
-      entityId: entity.id,
-      teamId: entity.controlledByTeamId ?? undefined,
-      name: entity.displayName,
-      businessKind: businessKinds[entity.definitionId] ?? 'business',
-      ...(positions[entity.definitionId] ?? fallback),
-      controlled: entity.id === team?.controlledEntity?.id,
-      active: !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)),
-    }
-  })
-  const agreements = [...(world.publicAgreements ?? []), ...(team?.agreements ?? [])]
-    .filter((agreement, index, all) => all.findIndex((candidate) => candidate.agreementId === agreement.agreementId) === index)
-    .flatMap((agreement) => agreementConnection(world, agreement) ?? [])
-  const proposals = [...(team?.inbox ?? []), ...(team?.outbox ?? [])]
-    .filter((proposal, index, all) => all.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index)
-  const pressureMetric = world.worldMetrics.find((metric) => metric.metricKey === 'Pressure')?.numericValue ?? 0
-  const uncontrolled = world.entities.filter((entity) => !['HumanTeam', '0'].includes(String(entity.controllerType))).map((entity) => entity.id)
+  const endingEvents: SceneEvent[] = ending === 'world' ? ['world-ending'] : ending === 'entity' ? ['entity-ending'] : []
+  const events = [...new Set([...(checkpointEvents[checkpoint] ?? []), ...taggedEvents, ...endingEvents])]
+  const proposals = [...(team?.inbox ?? []), ...(team?.outbox ?? [])].filter((proposal, index, all) => all.findIndex((candidate) => candidate.proposalId === proposal.proposalId) === index)
+  const agreements = [...(world.publicAgreements ?? []), ...(team?.agreements ?? [])].filter((agreement, index, all) => all.findIndex((candidate) => candidate.agreementId === agreement.agreementId) === index).flatMap((agreement) => agreementConnection(world, agreement) ?? [])
+  const pressure = presentation?.semanticMetrics.find((metric) => metric.key === 'Pressure')?.bandId
   return {
-    id: `${world.id}:${checkpoint}`,
-    visualVersion: Math.max(world.stateVersion, team?.stateVersion ?? 0),
-    time: ['morning', 'noon', 'dusk', 'night'].includes(taggedTime ?? '') ? taggedTime! : authored.time,
-    title: world.narrative?.title ?? checkpoint,
-    atmosphere,
-    events,
-    locations,
-    connections: [...visibleRelationshipConnections(world, team), ...agreements],
-    messengers: proposalMessengers(world, proposals),
-    uncontrolledEntityIds: uncontrolled,
-    avanVisible: events.includes('avan-arrival') || values(tags, 'presence').includes('avan'),
-    pressure: Math.max(pressureMetric, atmosphere.includes('pressure') ? 60 : 0),
-    ending,
+    id: `${world.id}:${presentation?.sceneId ?? checkpoint}`, visualVersion: Math.max(world.stateVersion, team?.stateVersion ?? 0), time: sceneTime(presentation?.timeOfDay ?? values(tags, 'time')[0]), title: world.narrative?.title ?? presentation?.atmosphereLabel ?? checkpoint,
+    timeLabel: presentation?.timeLabel ?? 'صبح', atmosphereLabel: presentation?.atmosphereLabel ?? 'بازار هزارچراغ', publicEvent: presentation?.publicEvent ?? '', courtyardActivity: presentation?.courtyardActivity ?? '', soundscape: presentation?.soundscape ?? 'ambient-market', atmosphere: presentation?.visualTags ?? [...values(tags, 'atmosphere'), ...values(tags, 'mood')], events,
+    locations: semanticLocations(world, team), connections: [...relationshipConnections(team), ...agreements], messengers: proposalMessengers(world, proposals), uncontrolledEntityIds: world.entities.filter((entity) => !['HumanTeam', '0'].includes(String(entity.controllerType))).map((entity) => entity.id), avanVisible: presentation?.avanVisible ?? (events.includes('avan-arrival') || values(tags, 'presence').includes('avan')), pressure: ['calm', 'uneasy', 'strained', 'critical'].includes(pressure ?? '') ? pressure as SceneDescriptor['pressure'] : 'calm', pulse: presentation?.pulse ?? [], businessPulse: team?.businessPresentation?.pulse ?? [], ambientEvents: presentation?.ambientEvents ?? [], characters: presentation?.characters ?? [], reactions: presentation?.reactions ?? [], semantic: Boolean(presentation), ending,
   }
 }
