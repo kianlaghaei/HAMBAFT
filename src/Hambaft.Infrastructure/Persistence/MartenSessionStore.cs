@@ -44,7 +44,8 @@ public sealed class MartenSessionStore : ISessionStore
     }
     public async Task<PublicWorldView?> LoadPublicViewAsync(Guid id,CancellationToken ct)
     {
-        var view=await session.LoadAsync<PublicWorldView>(id,ct); if(view is null||packages is null) return view;
+        var view=await session.LoadAsync<PublicWorldView>(id,ct);
+        if(view is null||packages is null||view.CurrentCheckpointId is null&&view.CurrentWorldNarrativeRef is null) return view;
         var package=await packages.LoadAsync(view.StoryPackageId,view.StoryVersion,ct); EnsureHash(view.ContentHash,package.ContentHash);
         var hydrated=ViewProjector.Hydrate(view,package);
         if(ink is not null&&view.CurrentWorldNarrativeRef is { } narrative&&package.InkDefinition.References.Any(x=>x.Id==narrative))
