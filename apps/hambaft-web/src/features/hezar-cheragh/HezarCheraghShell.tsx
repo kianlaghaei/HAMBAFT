@@ -39,8 +39,7 @@ export function HezarCheraghShell({
 }: HezarCheraghShellProps) {
   const reducedMotion = useUiStore((state) => state.reducedMotion)
   const [selectedLocationId, setSelectedLocationId] = useState<string>()
-  const [pactTargetIds] = useState<Set<string>>(new Set())
-  const [changedLocationIds] = useState<Set<string>>(new Set())
+  const [sheetState, setSheetState] = useState<'collapsed' | 'half' | 'expanded'>('half')
   const [reactionIndex, setReactionIndex] = useState(0)
 
   // Register dev manifest on mount
@@ -51,11 +50,39 @@ export function HezarCheraghShell({
   const descriptor = useMemo(() => buildSceneDescriptor(world, team), [world, team])
   const mapDef = useMemo(() => loadBazaarMap(), [])
   const bazaarTime = timeMode
+  const selectedLocation = descriptor.locations.find((location) => location.id === selectedLocationId)
+  const pactTargetIds = useMemo(
+    () => new Set(panelFixture.mode === 'PactTargetSelection' ? panelFixture.availableTargets.map((target) => target.id) : []),
+    [panelFixture],
+  )
+  const changedLocationIds = useMemo(
+    () => new Set(panelFixture.mode === 'WorldReaction' ? panelFixture.reactions.map((reaction) => reaction.locationId) : []),
+    [panelFixture],
+  )
+  const reactionLocationId = panelFixture.mode === 'WorldReaction' ? panelFixture.reactions[reactionIndex]?.locationId : undefined
+  const activeFixture: PanelFixture = selectedLocation
+    ? {
+      mode: 'LocationContext',
+      location: {
+        name: selectedLocation.name,
+        whyItMatters: selectedLocation.whyItMatters,
+        whoIsHere: selectedLocation.whoIsHere,
+        currentCondition: selectedLocation.currentCondition,
+        recentChange: selectedLocation.recentChange,
+        availableActions: selectedLocation.availableActions,
+      },
+    }
+    : panelFixture
 
   const handleSelectLocation = useCallback((location: SceneLocation) => {
     setSelectedLocationId(location.id)
     onSelectLocation?.(location)
   }, [onSelectLocation])
+
+  const closePanel = useCallback(() => {
+    setSelectedLocationId(undefined)
+    onPanelClose?.()
+  }, [onPanelClose])
 
   const shellClass = [
     'hezar-cheragh-shell',
@@ -65,7 +92,7 @@ export function HezarCheraghShell({
   ].filter(Boolean).join(' ')
 
   return (
-    <div className={shellClass} data-testid="hezar-cheragh-shell">
+    <div className={shellClass} data-testid="hezar-cheragh-shell" data-map-width={mapDef.canvas.width} data-map-height={mapDef.canvas.height}>
       {/* Header */}
       <header className="hc-header">
         <div className="hc-header-left">
@@ -101,20 +128,35 @@ export function HezarCheraghShell({
             selectedLocationId={selectedLocationId}
             pactTargetIds={pactTargetIds}
             changedLocationIds={changedLocationIds}
+            reactionFocusLocationId={reactionLocationId}
             onSelectLocation={handleSelectLocation}
           />
         </div>
-        <div className="hc-panel-area">
+        <div className={`hc-panel-area sheet-${sheetState}`}>
+          {compact && (
+            <div className="hc-sheet-controls" role="group" aria-label="اندازه پنل بازی">
+              {(['collapsed', 'half', 'expanded'] as const).map((state) => (
+                <button
+                  key={state}
+                  type="button"
+                  className={sheetState === state ? 'is-active' : ''}
+                  aria-pressed={sheetState === state}
+                  onClick={() => setSheetState(state)}
+                >
+                  {state === 'collapsed' ? 'جمع‌شده' : state === 'half' ? 'نیمه' : 'باز'}
+                </button>
+              ))}
+            </div>
+          )}
           <GameplayPanel
-            fixture={panelFixture}
+            fixture={activeFixture}
             currentReactionIndex={reactionIndex}
-            totalReactions={panelFixture.mode === 'WorldReaction' ? panelFixture.reactions.length : 0}
-            onClose={onPanelClose}
+            totalReactions={activeFixture.mode === 'WorldReaction' ? activeFixture.reactions.length : 0}
+            onClose={closePanel}
             onConfirm={onPanelConfirm}
             onNextReaction={() => setReactionIndex((i) => i + 1)}
-            onSkipReactions={onPanelClose}
-            onSelectPactTarget={(id) => {
-              pactTargetIds.add(id)
+            onSkipReactions={closePanel}
+            onSelectPactTarget={() => {
               onChangePanelMode?.('ProposalLetter')
             }}
           />
@@ -150,6 +192,7 @@ export function HezarCheraghShell({
           </p>
         </div>
       </footer>
+      {children && <div className="hc-extension-slot">{children}</div>}
     </div>
   )
 }

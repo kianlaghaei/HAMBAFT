@@ -427,6 +427,14 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
   max-height: calc(100vh - 52px - 72px); /* header + footer */
 }
 
+.hc-sheet-controls {
+  display: none;
+}
+
+.hc-extension-slot {
+  display: contents;
+}
+
 /* ── Footer ── */
 .hc-footer {
   display: grid;
@@ -1013,6 +1021,35 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
     max-height: 45vh;
     border-inline-start: 0;
     border-top: 1px solid var(--line);
+  }
+
+  .hc-panel-area.sheet-collapsed { max-height: 4.25rem; overflow: hidden; }
+  .hc-panel-area.sheet-half { max-height: 45vh; }
+  .hc-panel-area.sheet-expanded { max-height: 70vh; }
+
+  .hc-sheet-controls {
+    display: flex;
+    gap: .35rem;
+    padding: .45rem .7rem;
+    border-bottom: 1px solid var(--line);
+    background: var(--paper-deep);
+  }
+
+  .hc-sheet-controls button {
+    flex: 1;
+    min-height: 34px;
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    background: transparent;
+    color: var(--ink);
+    cursor: pointer;
+    font-size: .72rem;
+  }
+
+  .hc-sheet-controls button.is-active {
+    border-color: var(--gold);
+    background: var(--gold-light);
+    font-weight: 800;
   }
 }
 

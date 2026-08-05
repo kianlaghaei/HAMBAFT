@@ -74,7 +74,7 @@ export type PanelFixture =
   | WorldReactionFixture
   | { mode: 'EntityEnding'; title: string; evidence: string[]; narrative: string }
 
-export const devFixtures: Record<string, PanelFixture> = {
+export const devFixtures = {
   introduction: {
     mode: 'SceneIntroduction',
     title: 'بازار هزارچراغ',
@@ -194,4 +194,4 @@ export const devFixtures: Record<string, PanelFixture> = {
       { title: 'حمل بار', parties: ['باربری راه نو', 'صرافی میزان'], description: 'تعهد حمل ماهانه محموله از مسیر جنوب' },
     ],
   },
-}
+} satisfies Record<string, PanelFixture>

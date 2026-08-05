@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -7,11 +7,12 @@ import { GameplayPanel } from '../features/hezar-cheragh/GameplayPanel'
 import { BazaarMapViewport } from '../features/hezar-cheragh/BazaarMapViewport'
 import { HezarCheraghShell } from '../features/hezar-cheragh/HezarCheraghShell'
 import { devFixtures } from '../features/hezar-cheragh/fixtures'
-import { registerAssets, clearAssetRegistry } from '../features/hezar-cheragh/assetRegistry'
+import { registerAssets, clearAssetRegistry, resolveAsset } from '../features/hezar-cheragh/assetRegistry'
 import { devAssetManifest } from '../features/hezar-cheragh/devManifest'
 import { buildSceneDescriptor } from '../features/visual-world/sceneDirector'
-import type { PublicWorld, TeamExperience } from '../api/schemas'
+import type { PublicWorld } from '../api/schemas'
 import type { SceneDescriptor } from '../features/visual-world/types'
+import { useUiStore } from '../state/uiStore'
 
 /* ── Helpers ── */
 
@@ -57,7 +58,7 @@ function mockWorld(): PublicWorld {
       { id: 'logistics-rah-no', definitionId: 'logistics-rah-no', displayName: 'باربری راه نو', status: 'Active', controllerType: 'HumanTeam', controlledByTeamId: 'team-b' },
     ],
     publicAgreements: [],
-  }
+  } as unknown as PublicWorld
 }
 
 function mockDescriptor(): SceneDescriptor {
@@ -209,7 +210,6 @@ describe('Asset registry', () => {
 
   it('returns fallback for missing assets', () => {
     clearAssetRegistry()
-    const { resolveAsset } = require('../features/hezar-cheragh/assetRegistry')
     const fallback = resolveAsset('nonexistent.asset')
     expect(fallback.label).toContain('missing')
   })
@@ -259,7 +259,6 @@ describe('HezarCheraghShell layout', () => {
   it('renders reduced motion class', () => {
     const world = mockWorld()
     // Need to set reducedMotion in the store
-    const { useUiStore } = require('../state/uiStore')
     useUiStore.setState({ reducedMotion: true })
     render(
       <HezarCheraghShell world={world} panelFixture={devFixtures.introduction} timeMode="morning" />,

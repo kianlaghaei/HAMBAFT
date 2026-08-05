@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useMemo, useState, type CSSProperties } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { SceneDescriptor, SceneLocation, VisualMode } from '../visual-world/types'
 import { FallbackMarket } from '../visual-world/FallbackMarket'
 import { useUiStore } from '../../state/uiStore'
@@ -78,9 +78,7 @@ export function BazaarMapViewport({
     return undefined
   }, [descriptor.locations, focusedLocationId])
 
-  // Simulate loading state briefly
-  useMemo(() => {
-    setLoading(true)
+  useEffect(() => {
     const timer = setTimeout(() => setLoading(false), 300)
     return () => clearTimeout(timer)
   }, [descriptor.id])
@@ -97,7 +95,7 @@ export function BazaarMapViewport({
   if (pixiFailed && mode === 'fallback') {
     return (
       <div className="bazaar-map-viewport is-fallback" data-testid="bazaar-map-fallback">
-        <FallbackMarket descriptor={adaptedDescriptor} reduced={mode === 'reduced'} />
+        <FallbackMarket descriptor={adaptedDescriptor} reduced={false} />
         {pixiFailed && <p className="map-fallback-notice" role="status">نمای ساده نقشه فعال است.</p>}
       </div>
     )
@@ -119,7 +117,7 @@ export function BazaarMapViewport({
 
       {/* Location hotspots overlay */}
       <div className="map-hotspots" aria-label="مکان‌های قابل تعامل">
-        {descriptor.locations.map((location) => {
+      {descriptor.locations.map((location) => {
           const ls = getLocationState(location, {
             selectedId: selectedLocationId,
             focusedId: focusedLocationId,
@@ -143,6 +141,19 @@ export function BazaarMapViewport({
           )
         })}
       </div>
+      <details className="accessible-locations">
+        <summary>فهرست دسترس‌پذیر مکان‌ها</summary>
+        <ul>
+          {descriptor.locations.map((location) => (
+            <li key={location.id}>
+              <button type="button" onClick={() => onSelectLocation?.(location)}>
+                {location.name}
+              </button>
+              <span>{location.currentCondition}</span>
+            </li>
+          ))}
+        </ul>
+      </details>
 
       {/* Relationship overlay */}
       {mode !== 'reduced' && descriptor.connections.length > 0 && (

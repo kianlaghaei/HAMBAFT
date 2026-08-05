@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react'
 import { HezarCheraghShell } from './HezarCheraghShell'
-import { devFixtures, type PanelFixture, type BusinessActivityKind, type PanelMode } from './fixtures'
+import { devFixtures, type PanelFixture, type PanelMode } from './fixtures'
 import type { BazaarTimeMode } from './bazaarMapConfig'
+import { useUiStore } from '../../state/uiStore'
 
 /** Minimal mock world for the dev visual lab. */
 function mockWorld(): import('../../api/schemas').PublicWorld {
@@ -52,7 +53,7 @@ function mockWorld(): import('../../api/schemas').PublicWorld {
       { id: 'exchange-mizan', definitionId: 'exchange-mizan', displayName: 'صرافی میزان', status: 'Active', controllerType: 'AuthoredBehavior', controlledByTeamId: undefined },
     ],
     publicAgreements: [],
-  }
+  } as unknown as import('../../api/schemas').PublicWorld
 }
 
 const modes: Array<{ label: string; key: PanelMode; fixtureKey: string }> = [
@@ -89,9 +90,11 @@ export function DevVisualLab() {
   const [activeFixtureKey, setActiveFixtureKey] = useState('introduction')
   const [timeMode, setTimeMode] = useState<BazaarTimeMode>('morning')
   const [layoutMode, setLayoutMode] = useState<'desktop' | 'tablet' | 'fallback' | 'reduced'>('desktop')
+  const setReducedMotion = useUiStore((state) => state.setReducedMotion)
+  const setVisualMode = useUiStore((state) => state.setVisualMode)
   const world = useMemo(() => mockWorld(), [])
 
-  const fixture: PanelFixture = (devFixtures as Record<string, PanelFixture>)[activeFixtureKey] ?? devFixtures.introduction
+  const fixture: PanelFixture = devFixtures[activeFixtureKey as keyof typeof devFixtures] ?? devFixtures.introduction
 
   const handleModeChange = (label: string, key: PanelMode, fKey: string) => {
     // Find the correct fixture key for business activities
@@ -151,7 +154,19 @@ export function DevVisualLab() {
                 key={l.value}
                 type="button"
                 className={`dev-mode-btn${layoutMode === l.value ? ' is-active' : ''}`}
-                onClick={() => setLayoutMode(l.value)}
+              onClick={() => {
+                setLayoutMode(l.value)
+                if (l.value === 'fallback') {
+                  setVisualMode('fallback')
+                  setReducedMotion(false)
+                } else if (l.value === 'reduced') {
+                  setVisualMode('reduced')
+                  setReducedMotion(true)
+                } else {
+                  setVisualMode('high')
+                  setReducedMotion(false)
+                }
+              }}
               >
                 {l.label}
               </button>
