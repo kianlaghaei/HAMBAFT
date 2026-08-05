@@ -11,3 +11,8 @@ export function AdminGuard() {
   const admin = useAuthStore((state) => state.admin)
   return isCredentialValid(admin) ? <Outlet /> : <Navigate to="/admin" replace />
 }
+
+export function AdminEntryGuard() {
+  const team = useAuthStore((state) => state.team)
+  return isCredentialValid(team) ? <Navigate to="/team" replace /> : <Outlet />
+}

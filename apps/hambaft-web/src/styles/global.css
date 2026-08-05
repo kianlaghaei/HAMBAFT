@@ -74,9 +74,9 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
 .connection > span { width: .65rem; height: .65rem; border: 2px solid currentColor; border-radius: 50%; background: #8aaa79; }
 .connection--reconnecting > span { background: #d1a447; animation: pulse 1s infinite alternate; }
 .connection--disconnected > span { background: #c57b68; }
-.team-nav, .admin-shell > nav { position: sticky; top: 0; z-index: 5; display: flex; overflow-x: auto; gap: .25rem; padding: .5rem clamp(1rem, 4vw, 4rem); border-bottom: 1px solid var(--line); background: rgba(246, 239, 217, .95); backdrop-filter: blur(10px); }
-.team-nav a, .admin-shell nav a { padding: .7rem 1rem; border-bottom: 2px solid transparent; text-decoration: none; white-space: nowrap; }
-.team-nav a.active, .admin-shell nav a.active { color: var(--brick); border-color: var(--gold); font-weight: 800; }
+.admin-shell > nav { position: sticky; top: 0; z-index: 5; display: flex; overflow-x: auto; gap: .25rem; padding: .5rem clamp(1rem, 4vw, 4rem); border-bottom: 1px solid var(--line); background: rgba(246, 239, 217, .95); backdrop-filter: blur(10px); }
+.admin-shell nav a { padding: .7rem 1rem; border-bottom: 2px solid transparent; text-decoration: none; white-space: nowrap; }
+.admin-shell nav a.active { color: var(--brick); border-color: var(--gold); font-weight: 800; }
 .team-main, .admin-shell main { width: min(1240px, 100%); margin-inline: auto; padding: clamp(1rem, 3vw, 2.5rem); }
 .connection-banner, .pause-banner { padding: .75rem 1rem; text-align: center; background: #ead9a5; border-bottom: 1px solid #b59747; }
 .pause-banner { background: #d8d1bd; }
@@ -312,7 +312,6 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
   .home-actions, .button-row { flex-direction: column; }
   .button-row > * { width: 100%; }
   .display-page .market-grid { grid-template-columns: 1fr; }
-  .team-nav a { padding-inline: .7rem; }
   .scene-toolbar { flex-direction: column; }
   .scene-controls { width: 100%; }
   .scene-controls label, .scene-controls select, .scene-control { flex: 1; width: 100%; }

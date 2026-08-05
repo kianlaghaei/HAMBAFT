@@ -1,12 +1,17 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { describe, expect, it, vi } from 'vitest'
 import { PairingPage } from '../features/pairing/PairingPage'
 import { ids, jwt, teamExperienceFixture } from './fixtures'
 
-const renderPage = () => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/pair']}><Routes><Route path="/pair" element={<PairingPage />} /><Route path="/team" element={<div>بازار تیم</div>} /></Routes></MemoryRouter></QueryClientProvider>)
+function TeamDestination() {
+  const location = useLocation()
+  return <div data-testid="team-destination" data-route={location.pathname}>بازار تیم</div>
+}
+
+const renderPage = () => render(<QueryClientProvider client={new QueryClient()}><MemoryRouter initialEntries={['/pair']}><Routes><Route path="/pair" element={<PairingPage />} /><Route path="/team" element={<TeamDestination />} /></Routes></MemoryRouter></QueryClientProvider>)
 
 describe('pairing', () => {
   it('stores a valid Team JWT and enters the Team experience', async () => {
@@ -15,7 +20,7 @@ describe('pairing', () => {
     renderPage(); const user = userEvent.setup()
     await user.type(screen.getByLabelText('کد جفت‌شدن'), 'ABCD2345')
     await user.click(screen.getByRole('button', { name: 'ورود به بازار' }))
-    expect(await screen.findByText('بازار تیم')).toBeInTheDocument()
+    expect(await screen.findByTestId('team-destination')).toHaveAttribute('data-route', '/team')
   })
 
   it('shows the same generic error for invalid or expired codes', async () => {
