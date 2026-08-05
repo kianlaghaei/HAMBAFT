@@ -1,6 +1,7 @@
 import { HubConnectionBuilder, HubConnectionState, LogLevel, type HubConnection } from '@microsoft/signalr'
 import type { QueryClient, QueryKey } from '@tanstack/react-query'
 import { queryKeys } from '../api/queryKeys'
+import { marketDiagnostics } from '../features/visual-world/diagnostics'
 
 export type ConnectionStatus = 'connected' | 'reconnecting' | 'disconnected'
 
@@ -40,6 +41,7 @@ class ConnectionManager {
       .build()
     this.connection = connection
     const events = [...new Set([...teamEvents, ...proposalEvents, ...agreementEvents, ...publicEvents, 'StateChanged', 'NarrativeInitialized'])]
+    marketDiagnostics.update({ registeredRealtimeHandlers: events.length })
     events.forEach((eventName) => connection.on(eventName, () => {
       invalidationKeysForEvent(eventName, sessionId).forEach((queryKey) => void client.invalidateQueries({ queryKey }))
     }))
@@ -60,6 +62,7 @@ class ConnectionManager {
     const previous = this.connection
     this.connection = null
     if (previous && previous.state !== HubConnectionState.Disconnected) await previous.stop()
+    marketDiagnostics.update({ registeredRealtimeHandlers: 0 })
     this.setStatus('disconnected')
   }
 }

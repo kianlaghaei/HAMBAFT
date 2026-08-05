@@ -54,7 +54,7 @@ public sealed partial class PublicWorldProjection : SingleStreamProjection<Publi
     public PublicWorldView Apply(EntityAssignedToTeam e,PublicWorldView v)=>v with { Entities=v.Entities.Select(x=>x.Id==e.EntityId?x with { ControlledByTeamId=e.TeamId,Status=EntityStatus.Active }:x).ToList(),StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(InitialMetricSet e,PublicWorldView v)=>e.Scope==MetricScope.World?v with { WorldMetrics=Upsert(v.WorldMetrics,new(e.Scope,e.ScopeId,e.MetricKey,e.NumericValue)),StateVersion=v.StateVersion+1 }:Bump(v);
     public PublicWorldView Apply(InitialMemoryAdded e,PublicWorldView v)=>e.Visibility==MemoryVisibility.Public?v with { PublicMemories=v.PublicMemories.Append(new StoryMemory(e.Scope,e.ScopeId,e.Key,e.OptionalJsonValue,e.Visibility,e.Metadata.OccurredAtUtc)).ToList(),StateVersion=v.StateVersion+1 }:Bump(v);
-    public PublicWorldView Apply(InitialRelationshipSet e,PublicWorldView v)=>v with { PublicRelationships=Upsert(v.PublicRelationships,new(e.SourceEntityId,e.TargetEntityId,e.RelationshipKey,e.NumericValue)),StateVersion=v.StateVersion+1 };
+    public PublicWorldView Apply(InitialRelationshipSet _,PublicWorldView v)=>Bump(v);
     public PublicWorldView Apply(SessionStarted _,PublicWorldView v)=>v with { Status=SessionStatus.Running,Entities=v.Entities.Select(x=>x with { Status=EntityStatus.Active }).ToList(),StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(SessionPaused _,PublicWorldView v)=>v with { Status=SessionStatus.Paused,StateVersion=v.StateVersion+1 }; public PublicWorldView Apply(SessionResumed _,PublicWorldView v)=>v with { Status=SessionStatus.Running,StateVersion=v.StateVersion+1 }; public PublicWorldView Apply(SessionCancelled _,PublicWorldView v)=>v with { Status=SessionStatus.Cancelled,StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(NarrativeInitialized e,PublicWorldView v)=>v with { CurrentCheckpointId=e.CheckpointId,StateVersion=v.StateVersion+1 };
@@ -63,7 +63,7 @@ public sealed partial class PublicWorldProjection : SingleStreamProjection<Publi
     public PublicWorldView Apply(MetricSet e,PublicWorldView v)=>e.Scope==MetricScope.World?v with { WorldMetrics=Upsert(v.WorldMetrics,new(e.Scope,e.ScopeId,e.MetricKey,e.NewValue)),StateVersion=v.StateVersion+1 }:Bump(v);
     public PublicWorldView Apply(StoryMemoryAdded e,PublicWorldView v)=>e.Visibility==MemoryVisibility.Public?v with { PublicMemories=v.PublicMemories.Append(new(e.Scope,e.ScopeId,e.Key,e.OptionalJsonValue,e.Visibility,e.Metadata.OccurredAtUtc)).ToList(),StateVersion=v.StateVersion+1 }:Bump(v);
     public PublicWorldView Apply(StoryMemoryRemoved e,PublicWorldView v)=>v with { PublicMemories=v.PublicMemories.Where(x=>!(x.Scope==e.Scope&&x.ScopeId==e.ScopeId&&x.Key==e.Key)).ToList(),StateVersion=v.StateVersion+1 };
-    public PublicWorldView Apply(RelationshipChanged e,PublicWorldView v)=>v with { PublicRelationships=Upsert(v.PublicRelationships,new(e.SourceEntityId,e.TargetEntityId,e.RelationshipKey,e.NewValue)),StateVersion=v.StateVersion+1 };
+    public PublicWorldView Apply(RelationshipChanged _,PublicWorldView v)=>Bump(v);
     public PublicWorldView Apply(WorldNarrativePublished e,PublicWorldView v)=>v with { CurrentWorldStoryletId=e.StoryletId,CurrentWorldNarrativeRef=e.NarrativeRef,StateVersion=v.StateVersion+1 };
     public PublicWorldView Apply(StoryletAssigned _,PublicWorldView v)=>Bump(v); public PublicWorldView Apply(StoryChoiceSubmitted _,PublicWorldView v)=>Bump(v);
     public PublicWorldView Apply(ProposalSent _,PublicWorldView v)=>Bump(v);public PublicWorldView Apply(ProposalCountered _,PublicWorldView v)=>Bump(v);public PublicWorldView Apply(ProposalAccepted _,PublicWorldView v)=>Bump(v);public PublicWorldView Apply(ProposalRejected _,PublicWorldView v)=>Bump(v);public PublicWorldView Apply(ProposalCancelled _,PublicWorldView v)=>Bump(v);public PublicWorldView Apply(ProposalExpired _,PublicWorldView v)=>Bump(v);
@@ -80,7 +80,6 @@ public sealed partial class PublicWorldProjection : SingleStreamProjection<Publi
     public PublicWorldView Apply(SessionCompleted _,PublicWorldView v)=>v with { Status=SessionStatus.Completed,StateVersion=v.StateVersion+1 };
     private static PublicWorldView Bump(PublicWorldView v)=>v with { StateVersion=v.StateVersion+1 };
     private static IReadOnlyList<Metric> Upsert(IReadOnlyList<Metric> values,Metric value)=>values.Where(x=>!(x.Scope==value.Scope&&x.ScopeId==value.ScopeId&&x.MetricKey==value.MetricKey)).Append(value).ToList();
-    private static IReadOnlyList<Relationship> Upsert(IReadOnlyList<Relationship> values,Relationship value)=>values.Where(x=>!(x.SourceEntityId==value.SourceEntityId&&x.TargetEntityId==value.TargetEntityId&&x.RelationshipKey==value.RelationshipKey)).Append(value).ToList();
     internal static EndingPresentationView Presentation(EndingResult r,IReadOnlyList<EndingEvidence> evidence)=>new(r.EndingResultId,r.Scope,r.ScopeId,r.EndingDefinitionId,string.Empty,[],r.PresentationTags,evidence,r.ContentHash,r.ResolvedAtStreamVersion);
 }
 

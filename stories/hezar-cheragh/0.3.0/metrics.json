@@ -1,0 +1,17 @@
+[
+  { "key": "Pressure", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 45 },
+  { "key": "PublicTrust", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Autonomy", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 60 },
+  { "key": "Transparency", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 45 },
+  { "key": "Resilience", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 45 },
+  { "key": "Liquidity", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Capacity", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Inventory", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Reliability", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "LocalTrust", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "DebtExposure", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 25 },
+  { "key": "Trust", "scope": "Relationship", "minimum": -100, "maximum": 100, "defaultValue": 0 },
+  { "key": "Obligation", "scope": "Relationship", "minimum": -100, "maximum": 100, "defaultValue": 0 },
+  { "key": "Influence", "scope": "Relationship", "minimum": -100, "maximum": 100, "defaultValue": 0 },
+  { "key": "DebtObligation", "scope": "Relationship", "minimum": -100, "maximum": 100, "defaultValue": 0 }
+]

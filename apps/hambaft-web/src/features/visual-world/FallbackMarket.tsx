@@ -35,7 +35,7 @@ export function FallbackMarket({ descriptor, reduced = false }: { descriptor: Sc
     <ellipse className="courtyard" cx="500" cy="405" rx="128" ry="90" />
     <g className="haj-office" transform="translate(430 95)"><path d="M0 40 L70 0 L140 40 V105 H0 Z" /><rect x="54" y="55" width="32" height="50" /><path d="M49 80 H91" /><text x="70" y="127" textAnchor="middle">دفتر بسته حاج صادق</text></g>
     {descriptor.connections.map((connection) => <Connection descriptor={descriptor} connection={connection} key={connection.id} />)}
-    {descriptor.locations.map((location) => <Business location={location} autonomous={descriptor.uncontrolledEntityIds.includes(location.entityId)} key={location.entityId} />)}
+    {descriptor.locations.map((location) => <Business location={location} autonomous={location.entityId ? descriptor.uncontrolledEntityIds.includes(location.entityId) : false} key={location.id} />)}
     {!reduced && descriptor.messengers.map((messenger, index) => {
       const from = point(descriptor, messenger.fromEntityId); const to = point(descriptor, messenger.toEntityId)
       if (!from || !to) return null
@@ -45,7 +45,7 @@ export function FallbackMarket({ descriptor, reduced = false }: { descriptor: Sc
     {descriptor.avanVisible && <g className="avan-presence" transform="translate(882 380)"><path d="M0 80 Q15 10 42 0 Q69 10 84 80 Z" /><circle cx="42" cy="12" r="10" /><text x="42" y="102" textAnchor="middle">آوان</text></g>}
     {descriptor.events.includes('missing-bell') && <g className="silent-bell" transform="translate(500 208)"><path d="M-24 30 Q-20 -10 0 -20 Q20 -10 24 30 Z" /><path d="M-30 31 H30" /><circle cy="39" r="5" /><path className="bell-slash" d="M-38 -25 L38 50" /></g>}
     {descriptor.events.includes('cargo-shortage') && <g className="empty-crates" transform="translate(820 570)"><rect width="50" height="30" /><path d="M0 0 L50 30 M50 0 L0 30" /></g>}
-    {descriptor.pressure > 0 && <rect className="pressure-vignette" width="1000" height="700" />}
+    {descriptor.pressure !== 'calm' && <rect className={`pressure-vignette pressure-${descriptor.pressure}`} width="1000" height="700" />}
     {descriptor.ending !== 'none' && <g className={`ending-veil ending-veil--${descriptor.ending}`}><rect width="1000" height="700" /><text x="500" y="360" textAnchor="middle">{descriptor.ending === 'world' ? 'پایان مشترک' : 'پایان این چراغ'}</text></g>}
   </svg>
 }

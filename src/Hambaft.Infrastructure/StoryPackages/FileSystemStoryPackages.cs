@@ -110,7 +110,17 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
             var ink=await ReadOptional<InkPackageDefinition?>(directory,"ink.json",null,ct);
             var entityEndings=await ReadOptional(directory,Path.Combine("endings","entity-endings.json"),new List<EntityEndingDefinition>(),ct);
             var worldEndings=await ReadOptional(directory,Path.Combine("endings","world-endings.json"),new List<WorldEndingDefinition>(),ct);
-            var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,contentHash,interactions,behaviors,consequences,difficulties,ink,entityEndings,worldEndings);
+            var presentation=new PresentationCatalogDefinition(
+                await ReadOptional(directory,Path.Combine("presentation","metric-bands.json"),new List<MetricPresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","locations.json"),new List<LocationPresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","scenes.json"),new List<ScenePresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","ambient-events.json"),new List<AmbientEventPresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","business-states.json"),new List<BusinessStatePresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","relationship-states.json"),new List<RelationshipStatePresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","characters.json"),new List<CharacterPresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","choices.json"),new List<ChoicePresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","reactions.json"),new List<WorldReactionPresentationDefinition>(),ct));
+            var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,contentHash,interactions,behaviors,consequences,difficulties,ink,entityEndings,worldEndings,Presentation:presentation);
             var errors=validator.Validate(package).Errors.ToList();
             if(inkValidator is not null&&package.InkDefinition.References.Count>0)
                 errors.AddRange((await inkValidator.ValidateAsync(package,ct)).Errors.Select(x=>new StoryPackageValidationError("ink.json",x.NarrativeReference,x.Code,x.Message)));
@@ -157,10 +167,16 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         Duplicates(p.InkDefinition.References.Select(x=>x.Id),"ink.json","duplicate-ink-reference");
         Duplicates(p.EntityEndingDefinitions.Select(x=>x.Id),"endings/entity-endings.json","duplicate-ending-id");
         Duplicates(p.WorldEndingDefinitions.Select(x=>x.Id),"endings/world-endings.json","duplicate-ending-id");
+        Duplicates(p.PresentationDefinition.Locations.Select(x=>x.Id),"presentation/locations.json","duplicate-location-id");
+        Duplicates(p.PresentationDefinition.Scenes.Select(x=>x.Id),"presentation/scenes.json","duplicate-scene-id");
+        Duplicates(p.PresentationDefinition.AmbientEvents.Select(x=>x.Id),"presentation/ambient-events.json","duplicate-ambient-event-id");
+        Duplicates(p.PresentationDefinition.Characters.Select(x=>x.Id),"presentation/characters.json","duplicate-character-id");
+        Duplicates(p.PresentationDefinition.Choices.Select(x=>x.ChoiceId),"presentation/choices.json","duplicate-choice-presentation-id");
         foreach(var metric in p.Metrics)
         {
             if(metric.Minimum>metric.Maximum||metric.DefaultValue<metric.Minimum||metric.DefaultValue>metric.Maximum) Error("metrics.json",metric.Key,"invalid-metric-range","Metric minimum, maximum and defaultValue form an impossible range.");
         }
+        ValidatePresentation(p,Error);
         var metrics=p.Metrics.GroupBy(x=>(x.Scope,x.Key)).ToDictionary(x=>x.Key,x=>x.First());
         var entities=p.Entities.GroupBy(x=>x.Id,StringComparer.Ordinal).ToDictionary(x=>x.Key,x=>x.First(),StringComparer.Ordinal);
         var storylets=p.Storylets.GroupBy(x=>x.Id,StringComparer.Ordinal).ToDictionary(x=>x.Key,x=>x.First(),StringComparer.Ordinal);
@@ -195,6 +211,61 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         void Duplicates(IEnumerable<string> ids,string file,string code,string? owner=null)
         {
             foreach(var id in ids.GroupBy(x=>x,StringComparer.Ordinal).Where(x=>x.Count()>1).Select(x=>x.Key)) Error(file,owner??id,code,$"Duplicate ID '{id}'.");
+        }
+    }
+
+    private static void ValidatePresentation(StoryPackage p,Action<string,string?,string,string> error)
+    {
+        var definitions=p.Metrics.GroupBy(x=>(x.Scope,x.Key)).ToDictionary(x=>x.Key,x=>x.First());
+        var entityIds=p.Entities.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+        var locationIds=p.PresentationDefinition.Locations.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+        var choiceIds=p.Storylets.SelectMany(x=>x.Choices).Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+        foreach(var metric in p.PresentationDefinition.MetricBands)
+        {
+            if(!definitions.TryGetValue((metric.Scope,metric.MetricKey),out var definition)){error("presentation/metric-bands.json",metric.MetricKey,"unknown-metric","Presentation bands must reference a package Metric with the same scope.");continue;}
+            ValidateBands(metric.Bands,definition.Minimum,definition.Maximum,"presentation/metric-bands.json",metric.MetricKey,error);
+        }
+        foreach(var business in p.PresentationDefinition.BusinessStates)
+        {
+            if(!entityIds.Contains(business.EntityDefinitionId))error("presentation/business-states.json",business.EntityDefinitionId,"unknown-entity","Business state references an unknown Entity definition.");
+            var definition=p.Metrics.SingleOrDefault(x=>x.Scope==MetricScope.Entity&&x.Key==business.MetricKey);
+            if(definition is null)error("presentation/business-states.json",business.EntityDefinitionId,"unknown-metric","Business state must reference an Entity Metric.");
+            else ValidateBands(business.Bands,definition.Minimum,definition.Maximum,"presentation/business-states.json",$"{business.EntityDefinitionId}:{business.MetricKey}",error);
+        }
+        foreach(var relationship in p.PresentationDefinition.RelationshipStates)
+        {
+            var definition=p.Metrics.SingleOrDefault(x=>x.Scope==MetricScope.Relationship&&x.Key==relationship.RelationshipKey);
+            if(definition is null)error("presentation/relationship-states.json",relationship.RelationshipKey,"unknown-metric","Relationship state must reference a Relationship Metric.");
+            else ValidateBands(relationship.Bands,definition.Minimum,definition.Maximum,"presentation/relationship-states.json",relationship.RelationshipKey,error);
+        }
+        foreach(var scene in p.PresentationDefinition.Scenes)
+        {
+            if(!p.Storylets.Any(x=>x.CheckpointId==scene.CheckpointId||x.NextCheckpointId==scene.CheckpointId))error("presentation/scenes.json",scene.Id,"unknown-checkpoint","Scene references an unknown checkpoint.");
+            foreach(var location in scene.LocationConditions.Keys)if(!locationIds.Contains(location))error("presentation/scenes.json",scene.Id,"unknown-location",$"Scene references unknown location '{location}'.");
+        }
+        foreach(var ambient in p.PresentationDefinition.AmbientEvents)if(!locationIds.Contains(ambient.LocationId))error("presentation/ambient-events.json",ambient.Id,"unknown-location","Ambient event references an unknown location.");
+        foreach(var character in p.PresentationDefinition.Characters)if(!locationIds.Contains(character.LocationId))error("presentation/characters.json",character.Id,"unknown-location","Character references an unknown location.");
+        foreach(var choice in p.PresentationDefinition.Choices)
+        {
+            if(!choiceIds.Contains(choice.ChoiceId))error("presentation/choices.json",choice.ChoiceId,"unknown-choice","Choice presentation references an unknown authored Choice.");
+            if(choice.RelatedLocationId is not null&&!locationIds.Contains(choice.RelatedLocationId))error("presentation/choices.json",choice.ChoiceId,"unknown-location","Choice presentation references an unknown location.");
+        }
+        foreach(var reaction in p.PresentationDefinition.Reactions)
+        {
+            if(!p.Storylets.Any(x=>x.CheckpointId==reaction.CheckpointId||x.NextCheckpointId==reaction.CheckpointId))error("presentation/reactions.json",reaction.CheckpointId,"unknown-checkpoint","Reaction references an unknown checkpoint.");
+            foreach(var location in reaction.LocationIds)if(!locationIds.Contains(location))error("presentation/reactions.json",reaction.CheckpointId,"unknown-location",$"Reaction references unknown location '{location}'.");
+        }
+    }
+
+    private static void ValidateBands(IReadOnlyList<PresentationBandDefinition> bands,decimal minimum,decimal maximum,string file,string id,Action<string,string?,string,string> error)
+    {
+        var ordered=bands.OrderBy(x=>x.Minimum).ToList();
+        if(ordered.Count==0||ordered[0].Minimum!=minimum||ordered[^1].Maximum!=maximum){error(file,id,"incomplete-band-coverage","Semantic bands must cover the complete authoritative Metric range.");return;}
+        for(var index=0;index<ordered.Count;index++)
+        {
+            var band=ordered[index];
+            if(string.IsNullOrWhiteSpace(band.Id)||string.IsNullOrWhiteSpace(band.Label)||band.Minimum>band.Maximum)error(file,id,"invalid-band","Semantic band fields and range must be valid.");
+            if(index>0&&ordered[index-1].Maximum+1!=band.Minimum)error(file,id,"non-contiguous-bands","Semantic bands must be non-overlapping and contiguous at integer boundaries.");
         }
     }
 

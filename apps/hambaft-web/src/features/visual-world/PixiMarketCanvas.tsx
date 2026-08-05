@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
 import type { SceneDescriptor, SceneLocation } from './types'
+import { marketDiagnostics } from './diagnostics'
 
 const colors = { ink: 0x26271f, wall: 0x5b4a36, roof: 0x8f653d, paper: 0xf4e3b8, gold: 0xd7b968, night: 0x18201f, sky: 0xbda56e, red: 0x8c3f32, green: 0x53664a }
 
@@ -15,6 +16,7 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
       if (!host.current || disposed) { app.destroy(true, { children: true }); return }
       app.canvas.setAttribute('aria-hidden', 'true')
       host.current.appendChild(app.canvas)
+      marketDiagnostics.update({ activeCanvasCount: marketDiagnostics.snapshot().activeCanvasCount + 1, activeSceneId: descriptor.id, ambientEntityCount: Math.min(24, descriptor.ambientEvents.length + descriptor.uncontrolledEntityIds.length), fallbackState: false })
       const layer = (label: string) => { const value = new Container({ label }); app.stage.addChild(value); return value }
       const background = layer('background architecture')
       const lighting = layer('lighting and time')
@@ -35,7 +37,7 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
       background.addChild(entrance)
       const route = new Graphics().moveTo(1000, 625).bezierCurveTo(900, 620, 870, 565, 800, 525).stroke({ color: colors.paper, width: 8, alpha: .35 })
       background.addChild(route)
-      const timeColor = { morning: 0xf2c878, noon: 0xffe3a0, dusk: 0xb66c53, night: colors.night }[descriptor.time]
+      const timeColor = { 'before-open': 0x8e886e, morning: 0xf2c878, 'near-noon': 0xffe3a0, afternoon: 0xd3a45f, dusk: 0xb66c53, night: colors.night }[descriptor.time]
       lighting.addChild(new Graphics().rect(0, 0, 1000, 700).fill({ color: timeColor, alpha: descriptor.time === 'night' ? .45 : .16 }))
       const scaleX = () => app.screen.width / 1000
       const scaleY = () => app.screen.height / 700
@@ -81,11 +83,14 @@ export function PixiMarketCanvas({ descriptor, onFailure }: { descriptor: SceneD
       }
       if (descriptor.events.includes('missing-bell')) effects.addChild(new Graphics().poly([480, 237, 490, 205, 510, 205, 520, 237]).stroke({ color: colors.paper, width: 4 }).moveTo(468, 194).lineTo(532, 255).stroke({ color: colors.red, width: 5 }))
       if (descriptor.events.includes('cargo-shortage')) effects.addChild(new Graphics().rect(810, 560, 55, 35).stroke({ color: colors.paper, width: 3 }).moveTo(810, 560).lineTo(865, 595).moveTo(865, 560).lineTo(810, 595).stroke({ color: colors.paper, width: 2 }))
-      if (descriptor.pressure) atmosphere.addChild(new Graphics().rect(0, 0, 1000, 700).stroke({ color: colors.red, width: 35, alpha: Math.min(.4, descriptor.pressure / 250) }))
+      if (descriptor.pressure !== 'calm') {
+        const pressureAlpha = { uneasy: .14, strained: .25, critical: .4 }[descriptor.pressure]
+        atmosphere.addChild(new Graphics().rect(0, 0, 1000, 700).stroke({ color: colors.red, width: 35, alpha: pressureAlpha }))
+      }
       if (descriptor.ending !== 'none') {
         const veil = new Graphics().rect(0, 0, 1000, 700).fill({ color: descriptor.ending === 'world' ? colors.ink : colors.gold, alpha: .34 }); camera.addChild(veil)
       }
-      cleanup = () => { app.renderer.off('resize', resize); app.destroy(true, { children: true }); if (host.current) host.current.replaceChildren() }
+      cleanup = () => { app.renderer.off('resize', resize); app.destroy(true, { children: true }); if (host.current) host.current.replaceChildren(); marketDiagnostics.update({ activeCanvasCount: Math.max(0, marketDiagnostics.snapshot().activeCanvasCount - 1) }) }
     }).catch(() => { if (!disposed) onFailure() })
     return () => { disposed = true; cleanup() }
   }, [descriptor, onFailure])

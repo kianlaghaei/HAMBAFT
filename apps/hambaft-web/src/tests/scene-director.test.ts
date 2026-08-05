@@ -26,13 +26,13 @@ describe('Hezar Cheragh Scene Director', () => {
     expect(scene.uncontrolledEntityIds).toEqual([thirdEntity, fourthEntity])
   })
 
-  it('only maps relationships present in the caller-authorized projection', () => {
-    const publicRelationship = { sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'Trust', numericValue: 70 }
-    const privateRelationship = { sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'Obligation', numericValue: 22 }
-    const hiddenKind = { sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'HiddenLeverage', numericValue: 99 }
-    const world = { ...completeWorld, publicRelationships: [publicRelationship, hiddenKind] }
-    const team = { ...teamExperienceFixture, visibleRelationships: [publicRelationship, privateRelationship, hiddenKind] }
-    expect(buildSceneDescriptor(world).connections.map((line) => line.kind)).toEqual(['trust'])
+  it('renders only Backend-authored Team relationship semantics and never raw Public relationships', () => {
+    const world = { ...completeWorld, publicRelationships: [{ sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'Trust', numericValue: 70 }] }
+    const team = { ...teamExperienceFixture, relationshipPresentation: [
+      { sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'Trust', bandId: 'warm', label: 'رابطه گرم', description: 'پیام‌رسان‌ها بیشتر دیده می‌شوند.', visualTags: ['connection-warm'] },
+      { sourceEntityId: ids.entity, targetEntityId: ids.otherEntity, relationshipKey: 'Obligation', bandId: 'unresolved', label: 'تعهد حل‌نشده', description: 'گرهی میان حجره‌ها مانده است.', visualTags: ['connection-damaged'] },
+    ] }
+    expect(buildSceneDescriptor(world).connections).toEqual([])
     expect(buildSceneDescriptor(world, team).connections.map((line) => line.kind)).toEqual(['trust', 'obligation'])
     expect(buildSceneDescriptor(world, team).connections[1]!.damaged).toBe(true)
   })

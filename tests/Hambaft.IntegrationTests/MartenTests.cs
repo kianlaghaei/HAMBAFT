@@ -40,6 +40,17 @@ public sealed class MartenTests(PostgresFixture fixture)
     }
 
     [PostgresFact]
+    public async Task Public_projection_is_created_with_session_created()
+    {
+        var id=Guid.NewGuid();await Create(id);
+        await using var query=fixture.Store!.QuerySession();
+        var view=await query.LoadAsync<PublicWorldView>(id);
+        view.Should().NotBeNull();
+        view!.Status.Should().Be(SessionStatus.Created);
+        view.StateVersion.Should().Be(1);
+    }
+
+    [PostgresFact]
     public async Task Stale_version_fails_without_overwrite()
     {
         var id=Guid.NewGuid();await Create(id);

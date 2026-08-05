@@ -59,7 +59,10 @@ const relationshipSchema = z.object({
   numericValue: z.number(),
 })
 
-const narrativeChoiceSchema = z.object({ id: z.string(), label: z.string(), shortOutcome: z.string().nullish() })
+const choicePresentationSchema = z.object({
+  renderer: z.string(), shortTitle: z.string(), action: z.string(), immediateImplication: z.string(), knownCost: z.string().nullish(), knownRisk: z.string().nullish(), unknownConsequence: z.boolean(), relatedLocationId: z.string().nullish(), relatedCharacterId: z.string().nullish(), relatedEntityDefinitionId: z.string().nullish(), evidenceKind: z.string().nullish(),
+})
+const narrativeChoiceSchema = z.object({ id: z.string(), label: z.string(), shortOutcome: z.string().nullish(), presentation: choicePresentationSchema.nullish() })
 const storyletSchema = z.object({
   assignmentId: guidSchema,
   storyletId: z.string(),
@@ -146,6 +149,16 @@ const sessionMetadataSchema = z.object({
   currentCheckpointId: z.string().nullish(),
 })
 
+const semanticStateSchema = z.object({ key: z.string(), bandId: z.string(), label: z.string(), description: z.string(), visualTags: z.array(z.string()), trend: z.string() })
+const locationPresentationSchema = z.object({ id: z.string(), displayName: z.string(), shortIdentity: z.string(), whyItMatters: z.string(), currentCondition: z.string(), whoIsHere: z.string(), recentChange: z.string(), availableActions: z.array(z.string()), presentationTags: z.array(z.string()), x: z.number(), y: z.number(), entityId: guidSchema.nullish(), entityDefinitionId: z.string().nullish() })
+const businessPresentationSchema = z.object({ entityId: guidSchema, entityDefinitionId: z.string(), displayName: z.string(), pulse: z.array(z.string()), visualTags: z.array(z.string()) })
+const relationshipPresentationSchema = z.object({ sourceEntityId: guidSchema, targetEntityId: guidSchema, relationshipKey: z.string(), bandId: z.string(), label: z.string(), description: z.string(), visualTags: z.array(z.string()) })
+const worldPresentationSchema = z.object({
+  sceneId: z.string(), timeOfDay: z.string(), timeLabel: z.string(), atmosphereLabel: z.string(), publicEvent: z.string(), courtyardActivity: z.string(), soundscape: z.string(), avanVisible: z.boolean(), visualTags: z.array(z.string()), pulse: z.array(z.string()), semanticMetrics: z.array(semanticStateSchema), locations: z.array(locationPresentationSchema), businesses: z.array(businessPresentationSchema),
+  characters: z.array(z.object({ id: z.string(), displayName: z.string(), locationId: z.string(), whatIsKnown: z.string(), lastSeen: z.string(), attitude: z.string(), recentStatement: z.string(), possibleInteraction: z.string().nullish(), presentationTags: z.array(z.string()) })),
+  ambientEvents: z.array(z.object({ id: z.string(), description: z.string(), locationId: z.string() })), reactions: z.array(z.object({ outcomeLine: z.string(), locationIds: z.array(z.string()), visualTags: z.array(z.string()) })),
+})
+
 export const teamExperienceSchema = z.object({
   id: guidSchema,
   sessionId: guidSchema,
@@ -165,6 +178,9 @@ export const teamExperienceSchema = z.object({
   entityEnding: endingSchema.nullish(),
   worldEnding: endingSchema.nullish(),
   sessionMetadata: sessionMetadataSchema.nullish(),
+  worldPresentation: worldPresentationSchema.nullish(),
+  businessPresentation: businessPresentationSchema.nullish(),
+  relationshipPresentation: z.array(relationshipPresentationSchema).nullish(),
 })
 
 const narrativeSchema = z.object({
@@ -193,6 +209,7 @@ export const publicWorldSchema = z.object({
   worldEnding: endingSchema.nullish(),
   publicEntityEndingSummaries: z.array(endingSchema).nullish(),
   difficultyId: z.string(),
+  worldPresentation: worldPresentationSchema.nullish(),
 })
 
 export const sessionSchema = z.object({
@@ -223,6 +240,8 @@ export const adminSchema = z.object({
   packageVersion: z.string(),
   contentHash: z.string(),
   streamVersion: z.number().int(),
+  technicalMetrics: z.array(metricSchema).nullish(),
+  marketPreview: worldPresentationSchema.nullish(),
 })
 
 const termSchema: z.ZodType<{
