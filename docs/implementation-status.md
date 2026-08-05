@@ -44,3 +44,17 @@ Deferred: React, PixiJS, full multi-hour Hezar Cheragh, Visual Story Editor, fin
 | Local demo | Complete | Vite production output hosted by ASP.NET static files/fallback |
 
 Deferred after Phase 5: PixiJS market world, full animated navigation, final generated artwork, full multi-hour content, Visual Story Editor, production deployment and runtime AI.
+
+# Phase 6B — implemented, verification pending
+
+| Area | Status | Evidence / limitation |
+| --- | --- | --- |
+| Hezar Cheragh package | Implemented | `0.3.0` is a new immutable directory; `0.2.0` is unchanged |
+| Semantic presentation | Implemented | Backend-owned metric, business and relationship bands; Team/Public raw metric arrays are emptied only for semantic packages |
+| Living market | Implemented | Six-part authored time vocabulary, five checkpoint-restored scenes, 13 locations, hotspots, characters and bounded deterministic ambience |
+| Contextual play | Implemented | Authored choice cards, inspect-only evidence, spatial Proposal targets and accessible list fallback |
+| World reaction | Implemented | Backend/package-authored reaction lines, short skippable sequence and reduced-motion text path |
+| Public/Admin | Implemented | Public narrative pulse without numbers; Admin numbers only in collapsible technical diagnostics plus semantic preview |
+| Frontend verification | Passed | typecheck, lint, 37 Vitest tests and production build |
+| Backend verification | Partial | alternate SDK build passed; 124 runnable tests passed, 15 PostgreSQL tests skipped |
+| Browser verification | Pending | Required SDK `10.0.302`, local PostgreSQL story flow and browser visual QA must be available |

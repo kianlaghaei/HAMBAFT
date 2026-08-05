@@ -4,7 +4,7 @@
 
 The visual world is a Hezar Cheragh-specific presentation feature in `apps/hambaft-web`. It is not a generic HAMBAFT scene engine and it never decides game state. It renders the current REST projections and is refreshed after SignalR invalidation hints.
 
-The 0.2.0 package is an immutable successor to 0.1.0. It retains the same rules and authored flow while adding canonical Ink presentation tags for morning, the missing bell and ledger, the northern-road shortage, Avan's arrival, and the courtyard gathering. Runtime code still loads only compiled Ink JSON.
+The 0.2.0 package remains immutable. Phase 6B adds `hezar-cheragh/0.3.0`, retaining the same authoritative story/effect runtime while adding hash-covered semantic presentation files. Runtime code still loads only compiled Ink JSON; Ink remains presentation-only.
 
 ## Visible world
 
@@ -26,7 +26,7 @@ Team views can render the proposal data already present in that team's experienc
 | Executed | agreement line pulses |
 | Failed | agreement line weakens and breaks |
 
-Relationship lines accept only `Trust`, `Obligation`, `DebtExposure`, and `DebtObligation`, and only from `publicRelationships` or `visibleRelationships` supplied by the caller. Private agreement lines are available only in the Team scene whose projection contains the agreement. Public Display uses only `publicAgreements`.
+Relationship lines are created only from Backend-authored `RelationshipPresentationState` already authorized for a Team. Raw relationship values never enter React. Public relationship events do not populate the Public projection; Public Display can show only public Agreements. Relationship lines appear for an active Agreement or while a related location is selected.
 
 ## Rendering modes
 
@@ -34,7 +34,13 @@ Relationship lines accept only `Trust`, `Obligation`, `DebtExposure`, and `DebtO
 - Reduced uses the SVG market without continuous motion. A system `prefers-reduced-motion` preference automatically downgrades High to Reduced.
 - Fallback uses SVG/CSS only. Pixi initialization failures select this mode automatically and show a non-blocking status message.
 
-The game controls are never gated on animation completion. Refresh reconstructs the scene from the latest query result. SignalR reconnect invalidates both Team and Public World projections.
+The game controls are never gated on animation completion. Refresh reconstructs time, location conditions and atmosphere from the latest semantic projection. The guided introduction and inspected-location memory are Zustand/session-local presentation state. SignalR reconnect invalidates Team and Public World projections and restores the current authored scene instead of replaying morning.
+
+## Phase 6B observable systems
+
+Pressure changes crowd/queue/messenger/shutter tags; PublicTrust changes approach, notice and body-orientation tags; Autonomy changes independent/Avan/route markers; Transparency changes ledgers, documents and rumour indicators; Resilience changes shared supply, paths and mutual-aid tags. The renderer consumes these distinct authored visual tags and never compares raw values.
+
+Thirteen authored locations provide a compact identity, current condition, recent change, visible characters and authorized actions. Hotspot state is subtle, inspected state stays local, and an equivalent keyboard location list remains available in Pixi, reduced-motion and fallback modes.
 
 ## Audio
 
