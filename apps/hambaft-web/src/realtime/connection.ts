@@ -48,14 +48,19 @@ class ConnectionManager {
     connection.onreconnecting(() => this.setStatus('reconnecting'))
     connection.onreconnected(() => {
       this.setStatus('connected')
-      void client.invalidateQueries({ queryKey: queryKeys.session(sessionId) })
-      void client.invalidateQueries({ queryKey: queryKeys.teamExperience })
-      void client.invalidateQueries({ queryKey: queryKeys.publicWorld(sessionId) })
-      void client.invalidateQueries({ queryKey: queryKeys.admin(sessionId) })
+      void refetchAuthoritativeViews()
     })
     connection.onclose(() => this.setStatus('disconnected'))
     this.setStatus('reconnecting')
-    try { await connection.start(); this.setStatus('connected') } catch { this.setStatus('disconnected') }
+    const refetchAuthoritativeViews = async () => {
+      await Promise.all([
+        client.invalidateQueries({ queryKey: queryKeys.session(sessionId) }),
+        client.invalidateQueries({ queryKey: queryKeys.teamExperience }),
+        client.invalidateQueries({ queryKey: queryKeys.publicWorld(sessionId) }),
+        client.invalidateQueries({ queryKey: queryKeys.admin(sessionId) }),
+      ])
+    }
+    try { await connection.start(); this.setStatus('connected'); await refetchAuthoritativeViews() } catch { this.setStatus('disconnected') }
   }
 
   async disconnect() {

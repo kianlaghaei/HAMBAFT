@@ -16,6 +16,7 @@ export function DisplayContent({ sessionId }: { sessionId: string }) {
   if (world.isLoading) return <LoadingState label="بازار در حال روشن‌شدن است…" />
   if (world.isError || !world.data) return <ErrorState error={world.error} retry={() => void world.refetch()} />
   const data = world.data
+  const publicEntityEndings = (data.publicEntityEndingSummaries ?? []).filter((ending) => ending.title.trim() || ending.paragraphs.length > 0 || ending.evidence.length > 0)
   return <main className="display-page"><header className="display-header"><div><p className="brand">HAMBAFT <span>/ هزارچراغ</span></p><h1>{data.narrative?.title || checkpointLabel(data.currentCheckpointId)}</h1></div><ConnectionBadge /></header>
     {data.storyPackageId === 'hezar-cheragh' && <MarketScene world={data} display />}
     <section className="display-narrative"><p className="eyebrow">{checkpointLabel(data.currentCheckpointId)}</p>{data.narrative?.paragraphs.map((paragraph, index) => <p key={index}>{paragraph}</p>) ?? <p>بازار هنوز منتظر آغاز روایت است.</p>}</section>
@@ -24,7 +25,7 @@ export function DisplayContent({ sessionId }: { sessionId: string }) {
     {(data.worldPresentation?.ambientEvents.length ?? 0) > 0 && <section><h2>آنچه در بازار دیده می‌شود</h2><ul className="ledger-list">{data.worldPresentation?.ambientEvents.map((event) => <li key={event.id}>{event.description}</li>)}</ul></section>}
     {(data.publicAgreements?.length ?? 0) > 0 && <section><h2>پیمان‌های آشکار</h2><div className="agreement-grid">{data.publicAgreements?.map((agreement) => <article className="agreement-card" key={agreement.agreementId}><h3>{pkg.data?.interactions.find((item) => item.id === agreement.interactionTypeId)?.displayName ?? 'پیمان بازار'}</h3><TermsView terms={agreement.termsPayload} /><span>{statusLabel(agreement.status)}</span></article>)}</div></section>}
     {(data.publicConsequences?.length ?? 0) > 0 && <section><h2>پیامدهای مشترک</h2><ul className="ledger-list">{data.publicConsequences?.map((item) => <li key={item.scheduledConsequenceId}>{consequenceLabel(item.definitionId)}</li>)}</ul></section>}
-    {data.worldEnding && <section className="display-ending"><EndingView ending={data.worldEnding} world />{data.publicEntityEndingSummaries?.map((ending) => <EndingView ending={ending} key={ending.endingResultId} />)}</section>}
+    {data.worldEnding && <section className="display-ending"><EndingView ending={data.worldEnding} world />{publicEntityEndings.map((ending) => <EndingView ending={ending} key={ending.endingResultId} />)}</section>}
   </main>
 }
 
