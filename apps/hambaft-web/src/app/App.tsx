@@ -16,6 +16,7 @@ import { AdminLayout } from '../features/admin/AdminLayout'
 import { SetupPage } from '../features/admin/SetupPage'
 import { RuntimePage } from '../features/admin/RuntimePage'
 import { PublicDisplayPage } from '../features/public-display/PublicDisplayPage'
+import { DevVisualLab } from '../features/hezar-cheragh/DevVisualLab'
 import { useUiStore } from '../state/uiStore'
 
 export function App() {
@@ -30,6 +31,7 @@ export function App() {
   }, [setReducedMotion])
   return <Routes>
     <Route path="/" element={<HomePage />} />
+    {import.meta.env.DEV && <Route path="/dev/hezar-cheragh-ui" element={<DevVisualLab />} />}
     <Route path="/pair" element={<PairingPage />} />
     <Route element={<TeamGuard />}><Route path="/team" element={<TeamShell />}><Route index element={<Navigate to="story" replace />} /><Route path="story" element={<StoryPage />} /><Route path="market" element={<MarketPage />} /><Route path="messages" element={<MessagesPage />} /><Route path="agreements" element={<AgreementsPage />} /><Route path="status" element={<StatusPage />} /><Route path="ending" element={<EndingPage />} /></Route></Route>
     <Route path="/display/:sessionId" element={<PublicDisplayPage />} />
