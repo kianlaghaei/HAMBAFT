@@ -18,9 +18,9 @@ const completeWorld: PublicWorld = {
 }
 
 describe('Hezar Cheragh Scene Director', () => {
-  it('maps authored tags and the four stable business locations without evaluating rules', () => {
+  it('maps Backend-authored map locations without evaluating rules', () => {
     const scene = buildSceneDescriptor(completeWorld)
-    expect(scene.locations.map((location) => location.id)).toEqual(['bakery-sepideh', 'logistics-rah-no', 'printing-roshan', 'exchange-mizan'])
+    expect(scene.locations.map((location) => location.id)).toEqual(['haj-sadegh-office', 'bakery-sepideh', 'logistics-rah-no', 'printing-roshan', 'exchange-mizan', 'market-entrance'])
     expect(scene.events).toEqual(expect.arrayContaining(['market-morning', 'missing-bell', 'ledger-discovery']))
     expect(scene.time).toBe('morning')
     expect(scene.uncontrolledEntityIds).toEqual([thirdEntity, fourthEntity])
@@ -52,7 +52,13 @@ describe('Hezar Cheragh Scene Director', () => {
 
   it('restores the same scene from the same refreshed REST projection and changes on a new checkpoint', () => {
     expect(buildSceneDescriptor(structuredClone(completeWorld))).toEqual(buildSceneDescriptor(completeWorld))
-    const next = buildSceneDescriptor({ ...completeWorld, currentCheckpointId: 'avan-offer', stateVersion: 20, narrative: { ...completeWorld.narrative!, presentationTags: { scene: 'avan-arrival', time: 'dusk', presence: 'avan' } } })
+    const next = buildSceneDescriptor({
+      ...completeWorld,
+      currentCheckpointId: 'avan-offer',
+      stateVersion: 20,
+      narrative: { ...completeWorld.narrative!, presentationTags: { scene: 'avan-arrival', time: 'dusk', presence: 'avan' } },
+      worldPresentation: { ...completeWorld.worldPresentation!, sceneId: 'avan-offer', timeOfDay: 'dusk', avanVisible: true },
+    })
     expect(next.id).toContain('avan-offer')
     expect(next.avanVisible).toBe(true)
     expect(next.time).toBe('dusk')
