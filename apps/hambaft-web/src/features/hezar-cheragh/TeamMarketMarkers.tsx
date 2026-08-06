@@ -1,31 +1,25 @@
 import { useEffect, useState } from 'react'
 
-type TeamMarketMarkerDefinition = {
+export type TeamMarketMarkerDefinition = {
   id: string
   label: string
   x: number
   y: number
+  businessIdentity?: string | null
 }
 
-export const TEAM_MARKET_MARKERS: TeamMarketMarkerDefinition[] = [
-  { id: 'haj-sadegh-office', label: 'دفتر حاج صادق', x: 50, y: 15 },
-  { id: 'bakery-sepideh', label: 'نانوایی سپیده', x: 27, y: 28 },
-  { id: 'logistics-rah-no', label: 'باربری راه‌نو', x: 25, y: 57 },
-  { id: 'printing-roshan', label: 'چاپخانه روشن', x: 74, y: 29 },
-  { id: 'exchange-mizan', label: 'صرافی میزان', x: 75, y: 57 },
-  { id: 'market-entrance', label: 'دروازه بازار', x: 50, y: 78 },
-]
-
 type TeamMarketMarkersProps = {
+  markers: readonly TeamMarketMarkerDefinition[]
   ownedLocationId?: string
   activeLocationId?: string
   selectedLocationId?: string
   urgentLocationIds?: readonly string[]
   disabledLocationIds?: readonly string[]
+  investigatedLocationIds?: readonly string[]
   onSelectLocation?: (locationId?: string) => void
 }
 
-export function TeamMarketMarkers({ ownedLocationId, activeLocationId, selectedLocationId, urgentLocationIds = [], disabledLocationIds = [], onSelectLocation }: TeamMarketMarkersProps) {
+export function TeamMarketMarkers({ markers, ownedLocationId, activeLocationId, selectedLocationId, urgentLocationIds = [], disabledLocationIds = [], investigatedLocationIds = [], onSelectLocation }: TeamMarketMarkersProps) {
   const [localSelectedLocationId, setLocalSelectedLocationId] = useState<string>()
 
   useEffect(() => {
@@ -34,19 +28,21 @@ export function TeamMarketMarkers({ ownedLocationId, activeLocationId, selectedL
 
   return (
     <div className="team-market-markers" data-testid="team-market-markers" aria-label="مکان‌های بازار">
-      {TEAM_MARKET_MARKERS.map((marker) => {
+      {markers.map((marker) => {
         const currentSelectedLocationId = selectedLocationId ?? localSelectedLocationId
         const isOwned = ownedLocationId === marker.id
         const isAction = activeLocationId === marker.id
         const isSelected = currentSelectedLocationId === marker.id
         const isUrgent = isAction || urgentLocationIds.includes(marker.id)
         const isDisabled = disabledLocationIds.includes(marker.id)
+        const isInvestigated = investigatedLocationIds.includes(marker.id)
         const stateClass = [
           isOwned ? 'is-owned' : '',
           isAction ? 'is-action' : '',
           isSelected ? 'is-selected' : '',
           isUrgent ? 'is-urgent' : '',
           isDisabled ? 'is-disabled' : '',
+          isInvestigated ? 'is-investigated' : '',
         ].filter(Boolean).join(' ')
 
         return (
@@ -68,7 +64,7 @@ export function TeamMarketMarkers({ ownedLocationId, activeLocationId, selectedL
             }}
           >
             <span className="team-market-marker__seal" aria-hidden="true" />
-            {isOwned && <span className="team-market-marker__business-icon" aria-hidden="true">نان</span>}
+            {isOwned && marker.businessIdentity && <span className="team-market-marker__business-icon" aria-hidden="true">{marker.businessIdentity}</span>}
             {isOwned && <span className="team-market-marker__owner-label">حجره شما</span>}
             {isAction && <span className="team-market-marker__action-label">نشانه تازه</span>}
             <span className="team-market-marker__label" aria-hidden="true">{marker.label}</span>

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -14,8 +14,9 @@ import type { PublicWorld } from '../api/schemas'
 import type { SceneDescriptor } from '../features/visual-world/types'
 import { useUiStore } from '../state/uiStore'
 import { TeamGameplayScreen } from '../features/hezar-cheragh/TeamGameplayScreen'
-import { TeamMarketMarkers } from '../features/hezar-cheragh/TeamMarketMarkers'
+import { TeamMarketMarkers, type TeamMarketMarkerDefinition } from '../features/hezar-cheragh/TeamMarketMarkers'
 import { publicWorldFixture, teamExperienceFixture } from './fixtures'
+import { api } from '../api/client'
 
 /* ── Helpers ── */
 
@@ -71,6 +72,8 @@ function mockDescriptor(): SceneDescriptor {
 /* ── Tests ── */
 
 beforeEach(() => {
+  vi.restoreAllMocks()
+  vi.spyOn(api, 'recordInvestigation').mockResolvedValue({ sessionId: 'test-session', stateVersion: 13, eventType: 'InvestigationRecorded' })
   clearAssetRegistry()
   registerAssets(devAssetManifest)
 })
@@ -375,6 +378,14 @@ describe('Tablet / compact layout', () => {
 })
 
 describe('Production Team single-screen board', () => {
+  const markers: TeamMarketMarkerDefinition[] = [
+    { id: 'haj-sadegh-office', label: 'دفتر حاج صادق', x: 50, y: 15 },
+    { id: 'bakery-sepideh', label: 'نانوایی سپیده', x: 27, y: 28, businessIdentity: 'نان' },
+    { id: 'logistics-rah-no', label: 'باربری راه‌نو', x: 25, y: 57, businessIdentity: 'بار' },
+    { id: 'printing-roshan', label: 'چاپخانه روشن', x: 74, y: 29, businessIdentity: 'چاپ' },
+    { id: 'exchange-mizan', label: 'صرافی میزان', x: 75, y: 57, businessIdentity: 'مهر' },
+    { id: 'market-entrance', label: 'دروازه بازار', x: 50, y: 78 },
+  ]
   it('renders the empty stage at /team without legacy map nodes', () => {
     render(<Routes><Route path="/team" element={<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />} /></Routes>, { wrapper })
     expect(screen.getByTestId('empty-market-stage')).toBeTruthy()
@@ -388,10 +399,10 @@ describe('Production Team single-screen board', () => {
   })
 
   it('renders exactly six accessible percentage-positioned Team market markers', () => {
-    render(<TeamMarketMarkers ownedLocationId="bakery-sepideh" activeLocationId="bakery-sepideh" urgentLocationIds={['bakery-sepideh']} disabledLocationIds={['exchange-mizan']} />)
+    render(<TeamMarketMarkers markers={markers} ownedLocationId="bakery-sepideh" activeLocationId="bakery-sepideh" urgentLocationIds={['bakery-sepideh']} disabledLocationIds={['exchange-mizan']} />)
 
-    const markers = screen.getAllByRole('button')
-    expect(markers).toHaveLength(6)
+    const markerButtons = screen.getAllByRole('button')
+    expect(markerButtons).toHaveLength(6)
     expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveClass('is-owned')
     expect(screen.getByRole('button', { name: 'نانوایی سپیده' })).toHaveClass('is-urgent')
@@ -403,15 +414,17 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByText('دفتر حاج صادق')).toHaveClass('team-market-marker__label')
   })
 
-  it('selects a relevant marker and opens its investigation in the right panel', async () => {
+  it('selects a relevant marker and opens its authored SceneSheet over the map', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
+    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مکان‌ها' }))
     const marker = screen.getByRole('button', { name: 'دفتر حاج صادق' })
     await userEvent.click(marker)
     expect(marker).toHaveAttribute('aria-pressed', 'true')
     expect(marker).toHaveClass('is-selected')
-    expect(screen.getByTestId('location-investigation-scene')).toBeTruthy()
-    expect(screen.getByText('مکان انتخاب‌شده')).toBeTruthy()
+    expect(screen.getByTestId('scene-sheet')).toHaveAttribute('aria-label', 'دفتر حاج صادق')
+    expect(screen.getByText('دفتر بسته‌ی بازار')).toBeTruthy()
+    expect(screen.getByText('چرا این مهم است؟')).toBeTruthy()
+    expect(document.querySelector('.hc-play-panel')).toBeNull()
   })
 
   it('shows three concise opening paragraphs, one objective and no empty utilities', () => {
@@ -420,10 +433,10 @@ describe('Production Team single-screen board', () => {
     expect(screen.getByTestId('story-opening-card')).toBeTruthy()
     expect(screen.getByRole('heading', { level: 1, name: 'خبر پنهانِ حجره' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'نانوایی سپیده' })).toBeTruthy()
-    expect(screen.getByText('رحیم، شاگرد حجره')).toBeTruthy()
+    expect(screen.getAllByText('شاگرد نانوا')).toHaveLength(2)
     expect(screen.getByTestId('story-opening-card').querySelectorAll('.hc-story-opening__copy p')).toHaveLength(3)
-    expect(screen.getByText('دو مکان را بررسی کنید و مشخص کنید بارها چرا از مسیر اصلی خارج شده‌اند.')).toBeTruthy()
-    expect(screen.getByRole('button', { name: 'فعالیت پس از دو بررسی (0/۲)' })).toBeDisabled()
+    expect(screen.getByText('دو مکان را بررسی کنید و بر اساس شواهد تصمیم بگیرید.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'انتخاب مکان‌ها' })).toBeEnabled()
     expect(screen.queryByRole('button', { name: /پیام‌ها/ })).toBeNull()
     expect(screen.queryByRole('button', { name: /پیمان‌ها/ })).toBeNull()
     expect(screen.queryByText('Pressure')).toBeNull()
@@ -432,51 +445,50 @@ describe('Production Team single-screen board', () => {
 
   it('presents investigation, evidence, business activity and the Backend-authored decision in order', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
-    expect(screen.getByTestId('investigation-prompt')).toHaveTextContent('0 از 2 بررسی انجام شده')
+    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مکان‌ها' }))
 
     await userEvent.click(screen.getByRole('button', { name: 'دفتر حاج صادق' }))
     expect(screen.getByTestId('team-market-marker-haj-sadegh-office')).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByTestId('location-investigation-scene')).toBeTruthy()
-
-    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
-    expect(screen.getByTestId('evidence-reveal')).toBeTruthy()
+    expect(screen.getByTestId('scene-sheet')).toBeTruthy()
     expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('سه ردیف پاک‌شده')
     expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('منبع: تکه دفتر آورده‌شده توسط رحیم')
     expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('اهمیت')
     expect(screen.getByTestId('evidence-office-erased-loads')).toHaveTextContent('ممکن است باز کند')
     expect(screen.getByTestId('evidence-office-wrong-seal')).toHaveTextContent('نامطمئن')
     expect(screen.getByTestId('evidence-office-noon-note')).toHaveTextContent('محتمل')
-    expect(screen.getByRole('button', { name: 'فعالیت پس از دو بررسی (1/۲)' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('button', { name: 'مقایسه شماره بارها' }))
+    await waitFor(() => expect(screen.queryByTestId('scene-sheet')).toBeNull())
+    expect(screen.getByTestId('team-market-marker-haj-sadegh-office')).toHaveClass('is-investigated')
+    expect(screen.getByRole('button', { name: 'یک بررسی باقی مانده' })).toBeEnabled()
 
-    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مکان دوم' }))
-    expect(screen.getByTestId('investigation-prompt')).toHaveTextContent('1 از 2 بررسی انجام شده')
-    await userEvent.click(screen.getByRole('button', { name: 'باربری راه‌نو' }))
-    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
-    expect(screen.getByTestId('evidence-logistics-double-receipt')).toHaveTextContent('دو رسید برای یک گاری')
-    expect(screen.getByTestId('evidence-logistics-held-cart')).toHaveTextContent('پیشنهاد همکاری برای بازگرداندن بار')
-    expect(screen.getByRole('button', { name: 'دروازه بازار' })).toHaveAttribute('aria-disabled', 'true')
+    await userEvent.click(screen.getByRole('button', { name: 'یک بررسی باقی مانده' }))
+    await userEvent.click(screen.getByRole('button', { name: 'دروازه بازار' }))
+    expect(screen.getByTestId('evidence-gate-route-permit')).toHaveTextContent('اجازه خروج از راه فرعی')
+    expect(screen.getByTestId('evidence-gate-open-window')).toHaveTextContent('محتمل')
+    await userEvent.click(screen.getByTestId('scene-sheet').querySelector('.hc-scene-sheet__action')!)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'مرور یافته‌ها' })).toBeEnabled())
 
-    await userEvent.click(screen.getByRole('button', { name: 'بردن نتیجه به حجره' }))
+    await userEvent.click(screen.getByRole('button', { name: 'مرور یافته‌ها' }))
+    expect(screen.getByTestId('final-decision-summary')).toBeTruthy()
+    await userEvent.click(screen.getByRole('button', { name: 'ورود به فعالیت کسب‌وکار' }))
     expect(screen.getByTestId('story-business-action')).toBeTruthy()
     expect(screen.getByText('اثر روی کسب‌وکار شما')).toBeTruthy()
     expect(screen.getByText('راه‌های بازشده با تحقیق شما')).toBeTruthy()
 
-    await userEvent.click(screen.getByRole('button', { name: 'آماده‌کردن تصمیم نهایی' }))
+    await userEvent.click(screen.getByRole('button', { name: 'مهر تصمیم نهایی' }))
     expect(screen.getByTestId('final-decision-summary')).toBeTruthy()
     expect(screen.getByRole('button', { name: /قیمت را نگه دار/ })).toBeTruthy()
   })
 
   it('reveals a complete three-card evidence bundle at the market gate', async () => {
     render(<TeamGameplayScreen experience={teamExperienceFixture} world={publicWorldFixture} canWrite />, { wrapper })
-    await userEvent.click(screen.getByRole('button', { name: 'شروع بررسی روی نقشه' }))
+    await userEvent.click(screen.getByRole('button', { name: 'انتخاب مکان‌ها' }))
     await userEvent.click(screen.getByRole('button', { name: 'دروازه بازار' }))
-    await userEvent.click(screen.getByRole('button', { name: /بررسی مدارک این مکان/ }))
 
     expect(screen.getByTestId('evidence-gate-route-permit')).toHaveTextContent('قطعی')
     expect(screen.getByTestId('evidence-gate-wheel-tracks')).toHaveTextContent('نامطمئن')
     expect(screen.getByTestId('evidence-gate-open-window')).toHaveTextContent('محتمل')
-    expect(screen.getByTestId('evidence-reveal').querySelectorAll('.hc-evidence-card')).toHaveLength(3)
+    expect(screen.getByTestId('scene-sheet').querySelectorAll('.hc-evidence-card')).toHaveLength(3)
   })
 
   it('shows the market reaction and next-scene action for a submitted decision', async () => {
@@ -491,9 +503,9 @@ describe('Production Team single-screen board', () => {
     render(<TeamGameplayScreen experience={submittedExperience} world={publicWorldFixture} canWrite />, { wrapper })
 
     expect(screen.getByTestId('story-market-reaction')).toBeTruthy()
-    expect(screen.getByRole('heading', { name: 'قیمت را نگه دار' })).toBeTruthy()
+    expect(screen.getAllByRole('heading', { name: 'قیمت را نگه دار' })).toHaveLength(2)
     await userEvent.click(screen.getByRole('button', { name: 'ادامه به صحنه بعد' }))
-    expect(screen.getByRole('status')).toHaveTextContent('در حال دریافت ادامه روایت بازار')
+    expect(screen.getByRole('status')).toHaveTextContent('در حال همگام‌سازی صحنه بعد')
   })
 
 })

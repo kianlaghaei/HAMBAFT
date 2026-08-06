@@ -17,6 +17,50 @@
   font-synthesis: none;
 }
 
+/* In-map Team story presentation */
+.hc-play-main { grid-template-areas: "business stage"; grid-template-columns: minmax(190px, 14fr) minmax(0, 86fr); }
+.hc-play-stage-surface { isolation: isolate; }
+.team-market-marker.is-investigated:not(.is-selected) { border-color: rgba(151, 190, 134, .85); background: rgba(43, 66, 43, .58); box-shadow: 0 0 0 2px rgba(132, 174, 116, .2); }
+.team-market-marker.is-investigated .team-market-marker__seal { border-color: #e0f0c8; background: #779a68; animation: none; }
+.hc-scene-sheet-layer { position: absolute; z-index: 8; inset: 0; display: grid; place-items: center; padding: clamp(.8rem, 2.5vw, 2rem); direction: rtl; animation: hc-sheet-layer-enter .18s ease both; }
+.hc-scene-sheet-dim { position: absolute; inset: 0; width: 100%; height: 100%; padding: 0; border: 0; background: rgba(20, 27, 21, .36); cursor: default; }
+.hc-scene-sheet { position: relative; display: flex; flex-direction: column; width: min(900px, 92%); max-height: min(86%, 720px); overflow: hidden; border: 1px solid rgba(215,185,104,.72); border-radius: 7px; color: var(--ink); background: rgba(250,246,232,.97); box-shadow: 0 22px 70px rgba(8,13,9,.42); animation: hc-scene-sheet-enter .2s ease both; }
+.hc-scene-sheet__header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex: 0 0 auto; padding: .85rem 1rem .7rem; border-bottom: 1px solid rgba(166,123,45,.28); }
+.hc-scene-sheet__header h2 { margin: .12rem 0 0; color: var(--olive); font-size: clamp(1.05rem, 2vw, 1.45rem); }
+.hc-scene-sheet__header p { margin: .18rem 0 0; color: #716552; font-size: .72rem; }
+.hc-scene-sheet__close { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; padding: 0; border: 1px solid rgba(121,91,42,.38); border-radius: 50%; color: #5f4b31; background: transparent; cursor: pointer; font-size: 1.25rem; }
+.hc-scene-sheet__close:hover { border-color: var(--gold); background: rgba(215,185,104,.14); }
+.hc-scene-sheet__body { display: grid; gap: .75rem; min-height: 0; padding: .85rem 1rem 1rem; overflow: auto; }
+.hc-scene-sheet__narrative { columns: 2; column-gap: 1.6rem; padding-bottom: .65rem; border-bottom: 1px solid rgba(166,123,45,.2); }
+.hc-scene-sheet__narrative p { break-inside: avoid; margin: 0 0 .5rem; color: #514a3e; font-size: .78rem; line-height: 1.85; }
+.hc-scene-sheet .hc-evidence-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.hc-scene-sheet .hc-evidence-card { padding: .65rem .7rem; }
+.hc-scene-sheet__why { padding: .6rem .7rem; border-inline-start: 3px solid var(--gold); background: rgba(215,185,104,.11); }
+.hc-scene-sheet__why ul { display: grid; gap: .25rem; margin: .3rem 0 0; padding-inline-start: 1rem; color: #5d5547; font-size: .68rem; line-height: 1.6; }
+.hc-scene-sheet__action { justify-self: end; min-width: min(250px, 100%); }
+@keyframes hc-sheet-layer-enter { from { opacity: 0; } }
+@keyframes hc-scene-sheet-enter { from { opacity: 0; transform: translateY(8px) scale(.995); } }
+
+@media (max-width: 1024px) {
+  .hc-play-main { display: grid; grid-template-areas: "business stage"; grid-template-columns: minmax(165px, 22fr) minmax(0, 78fr); }
+  .hc-business-panel { display: flex; }
+  .hc-play-stage-column { height: auto; padding: .45rem; }
+  .hc-scene-sheet { width: 94%; max-height: 90%; }
+  .hc-scene-sheet .hc-evidence-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 640px) {
+  .hc-play-main { grid-template-columns: minmax(138px, 30fr) minmax(0, 70fr); grid-template-rows: minmax(0, 1fr); }
+  .hc-play-stage-column { padding: .3rem; }
+  .hc-scene-sheet-layer { padding: .4rem; }
+  .hc-scene-sheet { width: 98%; max-height: 94%; }
+  .hc-scene-sheet__narrative { columns: 1; }
+  .hc-scene-sheet .hc-evidence-grid { grid-template-columns: 1fr; }
+}
+
+.hezar-cheragh-shell.is-reduced-motion .hc-scene-sheet-layer, .hezar-cheragh-shell.is-reduced-motion .hc-scene-sheet { animation: none; }
+@media (prefers-reduced-motion: reduce) { .hc-scene-sheet-layer, .hc-scene-sheet { animation: none; } }
+
 * { box-sizing: border-box; }
 html { min-width: 320px; background: var(--paper-deep); }
 body { margin: 0; min-width: 320px; min-height: 100vh; background-color: var(--paper); background-image: radial-gradient(rgba(97, 76, 40, .09) .7px, transparent .7px), linear-gradient(90deg, rgba(123, 76, 50, .035) 1px, transparent 1px); background-size: 7px 7px, 41px 100%; }
@@ -1395,4 +1439,18 @@ h2 { font-size: clamp(1.35rem, 2vw, 1.9rem); }
   .hc-panel-scroll-safe { padding: .65rem; }
   .hc-scene-footer { flex-basis: 100px; gap: .45rem; padding: .45rem .65rem; }
   .hc-utility-drawer { inset-inline: .5rem; width: auto; max-height: calc(100% - 150px); }
+}
+
+/* Keep the business rail and let the market own the remaining gameplay canvas. */
+.hc-play-main { display: grid; grid-template-areas: "business stage"; grid-template-columns: minmax(190px, 14fr) minmax(0, 86fr); }
+
+@media (max-width: 1024px) {
+  .hc-play-main { display: grid; grid-template-areas: "business stage"; grid-template-columns: minmax(165px, 22fr) minmax(0, 78fr); }
+  .hc-business-panel { display: flex; }
+  .hc-play-stage-column { height: auto; padding: .45rem; }
+}
+
+@media (max-width: 640px) {
+  .hc-play-main { grid-template-columns: minmax(138px, 30fr) minmax(0, 70fr); grid-template-rows: minmax(0, 1fr); }
+  .hc-play-stage-column { padding: .3rem; }
 }

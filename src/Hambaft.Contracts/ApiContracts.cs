@@ -19,6 +19,7 @@ public sealed record CommandResponse(Guid SessionId,long StateVersion,string Eve
 public sealed record StateChangedNotification(Guid SessionId,long StateVersion,string EventType,string Scope);
 public sealed record InitializeNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record SubmitStoryChoiceRequest(Guid AssignmentId,string ChoiceId,long ExpectedStateVersion,Guid CommandId);
+public sealed record RecordTeamInvestigationRequest(string LocationId,IReadOnlyList<string> EvidenceIds,long ExpectedStateVersion,Guid CommandId);
 public sealed record ResolveNarrativeRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record ResolveEndingsRequest(long ExpectedStateVersion,Guid CommandId);
 public sealed record NarrativeNotification(Guid SessionId,Guid? TeamId,long StateVersion,string CheckpointId,string EventType);

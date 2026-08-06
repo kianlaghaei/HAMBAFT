@@ -1,0 +1,42 @@
+[
+  {
+    "metricKey": "Pressure", "scope": "World", "bands": [
+      { "id": "calm", "minimum": 0, "maximum": 24, "label": "بازار هنوز آرام است", "description": "رفت‌وآمد عادی است و گفت‌وگوها بی‌شتاب پیش می‌رود.", "visualTags": ["pressure-calm", "crowd-normal", "messenger-steady"] },
+      { "id": "uneasy", "minimum": 25, "maximum": 49, "label": "نگرانی در بازار پیچیده", "description": "گروه‌های گفت‌وگو بیشتر شده‌اند و رهگذران مکث می‌کنند.", "visualTags": ["pressure-uneasy", "crowd-clusters", "rumour-groups"] },
+      { "id": "strained", "minimum": 50, "maximum": 74, "label": "بازار زیر فشار است", "description": "صف‌ها کش آمده‌اند و بعضی کرکره‌ها نیمه‌بسته‌اند.", "visualTags": ["pressure-strained", "long-queues", "shutters-half-closed"] },
+      { "id": "critical", "minimum": 75, "maximum": 100, "label": "بازار در آستانه گسست است", "description": "رفت‌وآمد نامنظم است و هر خبر جمعیت را جابه‌جا می‌کند.", "visualTags": ["pressure-critical", "crowd-restless", "lights-unstable"] }
+    ]
+  },
+  {
+    "metricKey": "PublicTrust", "scope": "World", "bands": [
+      { "id": "broken", "minimum": 0, "maximum": 24, "label": "اعتماد عمومی آسیب جدی دیده است", "description": "مردم با فاصله می‌ایستند و کمتر کسی پای اطلاعیه‌ها می‌ماند.", "visualTags": ["trust-broken", "crowd-distant", "notices-removed"] },
+      { "id": "fragile", "minimum": 25, "maximum": 49, "label": "اعتماد عمومی شکننده شده", "description": "مشتریان پیش از نزدیک‌شدن بیشتر پرس‌وجو می‌کنند.", "visualTags": ["trust-fragile", "customers-hesitant", "bodies-turned-away"] },
+      { "id": "careful", "minimum": 50, "maximum": 74, "label": "اعتماد با احتیاط پابرجاست", "description": "مردم نزدیک می‌شوند، اما پاسخ روشن می‌خواهند.", "visualTags": ["trust-careful", "customers-returning", "notices-read"] },
+      { "id": "warm", "minimum": 75, "maximum": 100, "label": "اعتماد در بازار گرم است", "description": "مردم به حجره‌ها نزدیک‌اند و خبرهای روشن دست‌به‌دست می‌شود.", "visualTags": ["trust-warm", "crowd-near", "public-reactions-warm"] }
+    ]
+  },
+  {
+    "metricKey": "Autonomy", "scope": "World", "bands": [
+      { "id": "controlled", "minimum": 0, "maximum": 24, "label": "نشانه‌های کنترل بیرونی همه‌جا دیده می‌شود", "description": "تابلوهای مستقل کم‌رنگ و مسیرها زیر نشان آوان‌اند.", "visualTags": ["autonomy-controlled", "avan-dominant", "shared-branding"] },
+      { "id": "dependent", "minimum": 25, "maximum": 49, "label": "استقلال بازار محدود شده", "description": "نشان آوان در چند مسیر و حجره دیده می‌شود.", "visualTags": ["autonomy-dependent", "avan-markers", "routes-claimed"] },
+      { "id": "independent", "minimum": 50, "maximum": 74, "label": "بازار هنوز نشان خودش را حفظ کرده", "description": "تابلوهای مستقل پابرجاست، هرچند پیشنهاد آوان نزدیک است.", "visualTags": ["autonomy-independent", "independent-signs", "local-route-marks"] },
+      { "id": "self-directed", "minimum": 75, "maximum": 100, "label": "بازار مسیر خود را تعیین می‌کند", "description": "نشانه‌های مستقل و تصمیم‌های مشترک بر مسیرها غالب‌اند.", "visualTags": ["autonomy-strong", "independent-signs", "local-control"] }
+    ]
+  },
+  {
+    "metricKey": "Transparency", "scope": "World", "bands": [
+      { "id": "opaque", "minimum": 0, "maximum": 24, "label": "شایعه از سند جلو زده", "description": "دفترها بسته‌اند و نوشته‌های بی‌منبع می‌چرخد.", "visualTags": ["transparency-opaque", "ledgers-closed", "rumour-marks"] },
+      { "id": "unclear", "minimum": 25, "maximum": 49, "label": "اطلاعات بازار هنوز مبهم است", "description": "چند تکه سند دیده می‌شود، اما تصویر کامل نیست.", "visualTags": ["transparency-unclear", "partial-documents", "rumour-mixed"] },
+      { "id": "visible", "minimum": 50, "maximum": 74, "label": "اطلاعات قابل‌بررسی شده", "description": "اطلاعیه‌ها و دفترهای باز جمعیت را دور خود نگه داشته‌اند.", "visualTags": ["transparency-visible", "ledgers-open", "verified-notices"] },
+      { "id": "open", "minimum": 75, "maximum": 100, "label": "اسناد بازار پیش چشم مردم است", "description": "منبع‌ها روشن‌اند و شایعه کمتر مجال حرکت دارد.", "visualTags": ["transparency-open", "documents-public", "verified-information"] }
+    ]
+  },
+  {
+    "metricKey": "Resilience", "scope": "World", "bands": [
+      { "id": "brittle", "minimum": 0, "maximum": 24, "label": "بازار توان بازگشت کمی دارد", "description": "مسیرهای بسته و حجره‌های تنها، فشار را نگه داشته‌اند.", "visualTags": ["resilience-brittle", "paths-blocked", "support-absent"] },
+      { "id": "strained", "minimum": 25, "maximum": 49, "label": "توان بازار زیر فشار است", "description": "کمک‌ها پراکنده‌اند و بازگشت کسب‌وکارها کند دیده می‌شود.", "visualTags": ["resilience-strained", "recovery-slow", "supplies-scarce"] },
+      { "id": "recovering", "minimum": 50, "maximum": 74, "label": "بازار راه بازگشت پیدا کرده", "description": "گاری‌ها و نیروها میان چند حجره تقسیم می‌شوند.", "visualTags": ["resilience-recovering", "shared-carts", "mutual-aid"] },
+      { "id": "strong", "minimum": 75, "maximum": 100, "label": "پشتیبانی مشترک بازار آشکار است", "description": "راه‌ها باز و کمک عمومی در دسترس است.", "visualTags": ["resilience-strong", "paths-open", "public-support"] }
+    ]
+  }
+]

@@ -22,6 +22,7 @@ export type SceneLocation = ScenePoint & {
   entityId?: string
   teamId?: string
   name: string
+  businessIdentity?: string | null
   shortIdentity: string
   whyItMatters: string
   currentCondition: string

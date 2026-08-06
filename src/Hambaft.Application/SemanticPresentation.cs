@@ -32,10 +32,10 @@ public static class SemanticPresentation
         {
             var entity=location.EntityDefinitionId is null?null:entities.SingleOrDefault(x=>x.DefinitionId==location.EntityDefinitionId);
             var current=scene.LocationConditions.GetValueOrDefault(location.Id,location.PublicCondition);
-            return new LocationPresentationStateView(location.Id,location.DisplayName,location.ShortIdentity,location.WhyItMatters,current,location.WhoIsHere,location.RecentChange,location.AvailableActions,location.PresentationTags,location.X,location.Y,entity?.Id,location.EntityDefinitionId);
+            return new LocationPresentationStateView(location.Id,location.DisplayName,location.ShortIdentity,location.WhyItMatters,current,location.WhoIsHere,location.RecentChange,location.AvailableActions,location.PresentationTags,location.X,location.Y,entity?.Id,location.EntityDefinitionId,location.BusinessIdentity);
         }).ToList();
         var publicBusinesses=locations.Where(x=>x.EntityId is not null).Select(location=>new BusinessPresentationStateView(
-            location.EntityId!.Value,location.EntityDefinitionId!,location.DisplayName,[location.CurrentCondition],location.PresentationTags.Concat(scene.VisualTags).Distinct(StringComparer.Ordinal).ToList())).ToList();
+            location.EntityId!.Value,location.EntityDefinitionId!,location.DisplayName,[location.CurrentCondition],location.PresentationTags.Concat(scene.VisualTags).Distinct(StringComparer.Ordinal).ToList(),location.BusinessIdentity)).ToList();
         var ownEntity=visibleMetrics.Where(x=>x.Scope==MetricScope.Entity).Select(x=>entities.SingleOrDefault(e=>e.Id==x.ScopeId)).FirstOrDefault(x=>x is not null);
         BusinessPresentationStateView? business=null;
         if(teamView&&ownEntity is not null)
@@ -46,7 +46,7 @@ public static class SemanticPresentation
                 var definition=authored.BusinessStates.SingleOrDefault(x=>x.EntityDefinitionId==ownEntity.DefinitionId&&x.MetricKey==metric.MetricKey);
                 var state=Map(metric,definition?.Bands);if(state is null)continue;businessPulse.Add(state.Label);foreach(var tag in state.VisualTags)tags.Add(tag);
             }
-            business=new(ownEntity.Id,ownEntity.DefinitionId,ownEntity.DisplayName,businessPulse,tags.ToList());
+            business=new(ownEntity.Id,ownEntity.DefinitionId,ownEntity.DisplayName,businessPulse,tags.ToList(),locations.SingleOrDefault(x=>x.EntityId==ownEntity.Id)?.BusinessIdentity);
             publicBusinesses=publicBusinesses.Select(x=>x.EntityId==business.EntityId?business:x).ToList();
         }
         var relationships=visibleRelationships.Select(value=>

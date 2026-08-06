@@ -119,7 +119,8 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
                 await ReadOptional(directory,Path.Combine("presentation","relationship-states.json"),new List<RelationshipStatePresentationDefinition>(),ct),
                 await ReadOptional(directory,Path.Combine("presentation","characters.json"),new List<CharacterPresentationDefinition>(),ct),
                 await ReadOptional(directory,Path.Combine("presentation","choices.json"),new List<ChoicePresentationDefinition>(),ct),
-                await ReadOptional(directory,Path.Combine("presentation","reactions.json"),new List<WorldReactionPresentationDefinition>(),ct));
+                await ReadOptional(directory,Path.Combine("presentation","reactions.json"),new List<WorldReactionPresentationDefinition>(),ct),
+                await ReadOptional(directory,Path.Combine("presentation","team-scenes.json"),new List<TeamScenePresentationDefinition>(),ct));
             var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,contentHash,interactions,behaviors,consequences,difficulties,ink,entityEndings,worldEndings,Presentation:presentation);
             var errors=validator.Validate(package).Errors.ToList();
             if(inkValidator is not null&&package.InkDefinition.References.Count>0)
@@ -254,6 +255,31 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         {
             if(!p.Storylets.Any(x=>x.CheckpointId==reaction.CheckpointId||x.NextCheckpointId==reaction.CheckpointId))error("presentation/reactions.json",reaction.CheckpointId,"unknown-checkpoint","Reaction references an unknown checkpoint.");
             foreach(var location in reaction.LocationIds)if(!locationIds.Contains(location))error("presentation/reactions.json",reaction.CheckpointId,"unknown-location",$"Reaction references unknown location '{location}'.");
+        }
+        foreach(var scene in p.PresentationDefinition.TeamSceneDefinitions)
+        {
+            var file="presentation/team-scenes.json";
+            if(!p.Storylets.Any(x=>x.CheckpointId==scene.CheckpointId))error(file,scene.SceneId,"unknown-checkpoint","Team scene references an unknown checkpoint.");
+            if(!entityIds.Contains(scene.EntityDefinitionId))error(file,scene.SceneId,"unknown-entity","Team scene references an unknown Entity definition.");
+            if(scene.RequiredInvestigationCount<0||scene.RequiredInvestigationCount>scene.InvestigationLocations.Count)error(file,scene.SceneId,"invalid-investigation-count","Required investigation count must fit the authored investigation locations.");
+            foreach(var location in scene.InvestigationLocations)
+            {
+                if(!locationIds.Contains(location.Id))error(file,scene.SceneId,"unknown-location",$"Team scene references unknown location '{location.Id}'.");
+                foreach(var evidence in location.Evidence)
+                    if(string.IsNullOrWhiteSpace(evidence.Id)||string.IsNullOrWhiteSpace(evidence.Title)||string.IsNullOrWhiteSpace(evidence.Description))error(file,evidence.Id,"invalid-evidence","Investigation evidence requires an id, title and description.");
+            }
+            foreach(var pact in scene.ContextualPacts)
+            {
+                if(!p.InteractionDefinitions.Any(x=>x.Id==pact.InteractionTypeId))error(file,pact.Id,"unknown-interaction","Contextual Pact references an unknown Interaction type.");
+                if(!entityIds.Contains(pact.TargetEntityDefinitionId))error(file,pact.Id,"unknown-entity","Contextual Pact references an unknown target Entity definition.");
+            }
+            foreach(var choice in scene.FinalDecisionPresentation?.Choices??[])
+                if(!choiceIds.Contains(choice.ChoiceId))error(file,choice.ChoiceId,"unknown-choice","Final decision presentation references an unknown authored Choice.");
+            foreach(var reaction in scene.MarketReactions)
+            {
+                if(!choiceIds.Contains(reaction.ChoiceId))error(file,reaction.ChoiceId,"unknown-choice","Team market reaction references an unknown authored Choice.");
+                foreach(var location in reaction.LocationIds)if(!locationIds.Contains(location))error(file,reaction.ChoiceId,"unknown-location",$"Team market reaction references unknown location '{location}'.");
+            }
         }
     }
 

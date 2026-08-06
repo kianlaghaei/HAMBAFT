@@ -25,7 +25,8 @@ public sealed record LocationPresentationDefinition(
     IReadOnlyList<string> PresentationTags,
     decimal X,
     decimal Y,
-    string? EntityDefinitionId = null);
+    string? EntityDefinitionId = null,
+    string? BusinessIdentity = null);
 
 public sealed record ScenePresentationDefinition(
     string Id,
@@ -90,6 +91,71 @@ public sealed record WorldReactionPresentationDefinition(
     IReadOnlyList<string> LocationIds,
     IReadOnlyList<string> VisualTags);
 
+public sealed record InvestigationEvidencePresentationDefinition(
+    string Id,
+    string Title,
+    string SourceLabel,
+    string Description,
+    string WhyItMatters,
+    string Certainty,
+    IReadOnlyList<string> Unlocks);
+
+public sealed record InvestigationLocationPresentationDefinition(
+    string Id,
+    string Title,
+    string Identity,
+    string Narrative,
+    IReadOnlyList<InvestigationEvidencePresentationDefinition> Evidence);
+
+public sealed record BusinessActivityPresentationDefinition(
+    string Title,
+    string Summary,
+    string Implication,
+    IReadOnlyList<string> UnlockedActions);
+
+public sealed record ContextualPactPresentationDefinition(
+    string Id,
+    string InteractionTypeId,
+    string TargetEntityDefinitionId,
+    string Title,
+    string Description,
+    string Unlock,
+    string Risk,
+    string? Message = null);
+
+public sealed record DecisionChoicePresentationDefinition(
+    string ChoiceId,
+    string SelectedAction,
+    string AcceptedRisk,
+    string Position,
+    string PactUsed,
+    string Summary);
+
+public sealed record FinalDecisionPresentationDefinition(
+    string Heading,
+    string Summary,
+    IReadOnlyList<DecisionChoicePresentationDefinition> Choices);
+
+public sealed record TeamMarketReactionPresentationDefinition(
+    string ChoiceId,
+    string OutcomeLine,
+    IReadOnlyList<string> LocationIds,
+    IReadOnlyList<string> VisualTags);
+
+public sealed record TeamScenePresentationDefinition(
+    string SceneId,
+    string CheckpointId,
+    string EntityDefinitionId,
+    string Title,
+    IReadOnlyList<string> OpeningNarrative,
+    string Objective,
+    int RequiredInvestigationCount,
+    IReadOnlyList<InvestigationLocationPresentationDefinition> InvestigationLocations,
+    BusinessActivityPresentationDefinition? BusinessActivity,
+    IReadOnlyList<ContextualPactPresentationDefinition> ContextualPacts,
+    FinalDecisionPresentationDefinition? FinalDecisionPresentation,
+    IReadOnlyList<TeamMarketReactionPresentationDefinition> MarketReactions);
+
 public sealed record PresentationCatalogDefinition(
     IReadOnlyList<MetricPresentationDefinition> MetricBands,
     IReadOnlyList<LocationPresentationDefinition> Locations,
@@ -99,7 +165,9 @@ public sealed record PresentationCatalogDefinition(
     IReadOnlyList<RelationshipStatePresentationDefinition> RelationshipStates,
     IReadOnlyList<CharacterPresentationDefinition> Characters,
     IReadOnlyList<ChoicePresentationDefinition> Choices,
-    IReadOnlyList<WorldReactionPresentationDefinition> Reactions)
+    IReadOnlyList<WorldReactionPresentationDefinition> Reactions,
+    IReadOnlyList<TeamScenePresentationDefinition>? TeamScenes = null)
 {
-    public static PresentationCatalogDefinition Empty { get; } = new([],[],[],[],[],[],[],[],[]);
+    public IReadOnlyList<TeamScenePresentationDefinition> TeamSceneDefinitions => TeamScenes ?? [];
+    public static PresentationCatalogDefinition Empty { get; } = new([],[],[],[],[],[],[],[],[],[]);
 }

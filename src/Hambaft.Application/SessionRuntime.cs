@@ -1,4 +1,5 @@
 using Hambaft.Domain;
+using System.Text.Json;
 
 namespace Hambaft.Application;
 
@@ -67,6 +68,32 @@ public sealed partial class SessionRuntime
         var storylet=package.Storylets.SingleOrDefault(x=>x.Id==assignment.StoryletId)??throw new DomainException("Assigned Storylet no longer exists in the locked package.");
         var e=state.SubmitChoice(c.AssignmentId,teamId,c.ChoiceId,storylet.Choices.Select(x=>x.Id).ToList(),state.StateVersion+1,c.Context.For(c.SessionId));
         state.Apply(e); await store.AppendAsync(c.SessionId,c.ExpectedVersion,[e],state,ct); return Result(state,e);
+    }
+
+    public async Task<CommandResult> ExecuteAsync(RecordTeamInvestigation c,CancellationToken ct)
+    {
+        RequireStoryServices();
+        if(c.Context.TeamId is not { } teamId) throw new DomainException("Authenticated Team identity is required.");
+        var state=await Load(c.SessionId,c.ExpectedVersion,ct);
+        var team=state.Teams.SingleOrDefault(x=>x.Id==teamId)??throw new DomainException("Team does not belong to this Session.");
+        var entity=state.Entities.SingleOrDefault(x=>x.Id==team.ControlledEntityId)??throw new DomainException("Team has no controlled Entity.");
+        var package=await LoadLockedPackage(state,ct);
+        var checkpoint=state.CurrentCheckpointId??throw new DomainException("Narrative is not initialized.");
+        var scene=package.PresentationDefinition.TeamSceneDefinitions.SingleOrDefault(x=>x.CheckpointId==checkpoint&&x.EntityDefinitionId==entity.DefinitionId)
+            ??throw new DomainException("Team scene presentation is unavailable.");
+        var location=scene.InvestigationLocations.SingleOrDefault(x=>x.Id==c.LocationId)
+            ??throw new DomainException("Investigation location is not available for this Team scene.");
+        var evidenceIds=c.EvidenceIds.Distinct(StringComparer.Ordinal).ToList();
+        var validEvidenceIds=location.Evidence.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+        if(evidenceIds.Any(x=>!validEvidenceIds.Contains(x))) throw new DomainException("Investigation evidence is not available for this location.");
+        var key=InvestigationMemoryKey(checkpoint,location.Id);
+        if(state.Memories.Any(x=>x.Scope==MemoryScope.Team&&x.ScopeId==teamId&&x.Key==key))
+            return new(state.Id,state.StateVersion,"InvestigationAlreadyRecorded");
+        var metadata=c.Context.For(c.SessionId) with { TeamId=teamId,CheckpointId=checkpoint };
+        var memory=new StoryMemoryAdded(MemoryScope.Team,teamId,key,JsonSerializer.Serialize(new { checkpointId=checkpoint,locationId=location.Id,evidenceIds }),MemoryVisibility.TeamPrivate,"$investigation",metadata);
+        state.Apply(memory);
+        await store.AppendAsync(c.SessionId,c.ExpectedVersion,[memory],state,ct);
+        return Result(state,memory);
     }
 
     public async Task<CommandResult> ExecuteAsync(ResolveNarrativeCheckpoint c,CancellationToken ct)
@@ -177,6 +204,7 @@ public sealed partial class SessionRuntime
         return state;
     }
     private static CommandResult Result(StorySession state,IDomainEvent e,string? code=null)=>new(state.Id,state.StateVersion,e.GetType().Name,code);
+    internal static string InvestigationMemoryKey(string checkpointId,string locationId)=>$"investigation:{checkpointId}:{locationId}";
 
     private async Task<StoryPackage> LoadLockedPackage(StorySession state,CancellationToken ct)
     {

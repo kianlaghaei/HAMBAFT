@@ -156,6 +156,15 @@ app.MapPost("/api/story/choices",async(SubmitStoryChoiceRequest request,SessionR
     return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
 }).RequireAuthorization("Team");
 
+app.MapPost("/api/story/investigations",async(RecordTeamInvestigationRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");
+    var result=await runtime.ExecuteAsync(new RecordTeamInvestigation(sessionId,request.LocationId,request.EvidenceIds,request.ExpectedStateVersion,Context(http,teamId,request.CommandId)),ct);
+    await hub.Clients.Group(HubGroups.Team(teamId)).StateChanged(new(sessionId,result.StateVersion,result.EventType,"Team"));
+    await hub.Clients.Group(HubGroups.Admins(sessionId)).StateChanged(new(sessionId,result.StateVersion,result.EventType,"Team"));
+    return Results.Ok(new CommandResponse(sessionId,result.StateVersion,result.EventType));
+}).RequireAuthorization("Team");
+
 app.MapGet("/api/proposals/inbox",async(SessionRuntime runtime,HttpContext http,CancellationToken ct)=>
 {
     var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(new ProposalInboxView(teamId,sessionId,view.Inbox??[],[],view.StateVersion));

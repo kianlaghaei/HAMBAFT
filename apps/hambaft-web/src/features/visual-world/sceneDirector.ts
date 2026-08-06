@@ -1,12 +1,6 @@
 import type { Agreement, Proposal, PublicWorld, TeamExperience } from '../../api/schemas'
 import type { ProposalVisualState, SceneConnection, SceneDescriptor, SceneEvent, SceneLocation, SceneTime } from './types'
 
-const legacyPositions: Record<string, { x: number; y: number }> = {
-  'bakery-sepideh': { x: 220, y: 220 }, 'logistics-rah-no': { x: 775, y: 235 }, 'printing-roshan': { x: 235, y: 515 }, 'exchange-mizan': { x: 760, y: 510 },
-}
-const businessKinds: Record<string, SceneLocation['businessKind']> = {
-  'bakery-sepideh': 'bakery', 'logistics-rah-no': 'logistics', 'printing-roshan': 'printing', 'exchange-mizan': 'exchange',
-}
 const checkpointEvents: Record<string, SceneEvent[]> = {
   'morning-without-bell': ['market-morning', 'missing-bell', 'ledger-discovery'],
   'cargo-did-not-arrive': ['northern-road-closure', 'cargo-shortage', 'rumour-spread'],
@@ -59,18 +53,19 @@ function proposalMessengers(world: PublicWorld, proposals: Proposal[]) {
 
 function semanticLocations(world: PublicWorld, team?: TeamExperience): SceneLocation[] {
   const presentation = team?.worldPresentation ?? world.worldPresentation
-  if (!presentation) return world.entities.map((entity, index) => {
-    const fallback = Object.values(legacyPositions)[index] ?? { x: 500, y: 360 }
-    return { id: entity.definitionId, entityId: entity.id, teamId: entity.controlledByTeamId ?? undefined, name: entity.displayName, shortIdentity: 'یکی از حجره‌های بازار', whyItMatters: '', currentCondition: 'وضعیت عمومی حجره قابل مشاهده است.', whoIsHere: '', recentChange: '', availableActions: [], presentationTags: [], state: 'quiet', businessKind: businessKinds[entity.definitionId] ?? 'business', ...(legacyPositions[entity.definitionId] ?? fallback), controlled: entity.id === team?.controlledEntity?.id, active: !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)) }
-  })
+  if (!presentation) return []
   const inboxTargets = new Set((team?.inbox ?? []).map((proposal) => entityForTeam(world, proposal.senderTeamId)))
   const agreementEntities = new Set((team?.agreements ?? []).flatMap((agreement) => agreement.parties.map((id) => entityForTeam(world, id))))
   const changed = new Set(presentation.reactions.flatMap((reaction) => reaction.locationIds))
   return presentation.locations.map((location) => {
     const entity = location.entityId ? world.entities.find((item) => item.id === location.entityId) : undefined
     const state: SceneLocation['state'] = world.worldEnding ? 'ending-relevant' : location.entityId && inboxTargets.has(location.entityId) ? 'proposal-received' : location.entityId && agreementEntities.has(location.entityId) ? 'agreement-active' : changed.has(location.id) ? 'changed-since-last-visit' : location.availableActions.length ? 'action-available' : location.presentationTags.includes('public-gathering') ? 'public-event' : 'quiet'
-    return { id: location.id, entityId: location.entityId ?? undefined, teamId: entity?.controlledByTeamId ?? undefined, name: location.displayName, shortIdentity: location.shortIdentity, whyItMatters: location.whyItMatters, currentCondition: location.currentCondition, whoIsHere: location.whoIsHere, recentChange: location.recentChange, availableActions: location.availableActions, presentationTags: location.presentationTags, state, businessKind: businessKinds[location.entityDefinitionId ?? ''] ?? 'business', x: location.x * 10, y: location.y * 7, controlled: entity?.id === team?.controlledEntity?.id, active: entity ? !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)) : true }
+    return { id: location.id, entityId: location.entityId ?? undefined, teamId: entity?.controlledByTeamId ?? undefined, name: location.displayName, businessIdentity: location.businessIdentity, shortIdentity: location.shortIdentity, whyItMatters: location.whyItMatters, currentCondition: location.currentCondition, whoIsHere: location.whoIsHere, recentChange: location.recentChange, availableActions: location.availableActions, presentationTags: location.presentationTags, state, businessKind: businessKind(location.presentationTags), x: location.x * 10, y: location.y * 7, controlled: entity?.id === team?.controlledEntity?.id, active: entity ? !['Inactive', 'Closed', '2', '3'].includes(String(entity.status)) : true }
   })
+}
+
+function businessKind(tags: string[]): SceneLocation['businessKind'] {
+  return (['bakery', 'logistics', 'printing', 'exchange'] as const).find((kind) => tags.includes(kind)) ?? 'business'
 }
 
 function sceneTime(value: string | undefined): SceneTime {

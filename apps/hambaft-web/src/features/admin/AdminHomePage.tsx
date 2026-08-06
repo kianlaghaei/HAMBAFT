@@ -12,7 +12,7 @@ export function AdminHomePage() {
   const setToken = useAuthStore((state) => state.setToken)
   const saveCodes = useUiStore((state) => state.saveSetupCodes)
   const packages = useQuery({ queryKey: queryKeys.packages, queryFn: api.packages })
-  const [selectedKey, setSelectedKey] = useState('hezar-cheragh@0.3.0')
+  const [selectedKey, setSelectedKey] = useState('hezar-cheragh@0.4.0')
   const [difficulty, setDifficulty] = useState('standard')
   const [teamCount, setTeamCount] = useState(2)
   const [names, setNames] = useState(['تیم سپیده', 'تیم راه‌نو', 'تیم روشن', 'تیم میزان'])
@@ -23,7 +23,8 @@ export function AdminHomePage() {
 
   if (packages.isLoading) return <LoadingState />
   if (packages.isError || !packages.data) return <ErrorState error={packages.error} retry={() => void packages.refetch()} />
-  const metadata = packages.data.find((item) => `${item.id}@${item.version}` === selectedKey) ?? packages.data[0]
+  const playablePackages = packages.data.filter((item) => item.id !== 'hezar-cheragh' || item.version === '0.4.0')
+  const metadata = playablePackages.find((item) => `${item.id}@${item.version}` === selectedKey) ?? playablePackages[0]
 
   async function create(event: FormEvent) {
     event.preventDefault(); if (!metadata) return; setPending(true); setError(null)
@@ -75,7 +76,7 @@ export function AdminHomePage() {
 
   return <main className="admin-page"><header className="admin-hero"><p className="eyebrow">میز راهبر</p><h1>راه‌اندازی جلسه هزارچراغ</h1><p>ساخت جلسه، تخصیص حجره‌ها و ورود به کنترل اجرای زنده.</p></header>
     <div className="admin-columns"><section className="panel"><h2>جلسه تازه</h2><form onSubmit={create}>
-      <label className="field"><span>بسته داستان</span><select value={selectedKey} onChange={(event) => setSelectedKey(event.target.value)}>{packages.data.filter((item) => item.isValid).map((item) => <option key={`${item.id}@${item.version}`} value={`${item.id}@${item.version}`}>{item.title} — {item.version}</option>)}</select></label>
+      <label className="field"><span>بسته داستان</span><select value={selectedKey} onChange={(event) => setSelectedKey(event.target.value)}>{playablePackages.filter((item) => item.isValid).map((item) => <option key={`${item.id}@${item.version}`} value={`${item.id}@${item.version}`}>{item.title} — {item.version}</option>)}</select></label>
       <div className="form-grid"><label className="field"><span>سختی</span><select value={difficulty} onChange={(event) => setDifficulty(event.target.value)}><option value="standard">استاندارد</option><option value="hard">دشوار</option></select></label><label className="field"><span>تعداد تیم</span><select value={teamCount} onChange={(event) => setTeamCount(Number(event.target.value))}>{[2, 3, 4].map((count) => <option key={count}>{count}</option>)}</select></label></div>
       <div className="team-setup-list">{Array.from({ length: teamCount }, (_, index) => <fieldset key={index}><legend>تیم {index + 1}</legend><label className="field"><span>نام نمایشی</span><input value={names[index]} onChange={(event) => setNames((current) => current.map((name, item) => item === index ? event.target.value : name))} required /></label><label className="field"><span>حجره</span><select value={businesses[index]} onChange={(event) => setBusinesses((current) => current.map((business, item) => item === index ? event.target.value : business))}>{['bakery-sepideh', 'logistics-rah-no', 'printing-roshan', 'exchange-mizan'].map((id) => <option key={id} value={id}>{({ 'bakery-sepideh': 'نانوایی سپیده', 'logistics-rah-no': 'باربری راه‌نو', 'printing-roshan': 'چاپخانه روشن', 'exchange-mizan': 'صرافی میزان' } as Record<string, string>)[id]}</option>)}</select></label></fieldset>)}</div>
       <button className="button" disabled={pending}>{pending ? 'در حال ساخت…' : 'ساخت و پیکربندی جلسه'}</button>

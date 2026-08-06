@@ -76,6 +76,18 @@ const storyletSchema = z.object({
   submittedChoiceId: z.string().nullish(),
 })
 
+const termSchema: z.ZodType<{
+  type: string
+  name: string | null
+  required: boolean
+  minimum: number | null
+  maximum: number | null
+  maximumLength: number | null
+  fields: Array<z.infer<typeof termSchema>>
+}> = z.lazy(() => z.object({
+  type: z.string(), name: z.string().nullable(), required: z.boolean(), minimum: z.number().nullable(), maximum: z.number().nullable(), maximumLength: z.number().int().nullable(), fields: z.array(termSchema),
+}))
+
 const endingEvidenceSchema = z.object({
   kind: enumValueSchema,
   referenceId: guidSchema.nullish(),
@@ -117,6 +129,7 @@ export const proposalSchema = z.object({
   allowedActions: z.array(z.string()),
   stateVersion: z.number().int(),
   revisions: z.array(proposalRevisionSchema).nullish(),
+  contextualMessage: z.string().nullish(),
 })
 
 export const agreementSchema = z.object({
@@ -150,13 +163,30 @@ const sessionMetadataSchema = z.object({
 })
 
 const semanticStateSchema = z.object({ key: z.string(), bandId: z.string(), label: z.string(), description: z.string(), visualTags: z.array(z.string()), trend: z.string() })
-const locationPresentationSchema = z.object({ id: z.string(), displayName: z.string(), shortIdentity: z.string(), whyItMatters: z.string(), currentCondition: z.string(), whoIsHere: z.string(), recentChange: z.string(), availableActions: z.array(z.string()), presentationTags: z.array(z.string()), x: z.number(), y: z.number(), entityId: guidSchema.nullish(), entityDefinitionId: z.string().nullish() })
-const businessPresentationSchema = z.object({ entityId: guidSchema, entityDefinitionId: z.string(), displayName: z.string(), pulse: z.array(z.string()), visualTags: z.array(z.string()) })
+const locationPresentationSchema = z.object({ id: z.string(), displayName: z.string(), shortIdentity: z.string(), whyItMatters: z.string(), currentCondition: z.string(), whoIsHere: z.string(), recentChange: z.string(), availableActions: z.array(z.string()), presentationTags: z.array(z.string()), x: z.number(), y: z.number(), entityId: guidSchema.nullish(), entityDefinitionId: z.string().nullish(), businessIdentity: z.string().nullish() })
+const businessPresentationSchema = z.object({ entityId: guidSchema, entityDefinitionId: z.string(), displayName: z.string(), pulse: z.array(z.string()), visualTags: z.array(z.string()), businessIdentity: z.string().nullish() })
 const relationshipPresentationSchema = z.object({ sourceEntityId: guidSchema, targetEntityId: guidSchema, relationshipKey: z.string(), bandId: z.string(), label: z.string(), description: z.string(), visualTags: z.array(z.string()) })
 const worldPresentationSchema = z.object({
   sceneId: z.string(), timeOfDay: z.string(), timeLabel: z.string(), atmosphereLabel: z.string(), publicEvent: z.string(), courtyardActivity: z.string(), soundscape: z.string(), avanVisible: z.boolean(), visualTags: z.array(z.string()), pulse: z.array(z.string()), semanticMetrics: z.array(semanticStateSchema), locations: z.array(locationPresentationSchema), businesses: z.array(businessPresentationSchema),
   characters: z.array(z.object({ id: z.string(), displayName: z.string(), locationId: z.string(), whatIsKnown: z.string(), lastSeen: z.string(), attitude: z.string(), recentStatement: z.string(), possibleInteraction: z.string().nullish(), presentationTags: z.array(z.string()) })),
   ambientEvents: z.array(z.object({ id: z.string(), description: z.string(), locationId: z.string() })), reactions: z.array(z.object({ outcomeLine: z.string(), locationIds: z.array(z.string()), visualTags: z.array(z.string()) })),
+})
+const teamScenePresentationSchema = z.object({
+  sceneId: z.string(), title: z.string(), openingNarrative: z.array(z.string()), objective: z.string(), requiredInvestigationCount: z.number().int().nonnegative(),
+  investigationLocations: z.array(z.object({
+    id: z.string(), title: z.string(), identity: z.string(), narrative: z.string(), evidence: z.array(z.object({
+      id: z.string(), title: z.string(), sourceLabel: z.string(), description: z.string(), whyItMatters: z.string(), certainty: z.enum(['confirmed', 'probable', 'uncertain']), unlocks: z.array(z.string()),
+    })),
+  })),
+  businessActivity: z.object({ entityDefinitionId: z.string(), title: z.string(), summary: z.string(), implication: z.string(), unlockedActions: z.array(z.string()) }).nullish(),
+  contextualPacts: z.array(z.object({ id: z.string(), interactionTypeId: z.string(), targetEntityDefinitionId: z.string(), targetTeamId: guidSchema, targetDisplayName: z.string(), title: z.string(), description: z.string(), unlock: z.string(), risk: z.string(), termsSchema: termSchema, message: z.string().nullish() })),
+  finalDecisionPresentation: z.object({
+    heading: z.string(), summary: z.string(), choices: z.array(z.object({ choiceId: z.string(), selectedAction: z.string(), acceptedRisk: z.string(), position: z.string(), pactUsed: z.string(), summary: z.string() })),
+    selectedChoiceId: z.string().nullish(), selectedChoice: z.object({ choiceId: z.string(), selectedAction: z.string(), acceptedRisk: z.string(), position: z.string(), pactUsed: z.string(), summary: z.string() }).nullish(),
+  }).nullish(),
+  marketReactions: z.array(z.object({ choiceId: z.string(), outcomeLine: z.string(), locationIds: z.array(z.string()), visualTags: z.array(z.string()) })),
+  investigatedLocationIds: z.array(z.string()),
+  revealedEvidenceIds: z.array(z.string()),
 })
 
 export const teamExperienceSchema = z.object({
@@ -181,6 +211,7 @@ export const teamExperienceSchema = z.object({
   worldPresentation: worldPresentationSchema.nullish(),
   businessPresentation: businessPresentationSchema.nullish(),
   relationshipPresentation: z.array(relationshipPresentationSchema).nullish(),
+  teamScenePresentation: teamScenePresentationSchema.nullish(),
 })
 
 const narrativeSchema = z.object({
@@ -243,18 +274,6 @@ export const adminSchema = z.object({
   technicalMetrics: z.array(metricSchema).nullish(),
   marketPreview: worldPresentationSchema.nullish(),
 })
-
-const termSchema: z.ZodType<{
-  type: string
-  name: string | null
-  required: boolean
-  minimum: number | null
-  maximum: number | null
-  maximumLength: number | null
-  fields: Array<z.infer<typeof termSchema>>
-}> = z.lazy(() => z.object({
-  type: z.string(), name: z.string().nullable(), required: z.boolean(), minimum: z.number().nullable(), maximum: z.number().nullable(), maximumLength: z.number().int().nullable(), fields: z.array(termSchema),
-}))
 
 export const packageSchema = z.object({
   id: z.string(), version: z.string(), title: z.string(), description: z.string(), minimumTeams: z.number().int(), maximumTeams: z.number().int(), estimatedDurationMinutes: z.number().int(), defaultLocale: z.string(), contentHash: z.string(),

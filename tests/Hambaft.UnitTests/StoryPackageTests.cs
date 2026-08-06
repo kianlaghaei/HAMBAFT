@@ -1,5 +1,6 @@
 using System.Text.Json;
 using FluentAssertions;
+using Hambaft.Application;
 using Hambaft.Domain;
 
 namespace Hambaft.UnitTests;
@@ -34,5 +35,34 @@ public sealed class StoryPackageTests
         try { foreach(var file in Directory.GetFiles(source))File.Copy(file,Path.Combine(temp,Path.GetFileName(file)));var path=Path.Combine(temp,"manifest.json");await File.WriteAllTextAsync(path,(await File.ReadAllTextAsync(path)).Replace("10,","11,"));(await services.Hasher.ComputeAsync(temp,default)).Should().NotBe(await services.Hasher.ComputeAsync(source,default)); }
         finally { Directory.Delete(temp,true); }
     }
+
+    [Fact]
+    public async Task Package_0_4_team_scene_presentation_is_valid_and_team_specific()
+    {
+        var services=StoryRuntimeTestSupport.PackageServices();var package=await services.Loader.LoadAsync("hezar-cheragh","0.4.0",default);
+        package.Manifest.Version.Should().Be("0.4.0");package.PresentationDefinition.TeamSceneDefinitions.Should().HaveCount(4);package.PresentationDefinition.TeamSceneDefinitions.Should().OnlyContain(x=>x.RequiredInvestigationCount==2);
+        var sessionId=Guid.NewGuid();var bakeryTeamId=Guid.NewGuid();var logisticsTeamId=Guid.NewGuid();var bakeryEntityId=Guid.NewGuid();var logisticsEntityId=Guid.NewGuid();
+        var bakeryTeam=new Team(bakeryTeamId,sessionId,"سپیده","hash",bakeryEntityId,DateTimeOffset.UtcNow);var logisticsTeam=new Team(logisticsTeamId,sessionId,"راه‌نو","hash",logisticsEntityId,DateTimeOffset.UtcNow);
+        var bakeryEntity=new WorldEntity(bakeryEntityId,sessionId,"bakery-sepideh","نانوایی سپیده",ControllerType.HumanTeam,bakeryTeamId,null,EntityStatus.Active);var logisticsEntity=new WorldEntity(logisticsEntityId,sessionId,"logistics-rah-no","باربری راه‌نو",ControllerType.HumanTeam,logisticsTeamId,null,EntityStatus.Active);
+        var bakeryAssignmentId=Guid.NewGuid();var logisticsAssignmentId=Guid.NewGuid();var assignments=new[]
+        {
+            new StoryletAssignment(bakeryAssignmentId,"hc-a-bakery","morning-without-bell",StoryletScope.TeamPrivate,bakeryTeamId,bakeryEntityId,true,1,StoryletAssignmentStatus.Responded),
+            new StoryletAssignment(logisticsAssignmentId,"hc-a-logistics","morning-without-bell",StoryletScope.TeamPrivate,logisticsTeamId,logisticsEntityId,true,1,StoryletAssignmentStatus.Assigned)
+        };
+        var submissions=new[] { new SubmittedStoryChoice(bakeryAssignmentId,bakeryTeamId,"bakery-hold-fragment",DateTimeOffset.UtcNow,2,Guid.NewGuid()) };
+        var experience=new SessionExperienceView(sessionId,SessionStatus.Running,[bakeryTeam,logisticsTeam],[bakeryEntity,logisticsEntity],[],[],[],5,package.Manifest.Id,package.Manifest.Version,package.ContentHash,"morning-without-bell",assignments,submissions);
+        var bakeryView=ViewProjector.Team(experience,bakeryTeam,package);var logisticsView=ViewProjector.Team(experience,logisticsTeam,package);
+        bakeryView.TeamScenePresentation!.BusinessActivity!.Summary.Should().Contain("سهم آرد");bakeryView.TeamScenePresentation.FinalDecisionPresentation!.SelectedChoice!.ChoiceId.Should().Be("bakery-hold-fragment");bakeryView.TeamScenePresentation.MarketReactions.Should().HaveCount(2);
+        logisticsView.TeamScenePresentation!.BusinessActivity!.Title.Should().Contain("مسیر");logisticsView.TeamScenePresentation.FinalDecisionPresentation!.SelectedChoiceId.Should().BeNull();logisticsView.TeamScenePresentation.InvestigationLocations.Select(x=>x.Id).Should().Contain("logistics-rah-no").And.NotContain("haj-sadegh-office");
+    }
+
+    [Fact]
+    public async Task Team_scene_presentation_is_not_part_of_public_view()
+    {
+        var services=StoryRuntimeTestSupport.PackageServices();var package=await services.Loader.LoadAsync("hezar-cheragh","0.4.0",default);var sessionId=Guid.NewGuid();var entityId=Guid.NewGuid();
+        var publicView=new PublicWorldView(sessionId,SessionStatus.Running,[new WorldEntity(entityId,sessionId,"bakery-sepideh","نانوایی سپیده",ControllerType.HumanTeam,Guid.NewGuid(),null,EntityStatus.Active)],[],[],[],1,package.Manifest.Id,package.Manifest.Version,package.ContentHash,"morning-without-bell",null,null,null);
+        var hydrated=ViewProjector.Hydrate(publicView,package);JsonSerializer.Serialize(hydrated).Should().NotContain("teamScenePresentation").And.NotContain("hidden-stall-bakery");
+    }
+
     private static async Task<(Hambaft.Application.IStoryPackageValidator,StoryPackage)> Package(){var s=StoryRuntimeTestSupport.PackageServices();return(s.Validator,await s.Loader.LoadAsync("sample-cargo-delay","1.0.0",default));}
 }

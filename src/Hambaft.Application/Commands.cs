@@ -20,6 +20,7 @@ public sealed record ResumeSession(Guid SessionId, long ExpectedVersion, Command
 public sealed record CancelSession(Guid SessionId, long ExpectedVersion, CommandContext Context);
 public sealed record InitializeNarrative(Guid SessionId,long ExpectedVersion,CommandContext Context);
 public sealed record SubmitStoryChoice(Guid SessionId,Guid AssignmentId,string ChoiceId,long ExpectedVersion,CommandContext Context);
+public sealed record RecordTeamInvestigation(Guid SessionId,string LocationId,IReadOnlyList<string> EvidenceIds,long ExpectedVersion,CommandContext Context);
 public sealed record ResolveNarrativeCheckpoint(Guid SessionId,long ExpectedVersion,CommandContext Context);
 public sealed record SendProposal(Guid SessionId,Guid ProposalId,string InteractionTypeId,Guid ReceiverTeamId,System.Text.Json.JsonElement TermsPayload,ProposalValidityDefinition? Validity,long ExpectedVersion,CommandContext Context);
 public sealed record CounterProposal(Guid SessionId,Guid ProposalId,int ExpectedRevisionNumber,System.Text.Json.JsonElement TermsPayload,long ExpectedVersion,CommandContext Context);

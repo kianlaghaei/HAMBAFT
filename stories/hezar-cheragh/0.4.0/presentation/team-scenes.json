@@ -1,0 +1,168 @@
+[
+  {
+    "sceneId": "hidden-stall-bakery",
+    "checkpointId": "morning-without-bell",
+    "entityDefinitionId": "bakery-sepideh",
+    "title": "خبر پنهانِ حجره",
+    "openingNarrative": [
+      "صبح، زنگ بازار به صدا درنیامد و سهم آرد نانوایی سپیده به‌موقع نرسید. در دفتر حاج صادق، رد یک تغییر مسیر کنار سفارش‌های امروز دیده می‌شود.",
+      "رحیم می‌گوید بخشی از ثبت بارها پاک شده، اما هنوز نمی‌دانیم این تغییر به تصمیم چه کسی انجام شده است.",
+      "سپیده باید میان قول‌های امروز، سهم اضطراری و ذخیره فردا تعادل بسازد؛ پیش از تصمیم، دو نشانه را از روی نقشه بررسی کنید."
+    ],
+    "objective": "دو مکان را بررسی کنید و بر اساس شواهد، میان حفظ قول‌های امروز، سهم اضطراری و ذخیره فردا تصمیم بگیرید.",
+    "requiredInvestigationCount": 2,
+    "investigationLocations": [
+      {
+        "id": "haj-sadegh-office",
+        "title": "دفتر حاج صادق",
+        "identity": "دفتر بسته‌ی ثبت سفارش‌ها و تغییر مسیرها",
+        "narrative": "روی میز دفتر، بخشی از ثبت سفارش‌های نانوایی سپیده دیده می‌شود؛ چند ردیف پاک شده و کنار آن‌ها یادداشت تازه‌ای مانده است.",
+        "evidence": [
+          { "id": "bakery-office-erased-order", "title": "سفارش پاک‌شده", "sourceLabel": "دفتر سفارش‌های حاج صادق", "description": "رد سفارش امروز نانوایی سپیده پاک شده، اما مهر دریافت آن هنوز کنار صفحه مانده است.", "whyItMatters": "کمبود فقط نتیجه‌ی دیرکرد معمولی نیست و یک تغییر در ثبت سفارش رخ داده است.", "certainty": "confirmed", "unlocks": ["پیگیری رسمی سهم آرد"] },
+          { "id": "bakery-office-promise-note", "title": "یادداشت قول‌های امروز", "sourceLabel": "حاشیه‌ی دفتر", "description": "کنار نام چند مشتری نوشته شده که قول تحویل امروز باید تا ظهر حفظ شود.", "whyItMatters": "هر سهمی که برای فردا کنار گذاشته شود، روی تعهدهای امروز فشار می‌آورد.", "certainty": "probable", "unlocks": ["بازبینی قول‌های امروز"] },
+          { "id": "bakery-office-unreadable-seal", "title": "مهر ناخوانا", "sourceLabel": "پاکت بی‌نام روی میز", "description": "مهر مالی بازار دیده می‌شود، اما تاریخ و صادرکننده‌ی آن خوانا نیست.", "whyItMatters": "ضمانت تازه ممکن است معتبر باشد، اما هنوز نمی‌توان ریسک آن را سنجید.", "certainty": "uncertain", "unlocks": ["درخواست ضمانت روشن"] }
+        ]
+      },
+      {
+        "id": "market-entrance",
+        "title": "ورودی بازار",
+        "identity": "نقطه‌ی دیدن ورود سهم و خبر به بازار",
+        "narrative": "نگهبان ورود بار را ثبت کرده، اما زمان ورود و زمان تحویل به حجره‌ها با هم جور نیست.",
+        "evidence": [
+          { "id": "bakery-gate-arrival", "title": "بار وارد شده بود", "sourceLabel": "دفتر ورود بازار", "description": "ثبت نگهبانی نشان می‌دهد بخشی از سهم آرد پیش از بازشدن صف‌ها به بازار رسیده است.", "whyItMatters": "بار در مسیر کلی گم نشده؛ باید تغییر مقصد یا توقف بعدی را پیگیری کرد.", "certainty": "confirmed", "unlocks": ["تطبیق زمان ورود و تحویل"] },
+          { "id": "bakery-gate-route-gap", "title": "فاصله‌ی ثبت تا تحویل", "sourceLabel": "دفتر نگهبانی و نشانه‌های مسیر", "description": "بین ثبت ورود و ثبت تحویل، یک بازه‌ی بی‌ثبت باقی مانده است.", "whyItMatters": "مسیر کاملاً بسته نیست، اما مسئولیت آن بازه روشن نشده است.", "certainty": "confirmed", "unlocks": ["پیگیری سهم اضطراری"] },
+          { "id": "bakery-gate-shortage-notice", "title": "اطلاعیه‌ی کمبود زودتر آماده شده بود", "sourceLabel": "پشت تابلوی ورودی", "description": "متن کمبود پیش از دیده‌شدن صف امروز آماده شده و هنوز نام منبع ندارد.", "whyItMatters": "کسی پیش از آشکارشدن کمبود برای واکنش بازار آماده شده بود.", "certainty": "probable", "unlocks": ["تصمیم درباره موضع عمومی"] }
+        ]
+      }
+    ],
+    "businessActivity": {
+      "title": "تخصیص سهم نانوایی",
+      "summary": "اکنون باید سهم آرد امروز را میان قول‌های فعلی، سهم اضطراری و ذخیره‌ی فردا تقسیم کنید.",
+      "implication": "حفظ قول‌های امروز اعتماد را نگه می‌دارد، اما ذخیره‌ی فردا را سبک می‌کند؛ سهم اضطراری بخشی از ریسک کمبود را تقسیم می‌کند.",
+      "unlockedActions": ["بازبینی قول‌های امروز", "ثبت سهم اضطراری", "کنارگذاشتن ذخیره‌ی فردا"]
+    },
+    "contextualPacts": [
+      { "id": "bakery-shared-emergency-share", "interactionTypeId": "shared-purchase", "targetEntityDefinitionId": "logistics-rah-no", "title": "خرید مشترک سهم اضطراری", "description": "با باربری راه‌نو درباره‌ی یک سهم مشترک و قابل‌پیگیری برای امروز نامه بفرستید.", "unlock": "امکان بازکردن سهم اضطراری آرد برای امروز", "risk": "تعهد نانوایی به هماهنگی با یک حجره‌ی دیگر", "message": "اگر سهم اضطراری را با ما هماهنگ کنید، می‌توانیم زمان تحویل را پیش از ظهر روشن کنیم." }
+    ],
+    "finalDecisionPresentation": {
+      "heading": "خلاصه‌ی تصمیم نانوایی سپیده",
+      "summary": "دو بررسی نشان می‌دهد مسیر کاملاً بسته نیست؛ ثبت سفارش دست‌کاری شده و اطلاعیه‌ی کمبود پیش از موعد آماده بوده است.",
+      "choices": [
+        { "choiceId": "bakery-disclose-fragment", "selectedAction": "تکه‌ی دفتر را آشکار کنید", "acceptedRisk": "منبع سند و بخشی از اطلاعات حجره عمومی می‌شود.", "position": "موضع عمومی و پیگیرانه", "pactUsed": "بدون پیمان؛ سند مستقیماً با بازار در میان گذاشته می‌شود.", "summary": "فشار عمومی برای روشن‌شدن ثبت سفارش را می‌پذیرید." },
+        { "choiceId": "bakery-share-fragment", "selectedAction": "سند را با یک حجره در میان بگذارید", "acceptedRisk": "شریک ممکن است برداشت دیگری از سند داشته باشد.", "position": "موضع خصوصی و مشارکتی", "pactUsed": "نامه‌ی خصوصی می‌تواند پیش از انتشار، یک مسیر همکاری باز کند.", "summary": "ریسک تفسیر مشترک را در برابر تصمیم هماهنگ می‌پذیرید." },
+        { "choiceId": "bakery-hold-fragment", "selectedAction": "تکه‌ی دفتر را خصوصی نگه دارید", "acceptedRisk": "بازار از منبع خبر بی‌اطلاع می‌ماند و فرصت پیگیری کوتاه‌تر می‌شود.", "position": "موضع خصوصی و محتاط", "pactUsed": "بدون پیمان؛ اختیار تصمیم نزد نانوایی می‌ماند.", "summary": "برای حفظ اختیار حجره، فشار پاسخ‌گویی عمومی را نمی‌پذیرید." },
+        { "choiceId": "bakery-deny-fragment", "selectedAction": "وجود سند را انکار کنید", "acceptedRisk": "اگر سند آشکار شود، اعتماد مشتریان و بازار آسیب می‌بیند.", "position": "موضع دفاعی", "pactUsed": "بدون پیمان؛ خطر به اعتماد عمومی منتقل می‌شود.", "summary": "هزینه‌ی کوتاه‌مدت آرامش را در برابر ریسک افشای بعدی می‌پذیرید." }
+      ]
+    },
+    "marketReactions": [
+      { "choiceId": "bakery-disclose-fragment", "outcomeLine": "خبر سند در چهارراه پخش شد و مشتریان نانوایی درباره‌ی سهم امروز پرسیدند.", "locationIds": ["central-crossroads", "bakery-sepideh"], "visualTags": ["notice-wall", "crowd-clusters"] },
+      { "choiceId": "bakery-disclose-fragment", "outcomeLine": "چاپخانه روشن منبع ثبت سفارش را برای بررسی عمومی خواست.", "locationIds": ["printing-roshan"], "visualTags": ["messengers-active"] },
+      { "choiceId": "bakery-share-fragment", "outcomeLine": "یک مسیر گفت‌وگوی خصوصی میان نانوایی و حجره‌ی شریک باز شد.", "locationIds": ["central-crossroads", "bakery-sepideh"], "visualTags": ["messengers-active"] },
+      { "choiceId": "bakery-share-fragment", "outcomeLine": "بازار هنوز از منبع سند بی‌خبر است، اما فشار صف کمی پایین آمد.", "locationIds": ["bakery-sepideh"], "visualTags": ["queue-visible"] },
+      { "choiceId": "bakery-hold-fragment", "outcomeLine": "تکه‌ی دفتر خصوصی ماند و نانوایی توانست قول‌های نزدیک‌تر را خودش اولویت‌بندی کند.", "locationIds": ["bakery-sepideh"], "visualTags": ["oven-warm"] },
+      { "choiceId": "bakery-hold-fragment", "outcomeLine": "پرسش درباره‌ی مقصد بار بی‌پاسخ ماند و فرصت پیگیری کوتاه‌تر شد.", "locationIds": ["market-entrance"], "visualTags": ["cargo-stationary"] },
+      { "choiceId": "bakery-deny-fragment", "outcomeLine": "آرامش کوتاه بود؛ یک نسخه‌ی دیگر از ثبت سفارش در بازار دیده شد.", "locationIds": ["central-crossroads"], "visualTags": ["rumour-spread"] },
+      { "choiceId": "bakery-deny-fragment", "outcomeLine": "اعتماد به پاسخ نانوایی میان چند حجره‌دار ترک برداشت.", "locationIds": ["bakery-sepideh"], "visualTags": ["crowd-clusters"] }
+    ]
+  },
+  {
+    "sceneId": "hidden-stall-logistics",
+    "checkpointId": "morning-without-bell",
+    "entityDefinitionId": "logistics-rah-no",
+    "title": "خبر پنهانِ باربری",
+    "openingNarrative": ["صبح، یک گاری در حیاط باربری راه‌نو مانده و مقصد گاری دوم از ثبت رسمی پاک شده است.", "دو سند مسیر با هم جور نیستند و نام صادرکننده‌ی دستور در هیچ‌کدام کامل نیست.", "راه‌نو باید میان بازکردن مسیر فرعی، اولویت‌دادن به بارهای محلی و حفظ ظرفیت فردا تصمیم بگیرد."],
+    "objective": "دو نشانه‌ی مسیر را بررسی کنید و بر اساس آن‌ها ظرفیت امروز و ریسک فردا را تنظیم کنید.",
+    "requiredInvestigationCount": 2,
+    "investigationLocations": [
+      { "id": "logistics-rah-no", "title": "باربری راه‌نو", "identity": "دفتر اعزام و محل توقف گاری‌ها", "narrative": "دفتر اعزام دو نسخه برای یک شماره گاری دارد و مقصد دوم پاک شده است.", "evidence": [
+        { "id": "logistics-double-receipt-authored", "title": "دو رسید برای یک گاری", "sourceLabel": "دفتر اعزام باربری", "description": "یک شماره گاری برای دو مقصد ثبت شده است.", "whyItMatters": "تغییر مقصد در فرایند باربری ثبت شده و قابل پیگیری است.", "certainty": "confirmed", "unlocks": ["تطبیق رسمی رسید"] },
+        { "id": "logistics-cancelled-guarantee", "title": "ضمانت لغوشده", "sourceLabel": "حاشیه‌ی دفتر ضمانت", "description": "ضمانت حرکت گاری دوم پیش از خروج لغو شده است.", "whyItMatters": "مسئولیت مسیر بدون پشتوانه‌ی روشن باقی مانده است.", "certainty": "confirmed", "unlocks": ["درخواست ضمانت تازه"] },
+        { "id": "logistics-destination-erased", "title": "مقصد پاک‌شده", "sourceLabel": "نسخه‌ی دوم رسید", "description": "مقصد گاری دوم با پاک‌کن از روی نسخه‌ی نگهداری‌شده حذف شده است.", "whyItMatters": "تصمیم درباره‌ی مسیر بعدی بدون پرسش از صادرکننده پرریسک است.", "certainty": "probable", "unlocks": ["بازکردن مسیر فرعی"] }
+      ] },
+      { "id": "north-gate", "title": "دروازه شمالی", "identity": "نقطه‌ی ورود بارهای بین‌شهری", "narrative": "راه باز به نظر می‌رسد، اما ثبت ورود و حرکت گاری‌ها فاصله‌ای بی‌توضیح دارد.", "evidence": [
+        { "id": "logistics-gate-open-route", "title": "راه هنوز کاملاً بسته نیست", "sourceLabel": "دفتر نگهبانی مسیر", "description": "راه اصلی باز است، اما پنجره‌ی حرکت گاری کوتاه‌تر از معمول شده است.", "whyItMatters": "یک تصمیم سریع می‌تواند بخشی از بار امروز را نجات دهد.", "certainty": "confirmed", "unlocks": ["اولویت‌بندی بارهای محلی"] },
+        { "id": "logistics-gate-missing-entry", "title": "ورود بی‌ثبت", "sourceLabel": "دفتر دروازه", "description": "زمان ورود یک گاری در دفتر نگهبانی ثبت نشده است.", "whyItMatters": "زنجیره‌ی مسئولیت بار کامل نیست.", "certainty": "uncertain", "unlocks": ["پیگیری صادرکننده‌ی دستور"] }
+      ] }
+    ],
+    "businessActivity": { "title": "تابلوی مسیر و ظرفیت", "summary": "ظرفیت امروز را میان مسیر فرعی، بارهای محلی و ذخیره‌ی فردا تنظیم کنید.", "implication": "بازکردن مسیر فرعی ظرفیت را آزاد می‌کند، اما ضمانت و ریسک بازگشت را به راه‌نو برمی‌گرداند.", "unlockedActions": ["بازکردن مسیر فرعی", "اولویت بارهای محلی", "حفظ ذخیره‌ی فردا"] },
+    "contextualPacts": [ { "id": "logistics-emergency-bakery", "interactionTypeId": "emergency-supply", "targetEntityDefinitionId": "bakery-sepideh", "title": "تأمین اضطراری برای نانوایی", "description": "برای سهم اضطراری آرد و زمان تحویل روشن با نانوایی سپیده نامه بفرستید.", "unlock": "تقسیم ریسک تأخیر میان باربری و نانوایی", "risk": "تعهد ظرفیت راه‌نو برای یک مقصد مشخص", "message": "راه‌نو می‌تواند یک گاری را برای سهم اضطراری کنار بگذارد، اگر مقصد و زمان تحویل روشن باشد." } ],
+    "finalDecisionPresentation": { "heading": "خلاصه‌ی تصمیم باربری راه‌نو", "summary": "رسید دوگانه، ضمانت لغوشده و مقصد پاک‌شده نشان می‌دهد مسیر با یک خطای ساده توضیح داده نمی‌شود.", "choices": [
+      { "choiceId": "logistics-disclose-fragment", "selectedAction": "تکه‌ی دفتر را آشکار کنید", "acceptedRisk": "فشار عمومی برای پاسخ‌گویی باربری بالا می‌رود.", "position": "موضع عمومی و پیگیرانه", "pactUsed": "بدون پیمان.", "summary": "ثبت‌های متناقض را برای پیگیری عمومی باز می‌کنید." },
+      { "choiceId": "logistics-share-fragment", "selectedAction": "سند را با یک حجره در میان بگذارید", "acceptedRisk": "شریک ممکن است مسیر دیگری را پیشنهاد کند.", "position": "موضع خصوصی و مشارکتی", "pactUsed": "نامه‌ی خصوصی برای هماهنگی مسیر.", "summary": "ریسک تصمیم مشترک را می‌پذیرید." },
+      { "choiceId": "logistics-hold-fragment", "selectedAction": "تکه‌ی دفتر را خصوصی نگه دارید", "acceptedRisk": "فرصت پیگیری مقصد کوتاه‌تر می‌شود.", "position": "موضع خصوصی و محتاط", "pactUsed": "بدون پیمان.", "summary": "اختیار مسیر را نزد راه‌نو نگه می‌دارید." },
+      { "choiceId": "logistics-deny-fragment", "selectedAction": "وجود سند را انکار کنید", "acceptedRisk": "افشای بعدی به اعتماد مسیر آسیب می‌زند.", "position": "موضع دفاعی", "pactUsed": "بدون پیمان.", "summary": "آرامش کوتاه‌مدت را به ریسک اعتماد ترجیح می‌دهید." }
+    ] },
+    "marketReactions": [
+      { "choiceId": "logistics-disclose-fragment", "outcomeLine": "بازار از دو رسید باخبر شد و مقصد گاری دوم را مطالبه کرد.", "locationIds": ["logistics-rah-no", "central-crossroads"], "visualTags": ["notice-wall"] },
+      { "choiceId": "logistics-share-fragment", "outcomeLine": "یک مسیر مذاکره برای هماهنگی بار با حجره‌های نزدیک باز شد.", "locationIds": ["logistics-rah-no"], "visualTags": ["messengers-active"] },
+      { "choiceId": "logistics-hold-fragment", "outcomeLine": "راه‌نو اختیار تصمیم را حفظ کرد، اما مقصد پاک‌شده هنوز بی‌پاسخ ماند.", "locationIds": ["logistics-rah-no"], "visualTags": ["cargo-stationary"] },
+      { "choiceId": "logistics-deny-fragment", "outcomeLine": "نسخه‌ی دوم رسید در بازار چرخید و اعتماد به دفتر اعزام کم شد.", "locationIds": ["central-crossroads"], "visualTags": ["rumour-spread"] }
+    ]
+  },
+  {
+    "sceneId": "hidden-stall-printing",
+    "checkpointId": "morning-without-bell",
+    "entityDefinitionId": "printing-roshan",
+    "title": "خبر پنهانِ چاپخانه",
+    "openingNarrative": ["چاپخانه روشن پیش از آغاز صف‌ها متنی درباره‌ی کمبود دریافت کرده است.", "منبع متن روشن نیست و بخشی از ثبت مسیر در کنار سفارش‌های حجره‌ها دیده می‌شود.", "چاپخانه باید میان انتشار سریع، بررسی سند و حفظ اعتبار خبر تصمیم بگیرد."],
+    "objective": "دو نشانه را بررسی کنید و پیش از انتشار، نسبت میان سند، منبع و اثر عمومی را بسنجید.",
+    "requiredInvestigationCount": 2,
+    "investigationLocations": [
+      { "id": "printing-roshan", "title": "چاپخانه روشن", "identity": "میز آماده‌سازی اطلاعیه‌های بازار", "narrative": "روی میز چاپخانه، متن کمبود پیش از رسیدن خبر عمومی آماده شده و جای منبع خالی است.", "evidence": [
+        { "id": "printing-prepared-notice", "title": "اطلاعیه‌ی زودآماده", "sourceLabel": "میز چاپخانه", "description": "متن کمبود پیش از ثبت صف‌های امروز آماده شده است.", "whyItMatters": "خبر از پیش برای اثرگذاری عمومی آماده بوده است.", "certainty": "confirmed", "unlocks": ["انتشار اصلاحیه"] },
+        { "id": "printing-missing-source", "title": "جای خالی منبع", "sourceLabel": "پیش‌نویس اطلاعیه", "description": "نام فرستنده از نسخه‌ی چاپی حذف شده است.", "whyItMatters": "انتشار بدون منبع، سرعت را بالا می‌برد اما اعتبار را کم می‌کند.", "certainty": "probable", "unlocks": ["درخواست تأیید سند"] }
+      ] },
+      { "id": "central-crossroads", "title": "چهارراه مرکزی", "identity": "گره پخش پیام و شایعه", "narrative": "پیام‌رسان‌ها متن‌های متفاوتی درباره‌ی کمبود را میان حجره‌ها می‌برند.", "evidence": [
+        { "id": "printing-conflicting-notices", "title": "دو متن متناقض", "sourceLabel": "گفته‌ی پیام‌رسان‌ها", "description": "یک متن کمبود را قطعی و متن دیگر آن را موقت معرفی می‌کند.", "whyItMatters": "لحن اطلاعیه می‌تواند شایعه را آرام یا تند کند.", "certainty": "confirmed", "unlocks": ["نوشتن اصلاحیه‌ی روشن"] },
+        { "id": "printing-public-question", "title": "پرسش درباره‌ی منبع", "sourceLabel": "گفت‌وگوی چهارراه", "description": "حجره‌داران پیش از خواندن متن، نام فرستنده را می‌پرسند.", "whyItMatters": "اعتماد عمومی به نحوه‌ی معرفی سند وابسته است.", "certainty": "probable", "unlocks": ["انتخاب موضع عمومی"] }
+      ] }
+    ],
+    "businessActivity": { "title": "میز سند و اصلاحیه", "summary": "اطلاعیه را با سند تطبیق دهید و میان سرعت انتشار و اعتبار منبع انتخاب کنید.", "implication": "انتشار همراه سند زمان بیشتری می‌گیرد، اما امکان اصلاح روایت بازار را بالا می‌برد.", "unlockedActions": ["بررسی منبع", "انتشار اصلاحیه", "حفظ اعتبار اطلاعیه"] },
+    "contextualPacts": [ { "id": "printing-evidence-bakery", "interactionTypeId": "evidence-exchange", "targetEntityDefinitionId": "bakery-sepideh", "title": "تبادل سند با نانوایی", "description": "برای تطبیق کمبود و قول‌های امروز، از نانوایی سپیده سند متقابل بخواهید.", "unlock": "امکان انتشار اصلاحیه‌ی قابل‌بررسی", "risk": "منبع خصوصی سند در اختیار یک حجره‌ی دیگر قرار می‌گیرد", "message": "پیش از چاپ، یک نسخه از ثبت سفارش را با سپیده تطبیق دهید تا منبع خبر روشن بماند." } ],
+    "finalDecisionPresentation": { "heading": "خلاصه‌ی تصمیم چاپخانه روشن", "summary": "اطلاعیه پیش از خبر عمومی آماده بوده و دو روایت متناقض در چهارراه پخش شده است.", "choices": [
+      { "choiceId": "printing-disclose-fragment", "selectedAction": "تکه‌ی دفتر را آشکار کنید", "acceptedRisk": "منبع سند در معرض پرسش عمومی قرار می‌گیرد.", "position": "موضع عمومی و مستند", "pactUsed": "بدون پیمان.", "summary": "اعتبار خبر را با آشکارکردن منبع دنبال می‌کنید." },
+      { "choiceId": "printing-share-fragment", "selectedAction": "سند را با یک حجره در میان بگذارید", "acceptedRisk": "انتشار خبر تا دریافت نظر شریک عقب می‌افتد.", "position": "موضع خصوصی و مشارکتی", "pactUsed": "تبادل سند پیش از اصلاحیه.", "summary": "اعتبار مشترک را بر سرعت ترجیح می‌دهید." },
+      { "choiceId": "printing-hold-fragment", "selectedAction": "تکه‌ی دفتر را خصوصی نگه دارید", "acceptedRisk": "بازار با متن‌های ناقص و متناقض روبه‌رو می‌ماند.", "position": "موضع خصوصی و محتاط", "pactUsed": "بدون پیمان.", "summary": "تا روشن‌شدن منبع، انتشار را محدود می‌کنید." },
+      { "choiceId": "printing-deny-fragment", "selectedAction": "وجود سند را انکار کنید", "acceptedRisk": "افشای بعدی به اعتبار چاپخانه آسیب می‌زند.", "position": "موضع دفاعی", "pactUsed": "بدون پیمان.", "summary": "خطر روایت‌های رقیب را به آینده منتقل می‌کنید." }
+    ] },
+    "marketReactions": [
+      { "choiceId": "printing-disclose-fragment", "outcomeLine": "چاپخانه روشن منبع سند را روی دیوار عمومی کنار متن گذاشت.", "locationIds": ["printing-roshan", "central-crossroads"], "visualTags": ["notice-wall"] },
+      { "choiceId": "printing-share-fragment", "outcomeLine": "پیام‌رسان‌ها منتظر نسخه‌ی تطبیق‌شده‌ی اطلاعیه ماندند.", "locationIds": ["central-crossroads"], "visualTags": ["messengers-active"] },
+      { "choiceId": "printing-hold-fragment", "outcomeLine": "اطلاعیه هنوز چاپ نشد و شایعه جای متن رسمی را گرفت.", "locationIds": ["central-crossroads"], "visualTags": ["rumour-spread"] },
+      { "choiceId": "printing-deny-fragment", "outcomeLine": "دو نسخه‌ی قبلی در بازار ماندند و اعتبار چاپخانه زیر سؤال رفت.", "locationIds": ["printing-roshan"], "visualTags": ["notice-wall"] }
+    ]
+  },
+  {
+    "sceneId": "hidden-stall-exchange",
+    "checkpointId": "morning-without-bell",
+    "entityDefinitionId": "exchange-mizan",
+    "title": "خبر پنهانِ دفتر اعتبار",
+    "openingNarrative": ["صرافی میزان پیش از بازشدن کامل بازار با درخواست‌های ضمانت تازه روبه‌رو شده است.", "در کنار دفتر اعتبار، ثبت یک سهم لغوشده و مقصدی پاک‌شده دیده می‌شود.", "میزان باید میان بازکردن ضمانت اضطراری، حفظ نقدینگی و ریسک تعهدهای فردا تصمیم بگیرد."],
+    "objective": "دو نشانه را بررسی کنید و حدود ضمانت و نقدینگی دفتر را برای امروز روشن کنید.",
+    "requiredInvestigationCount": 2,
+    "investigationLocations": [
+      { "id": "exchange-mizan", "title": "صرافی میزان", "identity": "دفتر ضمانت و اعتبار حجره‌ها", "narrative": "مهرهای تازه روی میز چیده شده‌اند، اما یکی از ثبت‌های ضمانت پیش از اجرا لغو شده است.", "evidence": [
+        { "id": "exchange-cancelled-guarantee", "title": "ضمانت لغوشده", "sourceLabel": "دفتر ضمانت", "description": "ضمانت یک سهم اضطراری پیش از رسیدن به مقصد لغو شده است.", "whyItMatters": "تعهدهای تازه بدون بررسی صادرکننده می‌توانند بدهی فردا را سنگین کنند.", "certainty": "confirmed", "unlocks": ["بازکردن اعتبار اضطراری"] },
+        { "id": "exchange-rising-requests", "title": "درخواست‌های رو به افزایش", "sourceLabel": "صف دفتر میزان", "description": "چند حجره برای یک سهم محدود، ضمانت جداگانه خواسته‌اند.", "whyItMatters": "دفتر باید میان تاب‌آوری بازار و سقف نقدینگی خود توازن بسازد.", "certainty": "probable", "unlocks": ["تعریف سقف ضمانت"] }
+      ] },
+      { "id": "clock-courtyard", "title": "حیاط ساعت", "identity": "محل شنیدن اثر عمومی ضمانت‌ها", "narrative": "حجره‌داران درباره‌ی ضمانت‌های تازه و اعتبار فردا آرام و کوتاه حرف می‌زنند.", "evidence": [
+        { "id": "exchange-public-promise", "title": "قول عمومی فردا", "sourceLabel": "گفت‌وگوی حیاط", "description": "چند حجره ادامه‌ی کار خود را به یک سهم فردا وابسته می‌دانند.", "whyItMatters": "ضمانت امروز اثر عمومی و زنجیره‌ای دارد.", "certainty": "confirmed", "unlocks": ["تقسیم ریسک میان حجره‌ها"] },
+        { "id": "exchange-unknown-backstop", "title": "پشتوانه‌ی نامعلوم", "sourceLabel": "پرسش صاحبان حجره", "description": "نام پشتوانه‌ی بخشی از ضمانت‌های پیشنهادی مشخص نیست.", "whyItMatters": "اعتماد به مهر بدون شناخت پشتوانه، ریسک پنهان می‌سازد.", "certainty": "uncertain", "unlocks": ["درخواست سند پشتوانه"] }
+      ] }
+    ],
+    "businessActivity": { "title": "تابلوی ضمانت و نقدینگی", "summary": "سقف ضمانت اضطراری را میان نیاز امروز و تعهدهای فردا تنظیم کنید.", "implication": "اعتبار اضطراری فشار امروز را پایین می‌آورد، اما هر مهر تازه تعهدی برای دفتر و بازار می‌سازد.", "unlockedActions": ["بازکردن اعتبار اضطراری", "تعریف سقف ضمانت", "درخواست سند پشتوانه"] },
+    "contextualPacts": [ { "id": "exchange-credit-bakery", "interactionTypeId": "credit-guarantee", "targetEntityDefinitionId": "bakery-sepideh", "title": "ضمانت کوتاه‌مدت نانوایی", "description": "برای عبور نانوایی سپیده از کمبود امروز، ضمانت با سقف و مدت روشن پیشنهاد دهید.", "unlock": "امکان ثبت سهم اضطراری با سقف مشخص", "risk": "تعهد دفتر میزان در برابر بازپرداخت نامطمئن", "message": "دفتر میزان می‌تواند سقف ضمانت امروز را باز کند، اگر مقدار و مدت تعهد روشن ثبت شود." } ],
+    "finalDecisionPresentation": { "heading": "خلاصه‌ی تصمیم صرافی میزان", "summary": "یک ضمانت لغو شده و درخواست‌های رو به افزایش، سقف واقعی تعهدهای دفتر را مبهم کرده‌اند.", "choices": [
+      { "choiceId": "exchange-disclose-fragment", "selectedAction": "تکه‌ی دفتر را آشکار کنید", "acceptedRisk": "فشار عمومی برای توضیح ضمانت‌ها بالا می‌رود.", "position": "موضع عمومی و شفاف", "pactUsed": "بدون پیمان.", "summary": "ثبت ضمانت را برای سنجش عمومی باز می‌کنید." },
+      { "choiceId": "exchange-share-fragment", "selectedAction": "سند را با یک حجره در میان بگذارید", "acceptedRisk": "تصمیم اعتبار به برداشت شریک وابسته می‌شود.", "position": "موضع خصوصی و مشارکتی", "pactUsed": "ضمانت خصوصی برای یک حجره.", "summary": "ریسک را در یک رابطه‌ی مشخص تقسیم می‌کنید." },
+      { "choiceId": "exchange-hold-fragment", "selectedAction": "تکه‌ی دفتر را خصوصی نگه دارید", "acceptedRisk": "سقف تعهدهای پنهان برای بازار روشن نمی‌شود.", "position": "موضع خصوصی و محتاط", "pactUsed": "بدون پیمان.", "summary": "نقدینگی دفتر را تا روشن‌شدن پشتوانه حفظ می‌کنید." },
+      { "choiceId": "exchange-deny-fragment", "selectedAction": "وجود سند را انکار کنید", "acceptedRisk": "افشای ضمانت لغوشده به اعتماد دفتر آسیب می‌زند.", "position": "موضع دفاعی", "pactUsed": "بدون پیمان.", "summary": "خطر افشای بعدی را در برابر آرامش امروز می‌پذیرید." }
+    ] },
+    "marketReactions": [
+      { "choiceId": "exchange-disclose-fragment", "outcomeLine": "صاحبان حجره درباره‌ی سقف ضمانت‌ها از صرافی میزان توضیح خواستند.", "locationIds": ["exchange-mizan", "clock-courtyard"], "visualTags": ["debt-visible"] },
+      { "choiceId": "exchange-share-fragment", "outcomeLine": "یک ضمانت محدود میان دفتر میزان و یک حجره وارد گفت‌وگو شد.", "locationIds": ["exchange-mizan"], "visualTags": ["seals-present"] },
+      { "choiceId": "exchange-hold-fragment", "outcomeLine": "دفتر میزان مهرهای تازه را نگه داشت و بازار همچنان درباره‌ی پشتوانه پرسید.", "locationIds": ["exchange-mizan"], "visualTags": ["creditors-waiting"] },
+      { "choiceId": "exchange-deny-fragment", "outcomeLine": "ردّ ضمانت لغوشده در صف دفتر پخش شد و اعتماد به مهرها کم شد.", "locationIds": ["clock-courtyard"], "visualTags": ["rumour-spread"] }
+    ]
+  }
+]
