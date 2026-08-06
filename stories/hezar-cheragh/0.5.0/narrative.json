@@ -1,6 +1,0 @@
-{
-  "fa-IR": {
-    "market-entry-public": { "title": "صبح بازار", "paragraphs": ["درهای بازار باز شده و هر حجره نشانه‌های خودش را دنبال می‌کند."], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} },
-    "market-entry-teams": { "title": "ردهای نزدیک", "paragraphs": ["نقشهٔ پیش رو فقط سرنخ‌های مجاز برای کسب‌وکار شما را نشان می‌دهد."], "choiceLabel": null, "shortOutcome": null, "presentationTags": {} }
-  }
-}

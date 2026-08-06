@@ -107,6 +107,8 @@ storylets.json
 
 ### Act 1 صحنه‌ها و محتوای مورد نیاز
 
+الگوی پایه را مثل `stories/hezar-cheragh/0.4.0/presentation/team-scenes.json` نگه دارید: چهار رکورد Team-specific، هر رکورد با `entityDefinitionId` و محتوای مستقل همان کسب‌وکار. برای نیاز V1، یک رکورد `AllTeams` برای context مشترک پیش از آن‌ها اضافه می‌شود و asset/hotspot/sheet/next-hook از قرارداد فعلی اضافه می‌گردد. متن `0.4.0` کپی نمی‌شود.
+
 فایل اصلی پیشنهادی: `presentation/team-scenes.json`.
 
 ```text
@@ -114,7 +116,7 @@ Act 1 shared context
   sceneId: <ACT-01-SHARED-SCENE-ID>
   checkpointId: <ACT-01-CHECKPOINT-ID>
   targetSelector: { type: AllTeams }
-  BackgroundAssetId: <PASTE SHARED IMAGE REFERENCE>
+  backgroundAssetId: <PASTE SHARED IMAGE REFERENCE>
   OpeningNarrative: [<PASTE BLOCK 1>, <PASTE BLOCK 2>, ...]
   Hotspots: [<PASTE 2-4 AUTHORED HOTSPOTS>]
   StorySheets: [<PASTE SHEETS, 3-5 NARRATIVE PARAGRAPHS EACH>]
@@ -140,9 +142,37 @@ Printing scene
 
 Exchange scene
   entityDefinitionId: <EXCHANGE ENTITY ID>
-  BackgroundAssetId: <PASTE EXCHANGE IMAGE REFERENCE>
+  backgroundAssetId: <PASTE EXCHANGE IMAGE REFERENCE>
   Hotspots / StorySheets / Evidence / Decision Pack / Reactions / NextScenePresentation: <PASTE>
 ```
+
+### بخش asset در هر نسخه
+
+این بخش باید همراه `team-scenes.json` تحویل شود؛ مسیر React نوشته نمی‌شود:
+
+```text
+stories/hezar-cheragh/<draft-version>/
+  assets/
+    team-scenes/
+      act-01/
+        shared-context.webp       # backgroundAssetId: assets/team-scenes/act-01/shared-context.webp
+        bakery.webp               # backgroundAssetId: assets/team-scenes/act-01/bakery.webp
+        logistics.webp            # backgroundAssetId: assets/team-scenes/act-01/logistics.webp
+        printing.webp             # backgroundAssetId: assets/team-scenes/act-01/printing.webp
+        exchange.webp             # backgroundAssetId: assets/team-scenes/act-01/exchange.webp
+      act-02/
+      act-03/
+      act-04/
+      act-05/
+```
+
+برای هر تصویر، این سه مورد باید با هم بررسی شوند:
+
+1. فایل واقعاً داخل همان draft package/version وجود داشته باشد.
+2. `backgroundAssetId` دقیقاً path نسبی بالا باشد و extension مجاز داشته باشد.
+3. مختصات `hotspots[].x/y` روی نسخه نهایی همان تصویر QA شود؛ جایگزینی تصویر بدون تغییر path، React را تغییر نمی‌دهد اما ممکن است مختصات را نیازمند بازبینی کند.
+
+تصویر ثابت Act همان `backgroundAssetId` صحنه resolved است. اگر در یک Act برای shared context و چهار business scene پنج تصویر لازم باشد، پنج scene record با پنج asset reference نوشته می‌شود؛ در هر لحظه فقط asset صحنه مجاز همان Team تحویل می‌شود.
 
 برای هر hotspot این فیلدها اجباری‌اند: `id`, `label`, `x`, `y`, `storySheetId`, `targetDescription`, `expectedVisibleObject`, `required`, `displayOrder`. برای هر sheet فعلاً `narrative` را در بازه ۳ تا ۵ پاراگراف نگه دارید و حداقل یک evidence و action قابل ثبت داشته باشید.
 

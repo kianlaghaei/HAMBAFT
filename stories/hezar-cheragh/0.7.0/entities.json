@@ -1,6 +1,0 @@
-[
-  { "id": "bakery-sepideh", "displayName": "نانوایی سپیده", "controllerRequirement": "Any", "publicTags": ["food", "essential"], "initialMetrics": { "Liquidity": 48, "Capacity": 55, "Inventory": 42, "Reliability": 58, "LocalTrust": 68 } },
-  { "id": "logistics-rah-no", "displayName": "باربری راه‌نو", "controllerRequirement": "Any", "publicTags": ["routes", "capacity"], "initialMetrics": { "Liquidity": 45, "Capacity": 48, "Inventory": 50, "Reliability": 56, "LocalTrust": 50 } },
-  { "id": "printing-roshan", "displayName": "چاپخانه روشن", "controllerRequirement": "Any", "publicTags": ["information", "printing"], "initialMetrics": { "Liquidity": 44, "Capacity": 52, "Inventory": 58, "Reliability": 52, "LocalTrust": 54 } },
-  { "id": "exchange-mizan", "displayName": "صرافی میزان", "controllerRequirement": "Any", "publicTags": ["credit", "guarantee"], "initialMetrics": { "Liquidity": 66, "Capacity": 46, "Inventory": 40, "Reliability": 54, "LocalTrust": 46 } }
-]
