@@ -56,7 +56,7 @@ public sealed class DeterministicStoryPackageHasher : IStoryPackageHasher
             AppendLength(hash,pathBytes.Length); hash.AppendData(pathBytes);
             var bytes=Path.GetExtension(file.Path).Equals(".json",StringComparison.OrdinalIgnoreCase)
                 ? CanonicalizeJson(await File.ReadAllTextAsync(file.Path,ct))
-                : Encoding.UTF8.GetBytes((await File.ReadAllTextAsync(file.Path,ct)).Replace("\r\n","\n").Replace('\r','\n'));
+                : await File.ReadAllBytesAsync(file.Path,ct);
             AppendLength(hash,bytes.Length); hash.AppendData(bytes);
         }
         return "sha256:"+Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
