@@ -12,6 +12,13 @@ public interface IStoryPackageLoader
     Task<StoryPackage> LoadAsync(string packageId,string version,CancellationToken cancellationToken);
 }
 
+public sealed record StoryPackageAsset(byte[] Content,string ContentType);
+
+public interface IStoryPackageAssetReader
+{
+    Task<StoryPackageAsset> ReadAsync(string packageId,string version,string assetId,CancellationToken cancellationToken);
+}
+
 public interface IStoryPackageValidator
 {
     StoryPackageValidationResult Validate(StoryPackage package);

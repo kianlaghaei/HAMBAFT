@@ -79,9 +79,10 @@ public sealed partial class SessionRuntime
         var entity=state.Entities.SingleOrDefault(x=>x.Id==team.ControlledEntityId)??throw new DomainException("Team has no controlled Entity.");
         var package=await LoadLockedPackage(state,ct);
         var checkpoint=state.CurrentCheckpointId??throw new DomainException("Narrative is not initialized.");
-        var scene=package.PresentationDefinition.TeamSceneDefinitions.SingleOrDefault(x=>x.CheckpointId==checkpoint&&x.EntityDefinitionId==entity.DefinitionId)
+        var scene=TeamSceneResolver.Resolve(package,checkpoint,team,entity,state.SubmittedChoices,state.Memories)
             ??throw new DomainException("Team scene presentation is unavailable.");
-        var location=scene.InvestigationLocations.SingleOrDefault(x=>x.Id==c.LocationId)
+        var authoredSheets=scene.StorySheetDefinitions.Count>0?scene.StorySheetDefinitions.Select(x=>new InvestigationLocationPresentationDefinition(x.Id,x.Title,x.Subtitle,string.Join("\n",x.Narrative),x.Evidence)).ToList():scene.InvestigationLocations;
+        var location=authoredSheets.SingleOrDefault(x=>x.Id==c.LocationId)
             ??throw new DomainException("Investigation location is not available for this Team scene.");
         var evidenceIds=c.EvidenceIds.Distinct(StringComparer.Ordinal).ToList();
         var validEvidenceIds=location.Evidence.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);

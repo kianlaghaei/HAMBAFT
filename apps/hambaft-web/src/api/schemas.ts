@@ -187,6 +187,17 @@ const teamScenePresentationSchema = z.object({
   marketReactions: z.array(z.object({ choiceId: z.string(), outcomeLine: z.string(), locationIds: z.array(z.string()), visualTags: z.array(z.string()) })),
   investigatedLocationIds: z.array(z.string()),
   revealedEvidenceIds: z.array(z.string()),
+  subtitle: z.string(),
+  backgroundAssetId: z.string().nullish(),
+  backgroundAssetUrl: z.string().nullish(),
+  hotspots: z.array(z.object({ id: z.string(), label: z.string(), x: z.number(), y: z.number(), storySheetId: z.string(), shared: z.boolean(), investigated: z.boolean() })),
+  storySheets: z.array(z.object({
+    id: z.string(), title: z.string(), subtitle: z.string(), narrative: z.array(z.string()),
+    evidence: z.array(z.object({ id: z.string(), title: z.string(), sourceLabel: z.string(), description: z.string(), whyItMatters: z.string(), certainty: z.enum(['confirmed', 'probable', 'uncertain']), unlocks: z.array(z.string()) })),
+    actions: z.array(z.object({ id: z.string(), label: z.string(), kind: z.string(), targetId: z.string().nullish(), available: z.boolean() })),
+  })),
+  authoredActions: z.array(z.object({ id: z.string(), label: z.string(), kind: z.string(), targetId: z.string().nullish(), available: z.boolean() })),
+  nextScenePresentation: z.object({ title: z.string(), subtitle: z.string(), narrative: z.array(z.string()), actions: z.array(z.object({ id: z.string(), label: z.string(), kind: z.string(), targetId: z.string().nullish(), available: z.boolean() })) }).nullish(),
 })
 
 export const teamExperienceSchema = z.object({

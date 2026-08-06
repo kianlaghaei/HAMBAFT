@@ -51,6 +51,12 @@ export async function request<T>(path: string, options: RequestOptions = {}): Pr
   return parsed.data as T
 }
 
+async function requestAsset(path: string, token: string): Promise<Blob> {
+  const response = await fetch(`${apiBase}${path}`, { headers: { Authorization: `Bearer ${token}`, Accept: 'image/*' } })
+  if (!response.ok) throw new ApiError(response.status, 'Scene asset unavailable', 'تصویر این صحنه در دسترس نیست.')
+  return response.blob()
+}
+
 export const api = {
   health: () => fetch(`${apiBase}/health`),
   packages: (): Promise<PackageCatalog> => request('/api/story-packages', { schema: packageCatalogSchema }),
@@ -64,6 +70,7 @@ export const api = {
   pair: (pairingCode: string): Promise<Token> => request('/api/pair', { method: 'POST', body: { pairingCode }, schema: tokenSchema }),
   devToken: (role: 'admin' | 'public-display', sessionId: string): Promise<Token> => request(`/internal/auth/${role}`, { method: 'POST', body: { sessionId }, schema: tokenSchema }),
   teamExperience: (token: string): Promise<TeamExperience> => request('/api/story/experience', { token, schema: teamExperienceSchema }),
+  teamSceneAsset: (token: string): Promise<Blob> => requestAsset('/api/story/scene-asset', token),
   publicWorld: (id: string): Promise<PublicWorld> => request(`/api/public/sessions/${id}`, { schema: publicWorldSchema }),
   admin: (id: string, token: string): Promise<AdminSession> => request(`/api/admin/sessions/${id}`, { token, schema: adminSchema }),
   initialize: (id: string, version: number, token: string): Promise<CommandResponse> => request(`/api/sessions/${id}/narrative/initialize`, { method: 'POST', token, body: { expectedStateVersion: version, commandId: crypto.randomUUID() }, schema: commandSchema }),

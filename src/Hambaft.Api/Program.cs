@@ -128,6 +128,22 @@ app.MapGet("/api/story/experience",async(SessionRuntime runtime,HttpContext http
     return view is null?Results.NotFound():view.SessionId!=sessionId?Results.Forbid():Results.Ok(view);
 }).RequireAuthorization("Team");
 
+app.MapGet("/api/story/scene-asset",async(SessionRuntime runtime,IStoryPackageAssetReader assets,HttpContext http,CancellationToken ct)=>
+{
+    var sessionId=ClaimGuid(http,"session_id");var teamId=ClaimGuid(http,"team_id");var view=await runtime.GetTeamAsync(teamId,ct);
+    if(view is null)return Results.NotFound();
+    if(view.SessionId!=sessionId)return Results.Forbid();
+    var assetId=view.TeamScenePresentation?.BackgroundAssetId;
+    var metadata=view.SessionMetadata;
+    if(string.IsNullOrWhiteSpace(assetId)||metadata is null)return Results.NotFound();
+    try
+    {
+        var asset=await assets.ReadAsync(metadata.StoryPackageId,metadata.StoryVersion,assetId,ct);
+        return Results.File(asset.Content,asset.ContentType,enableRangeProcessing:false);
+    }
+    catch(FileNotFoundException){return Results.NotFound();}
+}).RequireAuthorization("Team");
+
 app.MapPost("/api/sessions/{sessionId:guid}/narrative/initialize",async(Guid sessionId,InitializeNarrativeRequest request,SessionRuntime runtime,IHubContext<SessionHub,ISessionHubClient> hub,HttpContext http,CancellationToken ct)=>
 {
     if(ClaimGuid(http,"session_id")!=sessionId)return Results.Forbid();

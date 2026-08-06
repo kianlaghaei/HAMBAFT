@@ -1,0 +1,4 @@
+[
+  { "id": "market-entry-public", "checkpointId": "market-entry", "scope": "WorldPublic", "targetSelector": { "type": "World" }, "narrativeRef": "market-entry-public", "conditions": [], "choices": [], "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false },
+  { "id": "market-entry-teams", "checkpointId": "market-entry", "scope": "TeamPrivate", "targetSelector": { "type": "AllTeams" }, "narrativeRef": "market-entry-teams", "conditions": [], "choices": [], "priority": 100, "weight": 1, "repeatPolicy": "OncePerSession", "requiredResponse": false }
+]

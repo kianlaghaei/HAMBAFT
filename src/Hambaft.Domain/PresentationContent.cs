@@ -142,6 +142,42 @@ public sealed record TeamMarketReactionPresentationDefinition(
     IReadOnlyList<string> LocationIds,
     IReadOnlyList<string> VisualTags);
 
+public sealed record TeamSceneEligibilityDefinition(
+    IReadOnlyList<string> RequiredChoiceIds,
+    IReadOnlyList<string> RequiredMemoryKeys,
+    IReadOnlyList<string> ForbiddenChoiceIds,
+    IReadOnlyList<string> ForbiddenMemoryKeys);
+
+public sealed record TeamSceneAuthoredActionDefinition(
+    string Id,
+    string Label,
+    string Kind,
+    string? TargetId = null,
+    int? MinimumInvestigations = null,
+    int? MaximumInvestigations = null);
+
+public sealed record TeamSceneHotspotDefinition(
+    string Id,
+    string Label,
+    decimal X,
+    decimal Y,
+    string StorySheetId,
+    bool Shared = false);
+
+public sealed record TeamSceneStorySheetDefinition(
+    string Id,
+    string Title,
+    string Subtitle,
+    IReadOnlyList<string> Narrative,
+    IReadOnlyList<InvestigationEvidencePresentationDefinition> Evidence,
+    IReadOnlyList<TeamSceneAuthoredActionDefinition> Actions);
+
+public sealed record TeamSceneNextPresentationDefinition(
+    string Title,
+    string Subtitle,
+    IReadOnlyList<string> Narrative,
+    IReadOnlyList<TeamSceneAuthoredActionDefinition> Actions);
+
 public sealed record TeamScenePresentationDefinition(
     string SceneId,
     string CheckpointId,
@@ -154,7 +190,22 @@ public sealed record TeamScenePresentationDefinition(
     BusinessActivityPresentationDefinition? BusinessActivity,
     IReadOnlyList<ContextualPactPresentationDefinition> ContextualPacts,
     FinalDecisionPresentationDefinition? FinalDecisionPresentation,
-    IReadOnlyList<TeamMarketReactionPresentationDefinition> MarketReactions);
+    IReadOnlyList<TeamMarketReactionPresentationDefinition> MarketReactions,
+    TargetSelectorDefinition? TargetSelector = null,
+    string? BackgroundAssetId = null,
+    string? Subtitle = null,
+    IReadOnlyList<TeamSceneHotspotDefinition>? Hotspots = null,
+    IReadOnlyList<TeamSceneStorySheetDefinition>? StorySheets = null,
+    IReadOnlyList<TeamSceneAuthoredActionDefinition>? AuthoredActions = null,
+    TeamSceneNextPresentationDefinition? NextScenePresentation = null,
+    TeamSceneEligibilityDefinition? Eligibility = null,
+    int Priority = 0)
+{
+    public IReadOnlyList<TeamSceneHotspotDefinition> HotspotDefinitions => Hotspots ?? [];
+    public IReadOnlyList<TeamSceneStorySheetDefinition> StorySheetDefinitions => StorySheets ?? [];
+    public IReadOnlyList<TeamSceneAuthoredActionDefinition> ActionDefinitions => AuthoredActions ?? [];
+    public TeamSceneEligibilityDefinition EligibilityDefinition => Eligibility ?? new([],[],[],[]);
+}
 
 public sealed record PresentationCatalogDefinition(
     IReadOnlyList<MetricPresentationDefinition> MetricBands,

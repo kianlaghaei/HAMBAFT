@@ -15,6 +15,30 @@ public sealed class StoryPackageOptions
     public string Root { get; set; }="stories";
 }
 
+public sealed class FileSystemStoryPackageAssetReader(StoryPackageOptions options) : IStoryPackageAssetReader
+{
+    private readonly string root=Path.GetFullPath(options.Root);
+
+    public async Task<StoryPackageAsset> ReadAsync(string packageId,string version,string assetId,CancellationToken ct)
+    {
+        var safeId=DomainKeys.Normalize(packageId,nameof(packageId));
+        var safeVersion=DomainKeys.Normalize(version,nameof(version));
+        if(string.IsNullOrWhiteSpace(assetId)||Path.IsPathRooted(assetId))throw new FileNotFoundException("Story scene asset was not found.");
+        var packageDirectory=Path.GetFullPath(Path.Combine(root,safeId,safeVersion));
+        var assetPath=Path.GetFullPath(Path.Combine(packageDirectory,assetId.Replace('/',Path.DirectorySeparatorChar)));
+        if(!assetPath.StartsWith(packageDirectory+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||!File.Exists(assetPath))throw new FileNotFoundException("Story scene asset was not found.");
+        var contentType=Path.GetExtension(assetPath).ToLowerInvariant() switch
+        {
+            ".svg"=>"image/svg+xml",
+            ".webp"=>"image/webp",
+            ".png"=>"image/png",
+            ".jpg" or ".jpeg"=>"image/jpeg",
+            _=>throw new FileNotFoundException("Story scene asset was not found.")
+        };
+        return new(await File.ReadAllBytesAsync(assetPath,ct),contentType);
+    }
+}
+
 public sealed class DeterministicStoryPackageHasher : IStoryPackageHasher
 {
     public async Task<string> ComputeAsync(string packageDirectory,CancellationToken ct)
@@ -123,6 +147,11 @@ public sealed class FileSystemStoryPackageLoader : IStoryPackageLoader
                 await ReadOptional(directory,Path.Combine("presentation","team-scenes.json"),new List<TeamScenePresentationDefinition>(),ct));
             var package=new StoryPackage(manifest,metrics,entities,storylets,effects,narrative,contentHash,interactions,behaviors,consequences,difficulties,ink,entityEndings,worldEndings,Presentation:presentation);
             var errors=validator.Validate(package).Errors.ToList();
+            foreach(var scene in package.PresentationDefinition.TeamSceneDefinitions.Where(x=>x.BackgroundAssetId is not null))
+            {
+                var assetPath=Path.GetFullPath(Path.Combine(directory,scene.BackgroundAssetId!.Replace('/',Path.DirectorySeparatorChar)));
+                if(!assetPath.StartsWith(directory+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)||!File.Exists(assetPath))errors.Add(new("presentation/team-scenes.json",scene.SceneId,"missing-background-asset","Team scene background asset is missing from the package."));
+            }
             if(inkValidator is not null&&package.InkDefinition.References.Count>0)
                 errors.AddRange((await inkValidator.ValidateAsync(package,ct)).Errors.Select(x=>new StoryPackageValidationError("ink.json",x.NarrativeReference,x.Code,x.Message)));
             if(!string.Equals(manifest.Id,safeId,StringComparison.Ordinal)||!string.Equals(manifest.Version,safeVersion,StringComparison.Ordinal)) errors.Add(new("manifest.json",manifest.Id,"manifest-path-mismatch","Manifest ID and version must match their package directory names."));
@@ -260,14 +289,40 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
         {
             var file="presentation/team-scenes.json";
             if(!p.Storylets.Any(x=>x.CheckpointId==scene.CheckpointId))error(file,scene.SceneId,"unknown-checkpoint","Team scene references an unknown checkpoint.");
-            if(!entityIds.Contains(scene.EntityDefinitionId))error(file,scene.SceneId,"unknown-entity","Team scene references an unknown Entity definition.");
-            if(scene.RequiredInvestigationCount<0||scene.RequiredInvestigationCount>scene.InvestigationLocations.Count)error(file,scene.SceneId,"invalid-investigation-count","Required investigation count must fit the authored investigation locations.");
+            if(scene.TargetSelector is null)
+            {
+                if(!entityIds.Contains(scene.EntityDefinitionId))error(file,scene.SceneId,"unknown-entity","Team scene references an unknown Entity definition.");
+            }
+            else if(!ValidTarget(scene.TargetSelector,p.Entities.GroupBy(x=>x.Id,StringComparer.Ordinal).ToDictionary(x=>x.Key,x=>x.First(),StringComparer.Ordinal))||scene.TargetSelector.Type==TargetSelectorType.World)
+                error(file,scene.SceneId,"invalid-target-selector","Team scene target selector is invalid or references a missing Entity definition.");
+            var authoredLocationCount=scene.StorySheetDefinitions.Count>0?scene.StorySheetDefinitions.Count:scene.InvestigationLocations.Count;
+            if(scene.RequiredInvestigationCount<0||scene.RequiredInvestigationCount>authoredLocationCount)error(file,scene.SceneId,"invalid-investigation-count","Required investigation count must fit the authored story sheets.");
+            if(scene.BackgroundAssetId is { } assetId&&(Path.IsPathRooted(assetId)||assetId.Split('/','\\').Any(part=>part=="..")||!new[]{".svg",".webp",".png",".jpg",".jpeg"}.Contains(Path.GetExtension(assetId),StringComparer.OrdinalIgnoreCase)))
+                error(file,scene.SceneId,"invalid-background-asset","Background asset must be a safe package-relative image path.");
             foreach(var location in scene.InvestigationLocations)
             {
                 if(!locationIds.Contains(location.Id))error(file,scene.SceneId,"unknown-location",$"Team scene references unknown location '{location.Id}'.");
                 foreach(var evidence in location.Evidence)
                     if(string.IsNullOrWhiteSpace(evidence.Id)||string.IsNullOrWhiteSpace(evidence.Title)||string.IsNullOrWhiteSpace(evidence.Description))error(file,evidence.Id,"invalid-evidence","Investigation evidence requires an id, title and description.");
             }
+            var sheetIds=scene.StorySheetDefinitions.Select(x=>x.Id).ToHashSet(StringComparer.Ordinal);
+            if(sheetIds.Count!=scene.StorySheetDefinitions.Count)error(file,scene.SceneId,"duplicate-story-sheet-id","Story sheet IDs must be unique inside a Team scene.");
+            foreach(var sheet in scene.StorySheetDefinitions)
+            {
+                if(string.IsNullOrWhiteSpace(sheet.Id)||string.IsNullOrWhiteSpace(sheet.Title)||sheet.Narrative.Count is <3 or >5)error(file,sheet.Id,"invalid-story-sheet","Story sheets require an id, title and three to five narrative paragraphs.");
+                foreach(var evidence in sheet.Evidence)
+                    if(string.IsNullOrWhiteSpace(evidence.Id)||string.IsNullOrWhiteSpace(evidence.Title)||string.IsNullOrWhiteSpace(evidence.Description)||string.IsNullOrWhiteSpace(evidence.WhyItMatters))error(file,evidence.Id,"invalid-evidence","Evidence requires authored identity, description and why-it-matters text.");
+                ValidateActions(sheet.Actions,sheetIds,choiceIds,file,sheet.Id,error);
+            }
+            var hotspotIds=scene.HotspotDefinitions.Select(x=>x.Id).ToList();
+            if(hotspotIds.Distinct(StringComparer.Ordinal).Count()!=hotspotIds.Count)error(file,scene.SceneId,"duplicate-hotspot-id","Hotspot IDs must be unique inside a Team scene.");
+            foreach(var hotspot in scene.HotspotDefinitions)
+            {
+                if(hotspot.X<0||hotspot.X>100||hotspot.Y<0||hotspot.Y>100)error(file,hotspot.Id,"invalid-hotspot-position","Hotspot coordinates must be percentages from 0 through 100.");
+                if(!sheetIds.Contains(hotspot.StorySheetId))error(file,hotspot.Id,"unknown-story-sheet","Hotspot references an unknown story sheet in this scene.");
+            }
+            ValidateActions(scene.ActionDefinitions,sheetIds,choiceIds,file,scene.SceneId,error);
+            if(scene.NextScenePresentation is { } next)ValidateActions(next.Actions,sheetIds,choiceIds,file,scene.SceneId,error);
             foreach(var pact in scene.ContextualPacts)
             {
                 if(!p.InteractionDefinitions.Any(x=>x.Id==pact.InteractionTypeId))error(file,pact.Id,"unknown-interaction","Contextual Pact references an unknown Interaction type.");
@@ -280,6 +335,18 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
                 if(!choiceIds.Contains(reaction.ChoiceId))error(file,reaction.ChoiceId,"unknown-choice","Team market reaction references an unknown authored Choice.");
                 foreach(var location in reaction.LocationIds)if(!locationIds.Contains(location))error(file,reaction.ChoiceId,"unknown-location",$"Team market reaction references unknown location '{location}'.");
             }
+        }
+    }
+
+    private static void ValidateActions(IReadOnlyList<TeamSceneAuthoredActionDefinition> actions,IReadOnlySet<string> sheetIds,IReadOnlySet<string> choiceIds,string file,string owner,Action<string,string?,string,string> error)
+    {
+        var allowed=new HashSet<string>(["ShowMap","OpenSheet","RecordInvestigation","OpenPacts","SubmitChoice","OpenNextScene","Continue"],StringComparer.Ordinal);
+        foreach(var action in actions)
+        {
+            if(string.IsNullOrWhiteSpace(action.Id)||string.IsNullOrWhiteSpace(action.Label)||!allowed.Contains(action.Kind))error(file,owner,"invalid-scene-action","Authored scene action has an invalid id, label or kind.");
+            if(action.MinimumInvestigations is <0||action.MaximumInvestigations is <0||(action.MinimumInvestigations is { } minimum&&action.MaximumInvestigations is { } maximum&&minimum>maximum))error(file,action.Id,"invalid-action-range","Investigation availability range is invalid.");
+            if((action.Kind is "OpenSheet" or "RecordInvestigation")&&(action.TargetId is null||!sheetIds.Contains(action.TargetId)))error(file,action.Id,"unknown-story-sheet","Action references an unknown story sheet.");
+            if(action.Kind=="SubmitChoice"&&(action.TargetId is null||!choiceIds.Contains(action.TargetId)))error(file,action.Id,"unknown-choice","Action references an unknown authored choice.");
         }
     }
 

@@ -20,6 +20,9 @@
 /* In-map Team story presentation */
 .hc-play-main { grid-template-areas: "business stage"; grid-template-columns: minmax(190px, 14fr) minmax(0, 86fr); }
 .hc-play-stage-surface { isolation: isolate; }
+.team-scene-renderer { position: relative; width: 100%; height: 100%; overflow: hidden; background: #202820; }
+.team-scene-background { display: block; width: 100%; height: 100%; object-fit: cover; }
+.team-scene-background--unavailable { background: linear-gradient(145deg, #293229, #1e261f); }
 .team-market-marker.is-investigated:not(.is-selected) { border-color: rgba(151, 190, 134, .85); background: rgba(43, 66, 43, .58); box-shadow: 0 0 0 2px rgba(132, 174, 116, .2); }
 .team-market-marker.is-investigated .team-market-marker__seal { border-color: #e0f0c8; background: #779a68; animation: none; }
 .hc-scene-sheet-layer { position: absolute; z-index: 8; inset: 0; display: grid; place-items: center; padding: clamp(.8rem, 2.5vw, 2rem); direction: rtl; animation: hc-sheet-layer-enter .18s ease both; }

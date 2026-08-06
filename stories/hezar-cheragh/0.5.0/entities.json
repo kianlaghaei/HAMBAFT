@@ -1,0 +1,5 @@
+[
+  { "id": "bakery-sepideh", "displayName": "نانوایی سپیده", "controllerRequirement": "Any", "publicTags": ["food"], "initialMetrics": {} },
+  { "id": "logistics-rah-no", "displayName": "باربری راه‌نو", "controllerRequirement": "Any", "publicTags": ["routes"], "initialMetrics": {} },
+  { "id": "printing-roshan", "displayName": "چاپخانه روشن", "controllerRequirement": "Any", "publicTags": ["printing"], "initialMetrics": {} }
+]

@@ -33,6 +33,7 @@ public static class DependencyInjection
         services.AddSingleton<IStoryPackageHasher,DeterministicStoryPackageHasher>();
         services.AddSingleton<IStoryPackageValidator,StoryPackageValidator>();
         services.AddSingleton<IStoryPackageLoader,FileSystemStoryPackageLoader>();
+        services.AddSingleton<IStoryPackageAssetReader,FileSystemStoryPackageAssetReader>();
         services.AddSingleton<IStoryPackageCatalog,FileSystemStoryPackageCatalog>();
         services.AddSingleton<IConditionEngine,ConditionEngine>();
         services.AddSingleton<IStoryletSelector,DeterministicStoryletSelector>();

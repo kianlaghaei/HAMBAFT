@@ -1,6 +1,7 @@
 import { TeamMarketMarkers, type TeamMarketMarkerDefinition } from './TeamMarketMarkers'
 
 type EmptyMarketStageProps = {
+  backgroundSrc?: string
   markers: readonly TeamMarketMarkerDefinition[]
   ownedLocationId?: string
   activeLocationId?: string
@@ -11,9 +12,9 @@ type EmptyMarketStageProps = {
   onSelectLocation?: (locationId?: string) => void
 }
 
-export function EmptyMarketStage({ markers, ownedLocationId, activeLocationId, selectedLocationId, urgentLocationIds, disabledLocationIds, investigatedLocationIds, onSelectLocation }: EmptyMarketStageProps) {
+export function EmptyMarketStage({ backgroundSrc, markers, ownedLocationId, activeLocationId, selectedLocationId, urgentLocationIds, disabledLocationIds, investigatedLocationIds, onSelectLocation }: EmptyMarketStageProps) {
   return <div className="empty-market-stage" data-testid="empty-market-stage">
-    <img src="/assets/hezar-cheragh/team-market-map.webp" alt="" aria-hidden="true" data-testid="team-market-map-image" />
+    {backgroundSrc && <img src={backgroundSrc} alt="" aria-hidden="true" data-testid="team-market-map-image" />}
     <TeamMarketMarkers markers={markers} ownedLocationId={ownedLocationId} activeLocationId={activeLocationId} selectedLocationId={selectedLocationId} urgentLocationIds={urgentLocationIds} disabledLocationIds={disabledLocationIds} investigatedLocationIds={investigatedLocationIds} onSelectLocation={onSelectLocation} />
   </div>
 }
