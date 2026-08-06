@@ -1,6 +1,0 @@
-[
-  { "key": "world.pressure", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 50 },
-  { "key": "entity.capacity", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
-  { "key": "entity.reliability", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
-  { "key": "relationship.trust", "scope": "Relationship", "minimum": -100, "maximum": 100, "defaultValue": 0 }
-]

@@ -1,6 +1,0 @@
-[
-  { "id": "calm", "displayNameRef": "difficulty-calm", "behaviorRuleWeightModifiers": [{ "ruleId": "cooperative-credit-rule", "multiplier": 1.4 }], "proposalStrictnessValues": {}, "resourceThresholdModifiers": {} },
-  { "id": "standard", "displayNameRef": "difficulty-standard", "behaviorRuleWeightModifiers": [], "proposalStrictnessValues": {}, "resourceThresholdModifiers": {} },
-  { "id": "hard", "displayNameRef": "difficulty-hard", "behaviorRuleWeightModifiers": [{ "ruleId": "opportunistic-credit-rule", "multiplier": 3.0 }, { "ruleId": "cooperative-credit-rule", "multiplier": 0.5 }], "proposalStrictnessValues": { "capacityUnits.minimumMultiplier": 1.1 }, "resourceThresholdModifiers": {} },
-  { "id": "relentless", "displayNameRef": "difficulty-relentless", "behaviorRuleWeightModifiers": [{ "ruleId": "opportunistic-credit-rule", "multiplier": 5.0 }, { "ruleId": "cooperative-credit-rule", "multiplier": 0.25 }], "proposalStrictnessValues": { "capacityUnits.minimumMultiplier": 1.2 }, "resourceThresholdModifiers": {}, "fallbackActionPreference": "tighten-credit" }
-]
