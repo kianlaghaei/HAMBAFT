@@ -1,0 +1,13 @@
+{
+  "id": "hezar-cheragh",
+  "version": "0.6.0",
+  "title": "هزار چراغ — act one",
+  "description": "اولین پردهٔ کامل بحران بازار برای چهار کسب‌وکار بازی.",
+  "minimumTeams": 2,
+  "maximumTeams": 4,
+  "entryCheckpointId": "act-one-intro",
+  "defaultLocale": "fa-IR",
+  "supportedLocales": ["fa-IR"],
+  "estimatedDurationMinutes": 35,
+  "requiredRuntimeVersion": "4.0"
+}
