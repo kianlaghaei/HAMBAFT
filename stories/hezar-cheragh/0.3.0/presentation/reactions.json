@@ -1,6 +1,0 @@
-[
-  { "checkpointId": "cargo-did-not-arrive", "outcomeLine": "گاری‌های مسیر اصلی هنوز برنگشته‌اند؛ صف‌ها با احتیاط بیشتری حرکت می‌کنند.", "locationIds": ["north-gate", "logistics-rah-no", "bakery-sepideh"], "visualTags": ["cargo-stationary", "queue-visible"] },
-  { "checkpointId": "avan-offer", "outcomeLine": "نامه‌های مُهرشده به حجره‌ها رسیده‌اند و تابلوی موقت آوان در حاشیه بازار دیده می‌شود.", "locationIds": ["avan-temporary-office", "central-crossroads"], "visualTags": ["avan-present", "messengers-active"] },
-  { "checkpointId": "market-gathering", "outcomeLine": "رفت‌وآمد بازار به سوی حیاط ساعت برگشته و چراغ حجره‌ها یکی‌یکی روشن شده‌اند.", "locationIds": ["clock-courtyard", "haj-sadegh-office"], "visualTags": ["courtyard-gathering", "lanterns-on"] },
-  { "checkpointId": "slice-complete", "outcomeLine": "بازار آرام‌تر شده، اما نشانه‌های انتخاب امروز روی مسیرها و حجره‌ها باقی مانده است.", "locationIds": ["clock-courtyard", "central-crossroads"], "visualTags": ["night", "lantern-led"] }
-]

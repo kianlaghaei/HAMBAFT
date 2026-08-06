@@ -1,6 +1,0 @@
-[
-  { "id": "stable-price-review", "trigger": { "type": "AfterCheckpointCount", "checkpointCount": 1 }, "conditions": [], "effectIds": ["stable-review-inventory", "stable-review-reliability"], "narrativeRef": "consequence-stable-price", "visibility": "Public", "repeatPolicy": "OncePerSession" },
-  { "id": "hidden-route-review", "trigger": { "type": "AfterCheckpointCount", "checkpointCount": 1 }, "conditions": [], "effectIds": ["route-review-reliability", "route-review-autonomy"], "narrativeRef": "consequence-hidden-route", "visibility": "PrivateToSourceTeam", "repeatPolicy": "OncePerSession" },
-  { "id": "unattributed-notice-review", "trigger": { "type": "AfterCheckpointCount", "checkpointCount": 1 }, "conditions": [], "effectIds": ["notice-review-trust", "notice-review-transparency"], "narrativeRef": "consequence-unattributed", "visibility": "Public", "repeatPolicy": "OncePerSession" },
-  { "id": "emergency-credit-review", "trigger": { "type": "AfterCheckpointCount", "checkpointCount": 1 }, "conditions": [], "effectIds": ["credit-review-debt", "credit-review-resilience"], "narrativeRef": "consequence-credit", "visibility": "Public", "repeatPolicy": "OncePerSession" }
-]

@@ -1,6 +1,0 @@
-[
-  { "id": "standard", "displayNameRef": "behavior-profile-name", "behaviorRuleWeightModifiers": [], "proposalStrictnessValues": {}, "resourceThresholdModifiers": {}, "fallbackActionPreference": "defensive-action" },
-  { "id": "hard", "displayNameRef": "behavior-profile-name", "behaviorRuleWeightModifiers": [
-    { "ruleId": "community-rule", "multiplier": 0.6 }, { "ruleId": "opportunistic-rule", "multiplier": 1.8 }, { "ruleId": "debt-rule", "multiplier": 1.5 }
-  ], "proposalStrictnessValues": {}, "resourceThresholdModifiers": {}, "fallbackActionPreference": "opportunistic-action" }
-]
