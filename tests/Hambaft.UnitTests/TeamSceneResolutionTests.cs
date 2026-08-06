@@ -95,6 +95,38 @@ public sealed class TeamSceneResolutionTests
         bakeryJson.Should().Contain("act-one-bakery").And.NotContain("act-one-logistics").And.NotContain("act-one-printing").And.NotContain("act-one-exchange").And.NotContain("exchange-ledger");
     }
 
+    [Fact]
+    public async Task Package_0_7_validates_assets_metadata_and_business_scene_content()
+    {
+        var services=StoryRuntimeTestSupport.PackageServices();
+        var package=await services.Loader.LoadAsync("hezar-cheragh","0.7.0",default);
+        services.Validator.Validate(package).IsValid.Should().BeTrue();
+        package.Manifest.Version.Should().Be("0.7.0");
+        package.PresentationDefinition.TeamSceneDefinitions.Should().HaveCount(6);
+        package.PresentationDefinition.TeamSceneDefinitions.Select(x=>x.BackgroundAssetId).Distinct().Should().HaveCount(5).And.OnlyContain(asset=>File.Exists(Path.Combine(StoryRuntimeTestSupport.StoriesRoot,"hezar-cheragh","0.7.0",asset!.Replace('/',Path.DirectorySeparatorChar))));
+        package.PresentationDefinition.TeamSceneDefinitions.Where(x=>x.CheckpointId=="act-one-business").Should().HaveCount(4).And.OnlyContain(x=>x.HotspotDefinitions.Count==2&&x.RequiredInvestigationCount==2&&x.HotspotDefinitions.All(h=>h.X>=0&&h.X<=100&&h.Y>=0&&h.Y<=100&&!string.IsNullOrWhiteSpace(h.ExpectedVisibleObject)&&h.Required));
+    }
+
+    [Fact]
+    public async Task Package_0_7_resolves_four_distinct_business_scenes_and_keeps_them_private()
+    {
+        var package=await StoryRuntimeTestSupport.PackageServices().Loader.LoadAsync("hezar-cheragh","0.7.0",default);
+        var sessionId=Guid.NewGuid();
+        var bakery=TeamAndEntity(sessionId,"bakery-sepideh","نانوایی سپیده");
+        var logistics=TeamAndEntity(sessionId,"logistics-rah-no","باربری راه‌نو");
+        var printing=TeamAndEntity(sessionId,"printing-roshan","چاپخانه روشن");
+        var exchange=TeamAndEntity(sessionId,"exchange-mizan","صرافی میزان");
+        var teams=new[]{bakery.Team,logistics.Team,printing.Team,exchange.Team};
+        var entities=new[]{bakery.Entity,logistics.Entity,printing.Entity,exchange.Entity};
+        var state=Experience(sessionId,package,teams,entities,"act-one-business");
+        var views=teams.Select(team=>ViewProjector.Team(state,team,package).TeamScenePresentation!).ToList();
+        views.Select(x=>x.SceneId).Should().OnlyHaveUniqueItems().And.HaveCount(4);
+        views.Select(x=>x.BackgroundAssetId).Should().OnlyHaveUniqueItems();
+        views.Should().OnlyContain(x=>x.StorySheets.Count==2&&x.StorySheets.All(sheet=>sheet.Narrative.Count>=3&&sheet.Narrative.Count<=5&&sheet.Evidence.Count>0)&&x.Hotspots.All(h=>h.TargetDescription!=null&&h.ExpectedVisibleObject!=null));
+        var bakeryJson=JsonSerializer.Serialize(views[0]);
+        bakeryJson.Should().Contain("act-one-bakery").And.NotContain("act-one-logistics").And.NotContain("act-one-printing").And.NotContain("act-one-exchange").And.NotContain("exchange-ledger");
+    }
+
     private static (Team Team,WorldEntity Entity) TeamAndEntity(Guid sessionId,string definitionId,string name)
     {
         var teamId=Guid.NewGuid();var entityId=Guid.NewGuid();

@@ -316,10 +316,15 @@ public sealed class StoryPackageValidator : IStoryPackageValidator
             }
             var hotspotIds=scene.HotspotDefinitions.Select(x=>x.Id).ToList();
             if(hotspotIds.Distinct(StringComparer.Ordinal).Count()!=hotspotIds.Count)error(file,scene.SceneId,"duplicate-hotspot-id","Hotspot IDs must be unique inside a Team scene.");
+            if(scene.HotspotDefinitions.Count>0&&scene.RequiredInvestigationCount>scene.HotspotDefinitions.Count)error(file,scene.SceneId,"insufficient-hotspots","Required investigation count cannot exceed the authored hotspot count.");
+            if(scene.HotspotDefinitions.Count>0&&scene.RequiredInvestigationCount>scene.HotspotDefinitions.Count(x=>x.Required))error(file,scene.SceneId,"insufficient-required-hotspots","Required investigation count cannot exceed reachable required hotspots.");
             foreach(var hotspot in scene.HotspotDefinitions)
             {
                 if(hotspot.X<0||hotspot.X>100||hotspot.Y<0||hotspot.Y>100)error(file,hotspot.Id,"invalid-hotspot-position","Hotspot coordinates must be percentages from 0 through 100.");
                 if(!sheetIds.Contains(hotspot.StorySheetId))error(file,hotspot.Id,"unknown-story-sheet","Hotspot references an unknown story sheet in this scene.");
+                if(string.IsNullOrWhiteSpace(hotspot.TargetDescription)||string.IsNullOrWhiteSpace(hotspot.ExpectedVisibleObject))error(file,hotspot.Id,"missing-hotspot-target-metadata","Hotspot requires a target description and expected visible object.");
+                var sheet=scene.StorySheetDefinitions.SingleOrDefault(x=>x.Id==hotspot.StorySheetId);
+                if(sheet is not null&&(sheet.Evidence.Count==0||sheet.Actions.Count==0))error(file,hotspot.Id,"empty-hotspot-content","Every hotspot must reveal evidence and provide an authored action.");
             }
             ValidateActions(scene.ActionDefinitions,sheetIds,choiceIds,file,scene.SceneId,error);
             if(scene.NextScenePresentation is { } next)ValidateActions(next.Actions,sheetIds,choiceIds,file,scene.SceneId,error);

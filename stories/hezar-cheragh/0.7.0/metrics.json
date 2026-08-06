@@ -1,0 +1,10 @@
+[
+  { "key": "Pressure", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 52 },
+  { "key": "PublicTrust", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 48 },
+  { "key": "Resilience", "scope": "World", "minimum": 0, "maximum": 100, "defaultValue": 45 },
+  { "key": "Liquidity", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Capacity", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Inventory", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "Reliability", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 },
+  { "key": "LocalTrust", "scope": "Entity", "minimum": 0, "maximum": 100, "defaultValue": 50 }
+]

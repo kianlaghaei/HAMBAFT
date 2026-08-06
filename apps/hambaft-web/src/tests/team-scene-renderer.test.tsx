@@ -5,7 +5,7 @@ import { TeamSceneRenderer, type ResolvedTeamScene } from '../features/team-scen
 const scene = {
   sceneId: 'private-scene-id', title: 'بازار تیم', subtitle: 'روایت مجاز', backgroundAssetId: 'asset.svg', backgroundAssetUrl: '/api/story/scene-asset',
   openingNarrative: ['بند آغازین'], objective: '', requiredInvestigationCount: 1, investigationLocations: [], businessActivity: null, contextualPacts: [], finalDecisionPresentation: null, marketReactions: [], investigatedLocationIds: [], revealedEvidenceIds: [],
-  hotspots: [{ id: 'private-marker-id', label: 'ساعت بازار', x: 42, y: 33, storySheetId: 'private-sheet-id', shared: true, investigated: false }],
+  hotspots: [{ id: 'private-marker-id', label: 'ساعت بازار', x: 42, y: 33, storySheetId: 'private-sheet-id', shared: true, investigated: false, targetDescription: 'ساعت', expectedVisibleObject: 'ساعت بازار', required: true, displayOrder: 1 }],
   storySheets: [{ id: 'private-sheet-id', title: 'ساعت بازار', subtitle: 'بالای گذر', narrative: ['بند یک', 'بند دو', 'بند سه'], evidence: [{ id: 'private-evidence-id', title: 'مهر قاب', sourceLabel: 'قاب ساعت', description: 'مهر شکسته است.', whyItMatters: 'زمان روایت را روشن می‌کند.', certainty: 'confirmed', unlocks: [] }], actions: [{ id: 'private-action-id', label: 'ثبت بررسی', kind: 'RecordInvestigation', targetId: 'private-sheet-id', available: true }] }],
   authoredActions: [{ id: 'map-action', label: 'انتخاب مکان', kind: 'ShowMap', targetId: null, available: true }], nextScenePresentation: null,
 } satisfies ResolvedTeamScene

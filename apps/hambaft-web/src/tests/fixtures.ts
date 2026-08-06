@@ -39,7 +39,7 @@ export const teamExperienceFixture: TeamExperience = {
     businessActivity: { entityDefinitionId: 'bakery-sepideh', title: 'تخصیص سهم نانوایی', summary: 'فعالیت authored نانوایی.', implication: 'اثر authored روی حجره.', unlockedActions: ['اقدام authored'] }, contextualPacts: [],
     finalDecisionPresentation: { heading: 'آنچه حالا می‌دانید', summary: 'خلاصه‌ی authored تصمیم.', choices: [{ choiceId: 'keep-price', selectedAction: 'قیمت را نگه دار', acceptedRisk: 'ریسک authored', position: 'خصوصی', pactUsed: 'بدون پیمان', summary: 'تصمیم authored' }], selectedChoiceId: null, selectedChoice: null }, marketReactions: [], investigatedLocationIds: [], revealedEvidenceIds: [],
     subtitle: 'روایت آزمون', backgroundAssetId: 'assets/test.svg', backgroundAssetUrl: '/api/story/scene-asset',
-    hotspots: [{ id: 'office-marker', label: 'دفتر', x: 50, y: 30, storySheetId: 'office-sheet', shared: false, investigated: false }],
+    hotspots: [{ id: 'office-marker', label: 'دفتر', x: 50, y: 30, storySheetId: 'office-sheet', shared: false, investigated: false, targetDescription: 'دفتر', expectedVisibleObject: 'دفتر', required: true, displayOrder: 1 }],
     storySheets: [{ id: 'office-sheet', title: 'دفتر', subtitle: 'روایت مکان', narrative: ['بند یک', 'بند دو', 'بند سه'], evidence: [{ id: 'office-proof', title: 'مدرک', sourceLabel: 'دفتر', description: 'شرح مدرک', whyItMatters: 'اهمیت مدرک', certainty: 'confirmed', unlocks: [] }], actions: [{ id: 'record-office', label: 'ثبت بررسی', kind: 'RecordInvestigation', targetId: 'office-sheet', available: true }] }],
     authoredActions: [{ id: 'choose-location', label: 'انتخاب مکان', kind: 'ShowMap', targetId: null, available: true }], nextScenePresentation: null,
   },

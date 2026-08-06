@@ -1,0 +1,13 @@
+{
+  "id": "hezar-cheragh",
+  "version": "0.7.0",
+  "title": "هزار چراغ — پردهٔ اول کامل",
+  "description": "پردهٔ اول بحران بازار با صحنه‌های تصویری و پرونده‌های چهار کسب‌وکار.",
+  "minimumTeams": 2,
+  "maximumTeams": 4,
+  "entryCheckpointId": "act-one-intro",
+  "defaultLocale": "fa-IR",
+  "supportedLocales": ["fa-IR"],
+  "estimatedDurationMinutes": 40,
+  "requiredRuntimeVersion": "4.0"
+}

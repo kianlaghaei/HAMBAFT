@@ -190,7 +190,7 @@ const teamScenePresentationSchema = z.object({
   subtitle: z.string(),
   backgroundAssetId: z.string().nullish(),
   backgroundAssetUrl: z.string().nullish(),
-  hotspots: z.array(z.object({ id: z.string(), label: z.string(), x: z.number(), y: z.number(), storySheetId: z.string(), shared: z.boolean(), investigated: z.boolean() })),
+  hotspots: z.array(z.object({ id: z.string(), label: z.string(), x: z.number(), y: z.number(), storySheetId: z.string(), shared: z.boolean(), investigated: z.boolean(), targetDescription: z.string().nullish(), expectedVisibleObject: z.string().nullish(), required: z.boolean(), displayOrder: z.number().int() })),
   storySheets: z.array(z.object({
     id: z.string(), title: z.string(), subtitle: z.string(), narrative: z.array(z.string()),
     evidence: z.array(z.object({ id: z.string(), title: z.string(), sourceLabel: z.string(), description: z.string(), whyItMatters: z.string(), certainty: z.enum(['confirmed', 'probable', 'uncertain']), unlocks: z.array(z.string()) })),

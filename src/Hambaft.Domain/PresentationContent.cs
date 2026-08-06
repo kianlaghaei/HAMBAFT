@@ -162,7 +162,11 @@ public sealed record TeamSceneHotspotDefinition(
     decimal X,
     decimal Y,
     string StorySheetId,
-    bool Shared = false);
+    bool Shared = false,
+    string? TargetDescription = null,
+    string? ExpectedVisibleObject = null,
+    bool Required = true,
+    int DisplayOrder = 0);
 
 public sealed record TeamSceneStorySheetDefinition(
     string Id,
